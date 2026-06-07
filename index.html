@@ -1,0 +1,3388 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⛧ Ordem Paranormal — Mesa ⛧</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=IM+Fell+English:ital@0;1&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Oswald:wght@200;300;400;500;600;700&family=Philosopher:ital,wght@0,400;0,700;1,400;1,700&family=Special+Elite&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+--bg-void:#050005;--bg-deep:#0a0008;--bg-dark:#0f000c;--bg-mid:#160010;--bg-panel:#12000f;
+--crimson:#8b0000;--crimson-mid:#a50000;--crimson-hot:#cc0000;
+--blood:#5c0000;--blood-deep:#3a0000;--wine:#4a0020;--wine-light:#7a0030;--maroon:#2d0000;
+--white-dim:#e8e0e0;--white-bone:#c8c0c0;--white-ash:#a09898;--white-dust:#6a6060;
+--purple-dark:#1a0028;--purple-mid:#3d0060;--gold:#8a6a00;--gold-light:#c49a00;
+--border-blood:rgba(139,0,0,0.4);--border-wine:rgba(100,0,40,0.3);
+--glow-red:rgba(200,0,0,0.35);--glow-wine:rgba(100,0,40,0.25);
+}
+html{scroll-behavior:smooth}
+body{
+  background-color:var(--bg-void);
+  background-image:
+    radial-gradient(ellipse 80% 50% at 50% 0%,rgba(120,0,20,0.15) 0%,transparent 60%),
+    radial-gradient(ellipse 60% 40% at 50% 100%,rgba(80,0,0,0.2) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 80% at 0% 50%,rgba(60,0,20,0.1) 0%,transparent 60%),
+    radial-gradient(ellipse 40% 80% at 100% 50%,rgba(60,0,20,0.1) 0%,transparent 60%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='400' height='400' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+  color:var(--white-bone);font-family:'Oswald','IM Fell English',sans-serif;
+  font-size:15px;line-height:1.8;min-height:100vh;overflow-x:hidden;
+  cursor:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Ccircle cx='10' cy='10' r='1.5' fill='%238b0000'/%3E%3Cline x1='10' y1='2' x2='10' y2='18' stroke='%238b0000' stroke-width='0.8'/%3E%3Cline x1='2' y1='10' x2='18' y2='10' stroke='%238b0000' stroke-width='0.8'/%3E%3C/svg%3E") 10 10,crosshair;
+}
+body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellipse 20% 100% at 0% 50%,rgba(0,0,0,0.7) 0%,transparent 60%),radial-gradient(ellipse 20% 100% at 100% 50%,rgba(0,0,0,0.7) 0%,transparent 60%),radial-gradient(ellipse 100% 12% at 50% 0%,rgba(0,0,0,0.9) 0%,transparent 60%),radial-gradient(ellipse 100% 12% at 50% 100%,rgba(0,0,0,0.9) 0%,transparent 60%);pointer-events:none;z-index:0}
+.top-seal{position:fixed;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,transparent 0%,var(--blood-deep) 10%,var(--crimson) 30%,var(--crimson-hot) 50%,var(--crimson) 70%,var(--blood-deep) 90%,transparent 100%);z-index:200;box-shadow:0 2px 20px rgba(200,0,0,0.5),0 4px 40px rgba(150,0,0,0.25)}
+ 
+
+/* ── PRESENÇA / ONLINE ── */
+.presence-panel{background:rgba(8,0,6,0.9);border:1px solid rgba(138,106,0,0.25);padding:14px 16px;margin-bottom:14px}
+.presence-title{font-family:'Cinzel',serif;font-size:10px;letter-spacing:.2em;color:var(--gold-light);text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.presence-dot{width:8px;height:8px;border-radius:50%;background:#22cc66;box-shadow:0 0 6px #22cc6688;display:inline-block;animation:pulse-green 2s infinite}
+@keyframes pulse-green{0%,100%{opacity:1}50%{opacity:.4}}
+.online-list{display:flex;flex-wrap:wrap;gap:8px}
+.online-card{display:flex;align-items:center;gap:7px;background:rgba(20,0,15,0.8);border:1px solid rgba(139,0,0,0.3);padding:6px 12px;font-size:12px;color:var(--white-ash);font-family:'Oswald',sans-serif;letter-spacing:.06em;position:relative}
+.online-card.mestre-card{border-color:rgba(138,106,0,0.5);color:var(--gold-light)}
+.online-card .o-dot{width:7px;height:7px;border-radius:50%;background:#22cc66;flex-shrink:0}
+.online-card .kick-btn{margin-left:8px;background:transparent;border:none;color:#cc4444;cursor:pointer;font-size:13px;line-height:1;padding:0;opacity:.6}
+.online-card .kick-btn:hover{opacity:1}
+.broadcast-bar{background:rgba(138,106,0,0.12);border:1px solid rgba(138,106,0,0.35);padding:10px 14px;margin-bottom:14px;display:none}
+.broadcast-bar.visible{display:flex;gap:8px;align-items:center}
+.broadcast-bar input{flex:1;background:rgba(20,8,0,.8);border:1px solid rgba(138,106,0,0.3);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:7px 10px;outline:none}
+.broadcast-bar button{padding:7px 14px;background:transparent;border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;cursor:pointer;white-space:nowrap}
+.broadcast-incoming{position:fixed;top:60px;left:50%;transform:translateX(-50%);z-index:300;background:rgba(8,5,0,0.97);border:1px solid var(--gold);padding:14px 22px;max-width:500px;width:90%;font-family:'IM Fell English',serif;font-size:15px;color:var(--gold-light);text-align:center;box-shadow:0 4px 40px rgba(138,106,0,0.3);display:none}
+.broadcast-incoming.show{display:block;animation:slideDown .3s ease}
+@keyframes slideDown{from{opacity:0;transform:translateX(-50%) translateY(-12px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ── SCREEN SYSTEM ── */
+.screen{display:none;position:relative;z-index:1;min-height:100vh}
+.screen.active{display:block}
+ 
+/* ── LOGIN SCREEN ── */
+#screen-login{display:none;align-items:center;justify-content:center;flex-direction:column;padding:3rem 1rem}
+#screen-login.active{display:flex}
+
+
+
+
+  50%{filter:drop-shadow(0 0 18px rgba(200,0,0,0.7)) drop-shadow(0 0 40px rgba(139,0,0,0.3));opacity:1;transform:scale(1.03)}
+}
+.login-box{width:100%;max-width:440px;background:rgba(10,0,8,0.95);border:1px solid var(--blood);padding:3rem 2.5rem;position:relative}
+.login-box::before,.login-box::after{content:'';position:absolute;left:-1px;right:-1px;height:1px;background:linear-gradient(90deg,transparent,var(--crimson),transparent)}
+.login-box::before{top:0}.login-box::after{bottom:0}
+.login-title{font-family:'Cinzel Decorative',serif;font-size:1.4rem;color:var(--crimson-mid);text-align:center;margin-bottom:.4rem;letter-spacing:.08em}
+.login-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:.85rem;color:var(--white-ash);text-align:center;margin-bottom:2rem;letter-spacing:.04em}
+.form-field{margin-bottom:1.2rem}
+.form-field label{display:block;font-size:.75rem;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif}
+.form-field input{width:100%;background:rgba(30,0,20,0.6);border:1px solid var(--blood);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:14px;padding:10px 14px;outline:none;transition:border-color .2s}
+.form-field input:focus{border-color:var(--crimson-mid)}
+.btn-ritual{width:100%;padding:13px;background:transparent;border:1px solid var(--crimson);color:var(--crimson-mid);font-family:'Cinzel',serif;font-size:13px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;margin-top:.5rem;transition:all .2s}
+.btn-ritual:hover{background:rgba(139,0,0,0.2);color:var(--white-dim);border-color:var(--crimson-hot)}
+.login-toggle{text-align:center;margin-top:1.2rem;font-size:13px;color:var(--white-ash)}
+.login-toggle a{color:var(--crimson-mid);cursor:pointer;text-decoration:none}
+.login-toggle a:hover{color:var(--crimson-hot)}
+.login-err{color:#cc4444;font-size:12px;text-align:center;margin-top:.8rem;min-height:18px;font-family:'Courier Prime',monospace}
+.role-badge{display:inline-block;padding:3px 10px;border:1px solid;font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-family:'Oswald',sans-serif}
+.role-mestre{border-color:var(--gold-light);color:var(--gold-light)}
+.role-player{border-color:var(--white-ash);color:var(--white-ash)}
+ 
+/* ── MAIN APP ── */
+#screen-app{display:none;flex-direction:column}
+#screen-app.active{display:flex}
+ 
+/* TOPBAR */
+.topbar{position:sticky;top:3px;z-index:100;background:rgba(5,0,5,0.97);border-bottom:1px solid var(--blood-deep);display:flex;align-items:center;gap:0;padding:0}
+.topbar-logo{font-family:'Cinzel Decorative',serif;font-size:13px;color:var(--crimson-mid);padding:12px 20px;border-right:1px solid var(--blood-deep);letter-spacing:.06em;white-space:nowrap}
+.topbar-logo span{color:var(--white-ash);font-size:10px;display:block;letter-spacing:.15em;margin-top:1px}
+.tab-nav{display:flex;flex:1;overflow-x:auto}
+.tab-nav::-webkit-scrollbar{height:2px}.tab-nav::-webkit-scrollbar-thumb{background:var(--blood)}
+.tab-btn{padding:14px 18px;background:transparent;border:none;border-right:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all .2s;position:relative}
+.tab-btn:hover{color:var(--white-bone);background:rgba(139,0,0,0.08)}
+.tab-btn.active{color:var(--crimson-mid);background:rgba(139,0,0,0.12)}
+.tab-btn.active::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:var(--crimson)}
+.tab-btn.mestre-only{border-left:2px solid var(--gold);color:var(--gold)}
+.tab-btn.mestre-only.active{color:var(--gold-light)}
+.topbar-user{padding:8px 16px;border-left:1px solid var(--blood-deep);font-size:12px;color:var(--white-ash);display:flex;align-items:center;gap:10px;white-space:nowrap}
+.topbar-user button{background:transparent;border:1px solid var(--blood);color:var(--white-dust);font-size:11px;padding:4px 10px;cursor:pointer;font-family:'Oswald',sans-serif;letter-spacing:.08em}
+.topbar-user button:hover{border-color:var(--crimson);color:var(--crimson-mid)}
+ 
+/* MAIN CONTENT */
+.app-body{flex:1;padding:24px;max-width:1200px;margin:0 auto;width:100%}
+.tab-content{display:none}.tab-content.active{display:block}
+ 
+/* ── ORNAMENT DIVIDERS ── */
+.ornament{display:flex;align-items:center;margin:1.5rem 0;opacity:.6}
+.ornament-line{flex:1;height:1px;background:linear-gradient(90deg,transparent,var(--blood-deep) 30%,var(--crimson) 50%,var(--blood-deep) 70%,transparent)}
+.ornament-sym{padding:0 12px;font-size:14px;color:var(--crimson)}
+ 
+/* ── PANEL / CARD ── */
+.panel{background:rgba(10,0,8,0.85);border:1px solid var(--blood-deep);padding:20px 22px;margin-bottom:16px;position:relative}
+.panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--blood-deep),transparent)}
+.panel-title{font-family:'Cinzel',serif;font-size:11px;letter-spacing:.18em;color:var(--crimson);text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid var(--blood-deep);display:flex;align-items:center;gap:8px}
+.panel-title::before{content:'⛧';font-size:10px;opacity:.6}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.three-col{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+.four-col{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+ 
+/* ── FORM ELEMENTS ── */
+.field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px}
+.field label{font-size:11px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;font-family:'Oswald',sans-serif}
+.field input,.field select,.field textarea{background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:8px 12px;outline:none;transition:border-color .2s;width:100%}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--crimson-mid)}
+.field select option{background:#0f000c}
+.field textarea{resize:vertical;min-height:65px;line-height:1.6}
+ 
+/* ── STAT BOXES ── */
+.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.stat-box{background:rgba(15,0,12,0.9);border:1px solid var(--blood-deep);padding:14px;text-align:center;position:relative}
+.stat-box::after{content:'';position:absolute;inset:2px;border:1px solid rgba(139,0,0,0.08);pointer-events:none}
+.stat-name{font-family:'Cinzel',serif;font-size:9px;letter-spacing:.2em;color:var(--white-dust);text-transform:uppercase;margin-bottom:8px}
+.stat-ctrl{display:flex;align-items:center;justify-content:center;gap:10px}
+.snum{font-family:'Cinzel Decorative',serif;font-size:28px;min-width:48px;display:block;line-height:1}
+.snum.pv{color:#cc2222}.snum.san{color:#22aa88}.snum.esf{color:#cc8822}
+.smax{font-size:10px;color:var(--white-dust);margin-top:4px}
+.smax-adj{display:inline-flex;align-items:center;gap:3px}
+.sadj{width:20px;height:20px;background:rgba(30,0,20,0.8);border:1px solid var(--blood-deep);color:var(--white-dust);font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;line-height:1;transition:all .15s}
+.sadj:hover{background:rgba(139,0,0,0.2);border-color:var(--crimson);color:var(--white-dim)}
+ 
+/* ── ATTR BARS ── */
+.attr-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.attr-name{font-family:'Oswald',sans-serif;font-size:12px;color:var(--white-ash);width:88px;letter-spacing:.04em}
+.attr-track{flex:1;height:5px;background:rgba(30,0,20,0.8);border:1px solid var(--blood-deep)}
+.attr-fill{height:100%;background:var(--crimson);transition:width .3s}
+.attr-val{font-family:'Courier Prime',monospace;font-size:13px;color:var(--white-dim);width:20px;text-align:center}
+.adj{width:22px;height:22px;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-dust);font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s}
+.adj:hover{background:rgba(139,0,0,0.2);border-color:var(--crimson);color:var(--white-dim)}
+ 
+/* ── CONDITIONS ── */
+.cond-wrap{display:flex;flex-wrap:wrap;gap:7px}
+.cond-chip{padding:5px 12px;font-size:11px;letter-spacing:.08em;border:1px solid var(--blood-deep);background:transparent;color:var(--white-dust);cursor:pointer;font-family:'Oswald',sans-serif;text-transform:uppercase;transition:all .2s}
+.cond-chip:hover{border-color:var(--blood);color:var(--white-ash)}
+.cond-chip.on{background:rgba(139,0,0,0.2);border-color:var(--crimson-mid);color:var(--crimson-hot)}
+ 
+/* ── LISTS ── */
+.list-item{display:flex;align-items:flex-start;gap:10px;padding:9px 0;border-bottom:1px solid rgba(58,0,0,0.4)}
+.list-item:last-child{border-bottom:none}
+.list-body{flex:1;font-size:13px;color:var(--white-bone);line-height:1.5}
+.list-meta{font-size:11px;color:var(--white-dust);margin-top:2px;font-family:'Courier Prime',monospace}
+.del-btn{background:transparent;border:none;color:var(--white-dust);font-size:18px;cursor:pointer;padding:0 3px;line-height:1;transition:color .15s}
+.del-btn:hover{color:#cc4444}
+.badge{display:inline-block;font-size:10px;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border:1px solid;margin-right:5px;font-family:'Oswald',sans-serif}
+.badge-p{border-color:var(--purple-mid);color:#bb88ff;background:rgba(61,0,96,0.3)}
+.badge-r{border-color:var(--wine-light);color:#ff88aa;background:rgba(74,0,32,0.3)}
+.badge-h{border-color:var(--blood-deep);color:var(--white-ash);background:rgba(20,0,15,0.5)}
+ 
+.add-row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.add-row input,.add-row select{background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:7px 10px;flex:1;outline:none;min-width:80px}
+.add-row input:focus{border-color:var(--crimson-mid)}
+.btn-add{padding:7px 16px;background:transparent;border:1px solid var(--crimson);color:var(--crimson-mid);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;white-space:nowrap;transition:all .2s}
+.btn-add:hover{background:rgba(139,0,0,0.2);color:var(--white-dim)}
+ 
+/* ── DICE ── */
+.dice-grid{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px}
+.die-btn{width:60px;height:60px;background:rgba(15,0,12,0.9);border:1px solid var(--blood-deep);color:var(--white-ash);font-family:'Cinzel Decorative',serif;font-size:13px;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:2px}
+.die-btn:hover{border-color:var(--crimson);color:var(--crimson-hot);background:rgba(139,0,0,0.12)}
+.die-btn:active{transform:scale(.95)}
+.roll-result{font-family:'Cinzel Decorative',serif;font-size:52px;text-align:center;color:var(--crimson-mid);padding:24px;letter-spacing:.04em;text-shadow:0 0 30px rgba(200,0,0,0.4)}
+.roll-detail{font-size:12px;color:var(--white-dust);text-align:center;margin-top:-12px;margin-bottom:16px;font-family:'Courier Prime',monospace}
+.roll-log-wrap{max-height:220px;overflow-y:auto}
+.roll-log-wrap::-webkit-scrollbar{width:4px}.roll-log-wrap::-webkit-scrollbar-thumb{background:var(--blood)}
+.log-line{font-size:12px;color:var(--white-dust);padding:5px 0;border-bottom:1px solid rgba(58,0,0,0.3);font-family:'Courier Prime',monospace;display:flex;gap:8px}
+.log-line b{color:var(--white-bone)}
+.log-line .log-tag{color:var(--crimson);font-size:10px}
+ 
+/* ── SAVE FLASH ── */
+.save-ok{font-family:'Courier Prime',monospace;font-size:11px;color:#22aa66;text-align:right;height:16px;margin-top:5px}
+ 
+/* ── TOKEN SECTION ── */
+.token-wrap{display:grid;grid-template-columns:240px 1fr;gap:24px;align-items:start}
+.token-preview{text-align:center}
+#token-canvas{border-radius:50%;border:4px solid var(--crimson);cursor:pointer;display:block;margin:0 auto}
+.token-name-display{font-family:'Cinzel',serif;font-size:16px;color:var(--white-bone);margin-top:10px;letter-spacing:.05em}
+.token-btns{display:flex;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
+.token-controls{display:flex;flex-direction:column;gap:16px}
+.ctrl-label{font-size:10px;letter-spacing:.15em;color:var(--crimson);text-transform:uppercase;margin-bottom:7px;font-family:'Oswald',sans-serif}
+.swatch-row{display:flex;flex-wrap:wrap;gap:6px}
+.swatch{width:28px;height:28px;border-radius:50%;cursor:pointer;border:2px solid transparent;transition:border-color .15s,transform .15s}
+.swatch:hover{transform:scale(1.1)}
+.swatch.active{border-color:var(--white-dim)}
+.icon-row{display:flex;flex-wrap:wrap;gap:6px}
+.icon-opt{width:36px;height:36px;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.icon-opt:hover{border-color:var(--crimson);background:rgba(139,0,0,0.12)}
+.icon-opt.active{border-color:var(--crimson-hot);background:rgba(139,0,0,0.2)}
+.token-text-input{background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Cinzel',serif;font-size:13px;padding:7px 10px;width:100%;outline:none}
+.token-text-input:focus{border-color:var(--crimson-mid)}
+ 
+/* ── MAP SECTION ── */
+.map-wrap{display:flex;flex-direction:column;gap:12px}
+.map-toolbar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:10px 14px;background:rgba(10,0,8,0.9);border:1px solid var(--blood-deep)}
+.tool-btn{padding:6px 12px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .2s}
+.tool-btn:hover{border-color:var(--blood);color:var(--white-ash)}
+.tool-btn.active{border-color:var(--crimson-mid);color:var(--crimson-hot);background:rgba(139,0,0,0.12)}
+.tool-sep{width:1px;height:24px;background:var(--blood-deep);margin:0 4px}
+.map-canvas-wrap{position:relative;border:1px solid var(--blood-deep);overflow:hidden}
+#map-canvas{display:block;cursor:crosshair;width:100%}
+.map-bottom{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:start;margin-top:8px}
+.map-layers{font-size:12px;color:var(--white-dust)}
+.layer-item{display:flex;align-items:center;gap:6px;padding:4px 0;cursor:pointer}
+.layer-dot{width:10px;height:10px;border-radius:50%}
+.layer-item.hidden .layer-dot{opacity:.3}
+.layer-item input[type=checkbox]{accent-color:var(--crimson)}
+.map-tokens-panel{background:rgba(10,0,8,0.9);border:1px solid var(--blood-deep);padding:12px;min-width:180px;max-width:220px}
+.map-token-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(58,0,0,0.3);cursor:grab;font-size:12px;color:var(--white-ash)}
+.map-token-item:last-child{border-bottom:none}
+.mini-token{width:28px;height:28px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+ 
+/* ── PLAYERS (MESTRE) ── */
+.player-card{background:rgba(10,0,8,0.9);border:1px solid var(--blood-deep);padding:16px;margin-bottom:12px;display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center}
+.player-avatar{width:52px;height:52px;border-radius:50%;border:2px solid var(--crimson);display:flex;align-items:center;justify-content:center;font-size:22px}
+.player-info{min-width:0}
+.player-name{font-family:'Cinzel',serif;font-size:14px;color:var(--white-dim);margin-bottom:2px}
+.player-class{font-size:11px;color:var(--white-dust);letter-spacing:.06em}
+.player-vitals{display:flex;gap:10px;margin-top:6px}
+.vital-mini{font-size:11px;font-family:'Courier Prime',monospace}
+.vital-mini span{font-weight:bold}
+.vital-mini.pv span{color:#cc2222}
+.vital-mini.san span{color:#22aa88}
+.vital-mini.esf span{color:#cc8822}
+.player-conds{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.pcond{font-size:9px;letter-spacing:.08em;padding:2px 6px;border:1px solid var(--crimson-mid);color:var(--crimson-hot);font-family:'Oswald',sans-serif;text-transform:uppercase}
+.player-actions{display:flex;flex-direction:column;gap:6px}
+.player-actions button{padding:5px 12px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-size:11px;cursor:pointer;font-family:'Oswald',sans-serif;letter-spacing:.06em;text-transform:uppercase;transition:all .15s;text-align:center}
+.player-actions button:hover{border-color:var(--crimson);color:var(--crimson-mid)}
+.mestre-note{background:rgba(15,8,0,0.9);border:1px solid rgba(138,106,0,0.3);padding:10px 14px;font-size:12px;color:var(--white-ash);font-family:'Courier Prime',monospace;width:100%;outline:none;resize:none;min-height:60px}
+.mestre-note:focus{border-color:rgba(196,154,0,0.4)}
+.gold-label{color:var(--gold-light);border-color:var(--gold)}
+ 
+/* ── NOTIFICATION TOAST ── */
+.toast{position:fixed;bottom:24px;right:24px;background:rgba(10,0,8,0.95);border:1px solid var(--crimson);color:var(--white-bone);padding:12px 20px;font-size:13px;font-family:'Courier Prime',monospace;z-index:300;transform:translateY(60px);opacity:0;transition:all .3s;max-width:320px}
+.toast.show{transform:translateY(0);opacity:1}
+ 
+/* ── MODAL ── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:250;display:none;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:rgba(10,0,8,0.98);border:1px solid var(--blood);padding:2rem;max-width:480px;width:90%;max-height:90vh;overflow-y:auto;position:relative}
+.modal-close{position:absolute;top:12px;right:14px;background:transparent;border:none;color:var(--white-ash);font-size:20px;cursor:pointer;line-height:1}
+.modal-close:hover{color:var(--crimson-hot)}
+.modal-title{font-family:'Cinzel',serif;font-size:14px;letter-spacing:.1em;color:var(--crimson-mid);text-transform:uppercase;margin-bottom:1.2rem;padding-bottom:.8rem;border-bottom:1px solid var(--blood-deep)}
+ 
+/* ── STATE SWITCHER ── */
+.state-btn{padding:9px 16px;background:rgba(10,0,8,0.6);border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.08em;text-transform:uppercase;cursor:pointer;transition:all .18s;display:flex;align-items:center;gap:7px;min-width:130px;justify-content:center;user-select:none}
+.state-btn:hover{border-color:var(--blood);color:var(--white-bone);background:rgba(139,0,0,0.12)}
+.state-btn:active{transform:scale(.97)}
+.state-btn.active-state{border-color:var(--crimson-hot);color:#fff;background:rgba(139,0,0,0.28);box-shadow:0 0 12px rgba(200,0,0,0.25)}
+.state-btn[data-state="arma"].active-state{border-color:#cc4400;color:#ff9966;background:rgba(100,30,0,0.35);box-shadow:0 0 12px rgba(200,60,0,0.3)}
+.state-btn[data-state="lanterna"].active-state{border-color:#c49a00;color:#ffe080;background:rgba(80,60,0,0.35);box-shadow:0 0 12px rgba(196,154,0,0.3)}
+.state-btn[data-state="morrendo"].active-state{border-color:#660000;color:#cc4444;background:rgba(40,0,0,0.5);box-shadow:0 0 12px rgba(100,0,0,0.4)}
+.state-hint{font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;padding:6px 10px;background:rgba(20,0,15,0.6);border:1px solid var(--blood-deep);margin-bottom:8px}
+/* ── MAP PRESETS ── */
+.preset-btn{padding:5px 10px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:.06em;cursor:pointer;transition:all .18s;white-space:nowrap}
+.preset-btn:hover{border-color:var(--crimson);color:var(--crimson-hot);background:rgba(139,0,0,0.1)}
+.preset-group{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:6px}
+.preset-group-label{font-size:9px;letter-spacing:.14em;color:var(--crimson);text-transform:uppercase;font-family:'Oswald',sans-serif;margin-bottom:4px;margin-top:8px}
+ 
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--bg-void)}
+::-webkit-scrollbar-thumb{background:var(--blood);border-radius:2px}
+::-webkit-scrollbar-thumb:hover{background:var(--crimson)}
+ 
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  .token-wrap{grid-template-columns:1fr}.two-col,.three-col,.four-col{grid-template-columns:1fr}
+  .app-body{padding:12px}.topbar-logo span{display:none}
+  .map-bottom{grid-template-columns:1fr}
+}
+</style>
+<!-- Firebase -->
+<script>
+// ══════════════════════════════════════════════
+//  FIREBASE — REST API + SSE para mapa em tempo real
+//  SSE (Server-Sent Events) = push verdadeiro, sem polling
+// ══════════════════════════════════════════════
+
+function _fbCfg(){
+  try { return JSON.parse(localStorage.getItem('op_firebase_config') || 'null'); } catch(e){ return null; }
+}
+function _fbBase(){
+  const c = _fbCfg();
+  return c && c.databaseURL ? c.databaseURL.replace(/\/$/, '') : null;
+}
+
+// PUT — grava um nó
+async function _fbPut(path, data){
+  const base = _fbBase(); if(!base) return null;
+  try{
+    const r = await fetch(base + '/' + path + '.json', {
+      method: 'PUT',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(data)
+    });
+    return r.ok ? r.json() : null;
+  }catch(e){ return null; }
+}
+
+// DELETE — remove um nó
+async function _fbDelete(path){
+  const base = _fbBase(); if(!base) return;
+  await fetch(base + '/' + path + '.json', { method: 'DELETE' });
+}
+
+// GET — lê um nó uma vez
+async function _fbGet(path){
+  const base = _fbBase(); if(!base) return null;
+  try {
+    const r = await fetch(base + '/' + path + '.json');
+    if(!r.ok) return null;
+    return await r.json();
+  } catch(e){ return null; }
+}
+
+// SSE — escuta mudanças via Server-Sent Events (push real do Firebase)
+const _sseConnections = {};
+function _fbSSE(path, cb){
+  const base = _fbBase(); if(!base) return;
+  const key = path;
+  if(_sseConnections[key]){ try{ _sseConnections[key].close(); }catch(e){} }
+  const url = base + '/' + path + '.json';
+  const es = new EventSource(url);
+  _sseConnections[key] = es;
+  es.addEventListener('put', e => {
+    try{
+      const msg = JSON.parse(e.data);
+      if(msg && msg.data) cb(msg.data);
+    }catch(err){}
+  });
+  es.addEventListener('patch', e => {
+    try{
+      const msg = JSON.parse(e.data);
+      if(msg && msg.data) cb(msg.data);
+    }catch(err){}
+  });
+  es.onerror = () => {
+    // Reconecta automaticamente após 3s
+    setTimeout(()=>_fbSSE(path, cb), 3000);
+  };
+}
+
+// POLL — escuta mudanças via polling periódico (para dados menos críticos)
+const _polls = {};
+function _fbPoll(path, cb, intervalMs){
+  const key = path;
+  if(_polls[key]) clearInterval(_polls[key]);
+  const run = async () => {
+    const data = await _fbGet(path);
+    cb(data);
+  };
+  run();
+  _polls[key] = setInterval(run, intervalMs || 3000);
+}
+function _fbStopPoll(path){
+  if(_polls[path]){ clearInterval(_polls[path]); delete _polls[path]; }
+}
+
+// ── PRESENÇA ──
+window.fbSetPresence = async function(user, isMestre){
+  const base = _fbBase();
+  if(!base){ console.warn('[FB] sem config'); return; }
+  const data = { user, isMestre: !!isMestre, since: Date.now(), online: true };
+  const ok = await _fbPut('presence/' + user, data);
+  if(ok !== null){
+    console.log('[FB] presença gravada:', user);
+    // Registra remoção ao sair da página
+    window.addEventListener('beforeunload', () => {
+      // Usa sendBeacon para garantir envio mesmo fechando a aba
+      const base2 = _fbBase();
+      if(base2) navigator.sendBeacon(base2 + '/presence/' + user + '.json',
+        new Blob([JSON.stringify(null)], {type:'application/json'}));
+    });
+  } else {
+    console.error('[FB] falha ao gravar presença');
+  }
+};
+
+window.fbRemovePresence = async function(user){
+  await _fbDelete('presence/' + user);
+};
+
+window.fbWatchPresence = function(cb){
+  _fbPoll('presence', data => {
+    console.log('[FB] presence poll:', data);
+    cb(data || {});
+  }, 3000);
+};
+
+window.fbWatchConnection = function(cb){
+  const check = async () => {
+    const base = _fbBase();
+    if(!base){ cb(false); return; }
+    try {
+      // Testa escrevendo e lendo um nó de ping
+      const r = await fetch(base + '/presence.json?shallow=true&timeout=4s', {cache:'no-store'});
+      cb(r.ok);
+    } catch(e){ cb(false); }
+  };
+  check();
+  setInterval(check, 8000);
+};
+
+// ── BROADCAST ──
+window.fbBroadcast = async function(msg, from){
+  await _fbPut('broadcast', { msg, from, ts: Date.now() });
+};
+window.fbWatchBroadcast = function(cb){
+  let _lastTs = 0;
+  _fbPoll('broadcast', data => {
+    if(!data || !data.ts) return;
+    if(data.ts > _lastTs){ _lastTs = data.ts; cb(data); }
+  }, 3000);
+};
+
+// ── KICK ──
+window.fbKick = async function(user){
+  await _fbPut('kicks/' + user, { ts: Date.now() });
+};
+window.fbWatchKick = function(user, cb){
+  let _fired = false;
+  _fbPoll('kicks/' + user, data => {
+    if(data && !_fired){ _fired = true; cb(); }
+  }, 3000);
+};
+
+// ── BANCO DE DADOS ──
+let _saveTimer = null;
+window.fbSaveDB = function(dbObj){
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
+    await _fbPut('gamedata', {
+      users: dbObj.users || {},
+      characters: dbObj.characters || {},
+      rolls: dbObj.rolls || {},
+      mestre: dbObj.mestre || {},
+      mapbg: dbObj.maps && dbObj.maps['shared'] ? dbObj.maps['shared'] : null,
+      mapbgTs: Date.now()
+    });
+  }, 600);
+};
+
+window.fbSaveMap = function(mapKey, mapData){
+  if(mapKey === 'bg'){
+    // Salva fundo separado (não polui o mapstate rápido)
+    _fbPut('mapbg', { data: mapData.data || '', ts: mapData.ts || Date.now() });
+    return;
+  }
+  // Mapstate: só tokens + structs (JSON leve — rápido)
+  _fbPut('mapstate', {
+    tokens: mapData.tokens || '[]',
+    structs: mapData.structs || '[]',
+    ts: mapData.ts || Date.now()
+  });
+};
+
+window.fbWatchDB = function(cb){
+  let _lastStr = '';
+  _fbPoll('gamedata', data => {
+    if(!data) return;
+    const s = JSON.stringify(data);
+    if(s !== _lastStr){ _lastStr = s; cb(data); }
+  }, 4000);
+};
+
+window.fbWatchMap = function(cb){
+  // Usa SSE para receber tokens/structs instantaneamente (push verdadeiro)
+  let _lastTs = 0;
+  _fbSSE('mapstate', data => {
+    if(!data || !data.ts) return;
+    if(data.ts > _lastTs){ _lastTs = data.ts; cb(data); }
+  });
+};
+
+window.fbWatchBg = function(cb){
+  // Bg muda menos — SSE também, mas reconecta raramente
+  let _lastTs = 0;
+  _fbSSE('mapbg', data => {
+    if(!data || !data.ts) return;
+    if(data.ts > _lastTs){ _lastTs = data.ts; cb(data); }
+  });
+};
+
+window.fbLoadDB = async function(){
+  return await _fbGet('gamedata');
+};
+
+window.fbTestConfig = async function(cfg){
+  try {
+    const r = await fetch(cfg.databaseURL.replace(/\/$/, '') + '/presence.json?shallow=true');
+    return r.ok ? { ok: true } : { ok: false, err: 'HTTP ' + r.status };
+  } catch(e){ return { ok: false, err: e.message }; }
+};
+
+window._fbReady = true;
+window.dispatchEvent(new CustomEvent('fb-module-ready'));
+console.log('[FB] módulo REST carregado, base:', _fbBase());
+</script>
+</head>
+<body>
+<div class="top-seal"></div>
+
+<!-- FIREBASE SETUP SCREEN -->
+<div id="screen-firebase" class="screen" style="display:none;align-items:center;justify-content:center;flex-direction:column;padding:3rem 1rem;min-height:100vh">
+  <div style="width:100%;max-width:520px;background:rgba(10,0,8,0.97);border:1px solid rgba(138,106,0,0.5);padding:2.5rem;position:relative">
+    <div style="font-family:'Cinzel Decorative',serif;font-size:1.2rem;color:#c49a00;text-align:center;margin-bottom:.4rem;letter-spacing:.08em">⛧ Configuração Firebase ⛧</div>
+    <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:var(--white-ash);text-align:center;margin-bottom:1.8rem">Para jogar online entre máquinas diferentes, você precisa de um projeto Firebase gratuito.</div>
+
+    <div style="background:rgba(138,106,0,0.08);border:1px solid rgba(138,106,0,0.25);padding:14px 16px;margin-bottom:1.4rem;font-size:12px;color:var(--white-ash);font-family:'Courier Prime',monospace;line-height:1.9">
+      <b style="color:#c49a00;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em">COMO CRIAR SEU PROJETO (grátis):</b><br>
+      1. Acesse <a href="https://console.firebase.google.com" target="_blank" style="color:#5b9cf6">console.firebase.google.com</a><br>
+      2. Clique em <b>"Criar um projeto"</b> → dê um nome (ex: op-mesa)<br>
+      3. Vá em <b>Build → Realtime Database → Criar banco de dados</b><br>
+      4. Escolha <b>"Modo de teste"</b> (30 dias, depois ajuste as regras)<br>
+      5. Vá em <b>Configurações do projeto → Seus apps → Web (&lt;/&gt;)</b><br>
+      6. Registre o app e copie o objeto <b>firebaseConfig</b> abaixo
+    </div>
+
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">API Key</label>
+      <input id="cfg-apiKey" type="text" placeholder="AIzaSy..." style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:8px 12px;outline:none">
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Database URL</label>
+      <input id="cfg-dbUrl" type="text" placeholder="https://SEU-PROJETO-default-rtdb.firebaseio.com" style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:8px 12px;outline:none">
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Project ID</label>
+      <input id="cfg-projectId" type="text" placeholder="seu-projeto" style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:8px 12px;outline:none">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+      <div>
+        <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">App ID</label>
+        <input id="cfg-appId" type="text" placeholder="1:000...web:000..." style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:8px 12px;outline:none">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Messaging Sender ID</label>
+        <input id="cfg-senderId" type="text" placeholder="000000000000" style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:8px 12px;outline:none">
+      </div>
+    </div>
+    <div id="cfg-err" style="color:#cc4444;font-size:12px;font-family:'Courier Prime',monospace;min-height:16px;margin-bottom:.8rem;text-align:center"></div>
+    <button onclick="saveFirebaseConfig()" style="width:100%;padding:13px;background:transparent;border:1px solid #8a6a00;color:#c49a00;font-family:'Cinzel',serif;font-size:13px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;margin-bottom:.6rem;transition:all .2s" onmouseover="this.style.background='rgba(138,106,0,0.15)'" onmouseout="this.style.background='transparent'">⛧ Salvar e Conectar ⛧</button>
+    <button onclick="testFirebaseNow()" style="width:100%;padding:9px;background:transparent;border:1px solid rgba(91,156,246,0.5);color:#5b9cf6;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;margin-bottom:.6rem;transition:all .2s">🔍 Testar Conexão Agora</button>
+    <div id="cfg-diag" style="display:none;background:rgba(0,10,20,0.8);border:1px solid rgba(91,156,246,0.3);padding:10px 14px;font-size:11px;font-family:'Courier Prime',monospace;color:#a0c0e0;line-height:1.8;margin-bottom:.8rem;white-space:pre-wrap"></div>
+    <button onclick="skipFirebaseSetup()" style="width:100%;padding:9px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(139,0,0,0.08)'" onmouseout="this.style.background='transparent'">Usar offline (apenas nesta máquina)</button>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--blood-deep);font-size:11px;color:var(--white-dust);text-align:center;font-family:'Courier Prime',monospace">
+      Já tem configuração salva? <a onclick="skipFirebaseSetup()" style="color:var(--crimson-mid);cursor:pointer">Continuar sem alterar</a>
+    </div>
+  </div>
+</div>
+ 
+<!-- LOGIN SCREEN -->
+<div id="screen-login" class="screen active">
+<div class="login-box">
+    <div class="login-title">Ordo Realitas</div>
+    <div class="login-sub">Mesa de Operações — Acesso Restrito</div>
+    <div id="login-form">
+      <div class="form-field"><label>Codinome do agente</label><input type="text" id="li-user" placeholder="seu codinome" autocomplete="username"></div>
+      <div class="form-field"><label>Senha</label><input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn-ritual" onclick="doLogin()">⛧ Entrar na Mesa ⛧</button>
+      <div class="login-err" id="li-err"></div>
+      <div class="login-toggle">Primeira vez? <a onclick="showRegister()">Cadastrar agente</a></div>
+      <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--blood-deep);text-align:center">
+        <div style="font-size:11px;color:var(--white-dust);letter-spacing:.08em;margin-bottom:.6rem;font-family:'Oswald',sans-serif">ACESSO DE MESTRE</div>
+        <button class="btn-ritual" style="font-size:11px;padding:8px;border-color:var(--gold);color:var(--gold)" onclick="openMestreModal()">⛧ Entrar como Mestre ⛧</button>
+      </div>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-field"><label>Codinome do agente</label><input type="text" id="rg-user" placeholder="escolha um codinome" autocomplete="username"></div>
+      <div class="form-field"><label>Senha</label><input type="password" id="rg-pass" placeholder="mínimo 4 caracteres" autocomplete="new-password"></div>
+      <div class="form-field"><label>Confirmar senha</label><input type="password" id="rg-pass2" placeholder="repita a senha" autocomplete="new-password"></div>
+      <button class="btn-ritual" onclick="doRegister()">◭ Registrar Agente ◭</button>
+      <div class="login-err" id="rg-err"></div>
+      <div class="login-toggle">Já tem conta? <a onclick="showLogin()">Entrar</a></div>
+    </div>
+  </div>
+</div>
+ 
+<!-- MAIN APP -->
+<div id="screen-app" class="screen">
+  <div class="topbar">
+    <div class="topbar-logo">⛧ OP<span>Mesa de Operações</span></div>
+    <div class="tab-nav" id="tab-nav">
+      <button class="tab-btn active" onclick="showTab('ficha',this)">Ficha</button>
+      <button class="tab-btn" onclick="showTab('dados',this)">Dados</button>
+      <button class="tab-btn" onclick="showTab('inventario',this)">Inventário</button>
+      <button class="tab-btn" onclick="showTab('missao',this)">Missão</button>
+      <button class="tab-btn" onclick="showTab('token',this)">Token</button>
+      <button class="tab-btn" onclick="showTab('mapa',this)">Mapa</button>
+      <button class="tab-btn mestre-only" id="tab-mestre-btn" onclick="showTab('mestre',this)" style="display:none">⛧ Mestre</button>
+    </div>
+    <div class="topbar-user">
+      <span id="fb-status" title="Status Firebase" style="font-size:10px;letter-spacing:.06em;padding:2px 7px;border:1px solid rgba(34,204,102,0.3);color:rgba(34,204,102,0.6);font-family:monospace;display:none">● ONLINE</span>
+      <!-- Indicador de online clicável para todos -->
+      <span id="online-indicator" title="Agentes online" onclick="toggleOnlinePopup()" style="display:none;cursor:pointer;font-size:11px;font-family:'Oswald',sans-serif;letter-spacing:.07em;padding:3px 9px;border:1px solid rgba(34,204,102,0.35);color:rgba(34,204,102,0.8);background:rgba(0,30,10,0.4);user-select:none">
+        <span class="presence-dot" style="width:6px;height:6px;display:inline-block;margin-right:4px;vertical-align:middle"></span><span id="online-count">0</span> online
+      </span>
+      <span id="topbar-username" style="font-family:'Courier Prime',monospace"></span>
+      <span id="topbar-role"></span>
+      <button onclick="openFirebaseSettings()" title="Configurar Firebase" style="border-color:rgba(138,106,0,0.4);color:rgba(196,154,0,0.7)">⚙ Firebase</button>
+      <button onclick="doLogout()">Sair</button>
+    </div>
+    <!-- Popup de quem está online (visível para todos) -->
+    <div id="online-popup" style="display:none;position:fixed;top:52px;right:16px;z-index:300;background:rgba(8,0,6,0.97);border:1px solid rgba(138,106,0,0.4);padding:12px 16px;min-width:200px;max-width:280px;box-shadow:0 4px 30px rgba(0,0,0,0.7)">
+      <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.18em;color:#c49a00;text-transform:uppercase;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid rgba(138,106,0,0.25)">⛧ Agentes Online</div>
+      <div id="online-popup-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </div>
+  <div class="app-body">
+ 
+    <!-- FICHA -->
+    <div id="tab-ficha" class="tab-content active">
+      <div class="two-col">
+        <div>
+          <div class="panel">
+            <div class="panel-title">Identidade do Agente</div>
+            <div class="two-col">
+              <div class="field"><label>Nome / Codinome</label><input id="f-nome" oninput="autoSave()"></div>
+              <div class="field"><label>Classe</label><select id="f-classe" onchange="autoSave()"><option>Combatente</option><option>Especialista</option><option>Ocultista</option><option>Investigador</option><option>Fiel</option><option>Mundano</option></select></div>
+            </div>
+            <div class="two-col">
+              <div class="field"><label>NEX (%)</label><input id="f-nex" type="number" min="0" max="99" value="5" oninput="autoSave()"></div>
+              <div class="field"><label>Origem</label><input id="f-origem" placeholder="Ex: Militar, Acadêmico" oninput="autoSave()"></div>
+            </div>
+            <div class="field"><label>Trilha Paranormal</label>
+              <select id="f-trilha" onchange="autoSave();renderTrilhaInfo()">
+                <option value="">— Selecione —</option>
+                <optgroup label="⚔ Combatente">
+                  <option>Trilha do Agente</option>
+                  <option>Trilha do Combate</option>
+                  <option>Trilha do Mercenário</option>
+                  <option>Trilha do Soldado</option>
+                  <option>Trilha do Atirador</option>
+                  <option>Trilha do Lutador</option>
+                </optgroup>
+                <optgroup label="🔍 Especialista">
+                  <option>Trilha do Especialista</option>
+                  <option>Trilha do Hacker</option>
+                  <option>Trilha do Médico</option>
+                  <option>Trilha do Motorista</option>
+                  <option>Trilha do Inventor</option>
+                  <option>Trilha do Criminoso</option>
+                </optgroup>
+                <optgroup label="🔮 Ocultista">
+                  <option>Trilha da Magia</option>
+                  <option>Trilha do Sangue</option>
+                  <option>Trilha da Morte</option>
+                  <option>Trilha das Chamas</option>
+                  <option>Trilha do Sonho</option>
+                  <option>Trilha do Medo</option>
+                  <option>Trilha da Mente</option>
+                  <option>Trilha da Energia</option>
+                  <option>Trilha da Luz</option>
+                  <option>Trilha das Sombras</option>
+                  <option>Trilha da Besta</option>
+                  <option>Trilha da Matéria</option>
+                  <option>Trilha do Conhecimento</option>
+                  <option>Trilha do Vazio</option>
+                  <option>Trilha do Tempo</option>
+                  <option>Trilha do Caos</option>
+                  <option>Trilha da Carne</option>
+                  <option>Trilha do Gelo</option>
+                  <option>Trilha do Vento</option>
+                  <option>Trilha da Terra</option>
+                  <option>Trilha da Água</option>
+                  <option>Trilha do Trovão</option>
+                  <option>Trilha da Acidez</option>
+                  <option>Trilha do Veneno</option>
+                  <option>Trilha da Necromancia</option>
+                  <option>Trilha da Telepatia</option>
+                  <option>Trilha da Telecinesia</option>
+                  <option>Trilha da Vidência</option>
+                </optgroup>
+                <optgroup label="🕵 Investigador">
+                  <option>Trilha do Investigador</option>
+                  <option>Trilha do Detetive</option>
+                  <option>Trilha do Jornalista</option>
+                  <option>Trilha do Arqueólogo</option>
+                  <option>Trilha do Cientista</option>
+                  <option>Trilha do Acadêmico</option>
+                </optgroup>
+                <optgroup label="✝ Fiel">
+                  <option>Trilha da Fé</option>
+                  <option>Trilha do Exorcista</option>
+                  <option>Trilha do Protetor</option>
+                </optgroup>
+                <optgroup label="👤 Mundano">
+                  <option>Trilha do Mundano</option>
+                  <option>Trilha do Sobrevivente</option>
+                </optgroup>
+              </select>
+            </div>
+            <div id="trilha-info" style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;padding:4px 8px;border-left:2px solid var(--blood-deep);margin-bottom:8px;display:none"></div>
+            <div class="field"><label>Motivação / História</label><textarea id="f-historia" oninput="autoSave()"></textarea></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Pontos Vitais</div>
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="stat-name">Pontos de Vida</div>
+                <div class="stat-ctrl"><button class="sadj" onclick="adjStat('pv',-1)">−</button><span class="snum pv" id="s-pv">10</span><button class="sadj" onclick="adjStat('pv',1)">+</button></div>
+                <div class="smax">/ <span id="s-pvmax">10</span> <span class="smax-adj"><button class="sadj" onclick="adjMax('pv',-1)">−</button><button class="sadj" onclick="adjMax('pv',1)">+</button></span></div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-name">Sanidade</div>
+                <div class="stat-ctrl"><button class="sadj" onclick="adjStat('san',-1)">−</button><span class="snum san" id="s-san">12</span><button class="sadj" onclick="adjStat('san',1)">+</button></div>
+                <div class="smax">/ <span id="s-sanmax">12</span> <span class="smax-adj"><button class="sadj" onclick="adjMax('san',-1)">−</button><button class="sadj" onclick="adjMax('san',1)">+</button></span></div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-name">Esforço</div>
+                <div class="stat-ctrl"><button class="sadj" onclick="adjStat('esf',-1)">−</button><span class="snum esf" id="s-esf">8</span><button class="sadj" onclick="adjStat('esf',1)">+</button></div>
+                <div class="smax">/ <span id="s-esfmax">8</span> <span class="smax-adj"><button class="sadj" onclick="adjMax('esf',-1)">−</button><button class="sadj" onclick="adjMax('esf',1)">+</button></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <div class="panel-title">Atributos</div>
+            <div id="attr-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Condições Ativas</div>
+            <div class="cond-wrap" id="cond-grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Perícias</div>
+        <div id="pericias-wrap" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
+        <div style="font-size:10px;color:var(--white-dust);margin-top:4px;font-family:'Courier Prime',monospace">Clique para marcar/desmarcar perícia treinada.</div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Habilidades & Poderes Paranormais</div>
+        <div id="hab-list"></div>
+        <div class="add-row">
+          <input id="hab-inp" placeholder="Nome da habilidade ou poder...">
+          <select id="hab-tipo"><option value="h">Habilidade</option><option value="p">Paranormal</option><option value="r">Ritual</option></select>
+          <input id="hab-desc" placeholder="Descrição breve (opcional)">
+          <button class="btn-add" onclick="addHab()">+ Adicionar</button>
+        </div>
+      </div>
+      <div class="save-ok" id="save-ficha"></div>
+    </div>
+ 
+    <!-- DADOS -->
+    <div id="tab-dados" class="tab-content">
+      <div class="two-col">
+        <div>
+          <div class="panel">
+            <div class="panel-title">Rolar Dado</div>
+            <div class="dice-grid">
+              <button class="die-btn" onclick="rollDie(4)"><span style="font-size:18px">⬧</span>D4</button>
+              <button class="die-btn" onclick="rollDie(6)"><span style="font-size:18px">⬡</span>D6</button>
+              <button class="die-btn" onclick="rollDie(8)"><span style="font-size:18px">⬟</span>D8</button>
+              <button class="die-btn" onclick="rollDie(10)"><span style="font-size:18px">◈</span>D10</button>
+              <button class="die-btn" onclick="rollDie(12)"><span style="font-size:18px">⬠</span>D12</button>
+              <button class="die-btn" onclick="rollDie(20)"><span style="font-size:18px">⛧</span>D20</button>
+              <button class="die-btn" onclick="rollDie(100)"><span style="font-size:18px">%</span>D%</button>
+            </div>
+            <div class="ornament"><div class="ornament-line"></div><span class="ornament-sym">⛧</span><div class="ornament-line"></div></div>
+            <div class="panel-title">Rolagem Customizada</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="r-qtd" type="number" min="1" max="20" value="1" style="width:55px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none;font-family:'Courier Prime',monospace">
+              <span style="color:var(--crimson);font-size:14px">d</span>
+              <select id="r-faces" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none"><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option selected>20</option><option>100</option></select>
+              <span style="color:var(--white-dust)">+</span>
+              <input id="r-mod" type="number" value="0" style="width:60px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none;font-family:'Courier Prime',monospace">
+              <input id="r-label" placeholder="Contexto (ex: Agilidade)" style="flex:1;min-width:100px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none;font-family:'Courier Prime',monospace">
+              <button class="btn-add" onclick="rollCustom()">Rolar</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Resultado</div>
+            <div class="roll-result" id="roll-res">—</div>
+            <div class="roll-detail" id="roll-detail"></div>
+          </div>
+        </div>
+        <div class="panel" style="height:fit-content">
+          <div class="panel-title">Histórico de Rolagens</div>
+          <div class="roll-log-wrap" id="roll-log"></div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- INVENTÁRIO -->
+    <div id="tab-inventario" class="tab-content">
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-title">Itens & Equipamentos</div>
+          <div id="inv-list"></div>
+          <div class="add-row">
+            <input id="inv-nome" placeholder="Nome do item">
+            <input id="inv-desc" placeholder="Descrição">
+            <input id="inv-qtd" type="number" value="1" min="1" style="width:60px" placeholder="Qtd">
+            <button class="btn-add" onclick="addInv()">+ Add</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Rituais & Grimórios</div>
+          <div id="rit-list"></div>
+          <div class="add-row">
+            <input id="rit-nome" placeholder="Nome do ritual">
+            <input id="rit-nex" placeholder="NEX mín." style="width:80px">
+            <input id="rit-desc" placeholder="Descrição">
+            <button class="btn-add" onclick="addRit()">+ Add</button>
+          </div>
+        </div>
+      </div>
+      <div class="save-ok" id="save-inv"></div>
+    </div>
+ 
+    <!-- MISSÃO -->
+    <div id="tab-missao" class="tab-content">
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-title">Operação Atual</div>
+          <div class="two-col">
+            <div class="field"><label>Nome da operação</label><input id="m-nome" placeholder="Ex: Operação Vazio" oninput="autoSave()"></div>
+            <div class="field"><label>Localização</label><input id="m-local" placeholder="Ex: São Paulo, Subsolo" oninput="autoSave()"></div>
+          </div>
+          <div class="two-col">
+            <div class="field"><label>Nível de ameaça</label><select id="m-ameaca" onchange="autoSave()"><option>Baixo</option><option>Médio</option><option>Alto</option><option>Extremo</option><option>Cataclísmico</option></select></div>
+            <div class="field"><label>Entidade / Fenômeno</label><input id="m-ent" placeholder="Ex: Demiurge, Morte" oninput="autoSave()"></div>
+          </div>
+          <div class="field"><label>Resumo & Objetivos</label><textarea id="m-resumo" oninput="autoSave()"></textarea></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Pistas Encontradas</div>
+          <div id="pista-list"></div>
+          <div class="add-row">
+            <input id="pista-inp" placeholder="Descreva a pista...">
+            <select id="pista-tipo"><option value="pista">Pista</option><option value="npc">NPC</option><option value="local">Local</option><option value="ocult">Ocultismo</option></select>
+            <button class="btn-add" onclick="addPista()">+ Add</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Anotações da Sessão</div>
+        <div id="nota-list"></div>
+        <div class="add-row">
+          <input id="nota-inp" placeholder="Anotação rápida..." onkeydown="if(event.key==='Enter')addNota()">
+          <button class="btn-add" onclick="addNota()">+ Add</button>
+        </div>
+      </div>
+      <div class="save-ok" id="save-missao"></div>
+    </div>
+ 
+    <!-- TOKEN -->
+    <div id="tab-token" class="tab-content">
+      <div class="panel">
+        <div class="panel-title">Estado do Personagem no Mapa</div>
+        <div class="state-hint">💡 Pressione <kbd style="background:rgba(139,0,0,.2);border:1px solid var(--blood);padding:1px 5px;border-radius:2px;font-family:monospace">Q</kbd> para ciclar o estado (1 pressão = próximo estado). Ou clique nos botões abaixo.</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
+          <button class="state-btn active-state" id="state-btn-comum" data-state="comum" onclick="setTokenState('comum')">🧍 Comum</button>
+          <button class="state-btn" id="state-btn-arma" data-state="arma" onclick="setTokenState('arma')">🔫 Com Arma</button>
+          <button class="state-btn" id="state-btn-lanterna" data-state="lanterna" onclick="setTokenState('lanterna')">🔦 Lanterna</button>
+          <button class="state-btn" id="state-btn-morrendo" data-state="morrendo" onclick="setTokenState('morrendo')">💀 Morrendo</button>
+        </div>
+        <div id="state-description" style="font-size:12px;color:var(--white-ash);font-family:'Courier Prime',monospace;min-height:20px;padding:6px 10px;background:rgba(20,0,15,0.5);border-left:2px solid var(--crimson)"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Token do Personagem</div>
+        <div class="token-wrap">
+          <div class="token-preview">
+            <canvas id="token-canvas" width="220" height="220" title="Clique para carregar imagem" onclick="document.getElementById('tok-file').click()"></canvas>
+            <input type="file" id="tok-file" accept="image/*" style="display:none" onchange="loadTokImg(event)">
+            <div class="token-name-display" id="tok-name-display">Agente</div>
+            <div class="token-btns">
+              <button class="btn-add" onclick="document.getElementById('tok-file').click()">Carregar imagem</button>
+              <button class="btn-add" onclick="clearTokImg()">Remover foto</button>
+            </div>
+            <div class="token-btns" style="margin-top:6px">
+              <button class="btn-add" onclick="exportToken()">⤓ Exportar PNG</button>
+              <button class="btn-add" onclick="exportTokenJSON()">⤓ Exportar JSON</button>
+              <button class="btn-add" onclick="document.getElementById('tok-json-file').click()">⤒ Importar JSON</button>
+            </div>
+            <input type="file" id="tok-json-file" accept=".json" style="display:none" onchange="importTokenJSON(event)">
+          </div>
+          <div class="token-controls">
+            <div>
+              <div class="ctrl-label">Cor do anel</div>
+              <div class="swatch-row" id="ring-swatches"></div>
+            </div>
+            <div>
+              <div class="ctrl-label">Cor do fundo</div>
+              <div class="swatch-row" id="bg-swatches"></div>
+            </div>
+            <div>
+              <div class="ctrl-label">Ícone (sem foto)</div>
+              <div class="icon-row" id="icon-opts"></div>
+            </div>
+            <div>
+              <div class="ctrl-label">Texto no token</div>
+              <input class="token-text-input" id="tok-label" placeholder="Nome curto ou código..." oninput="drawToken()">
+            </div>
+            <div>
+              <div class="ctrl-label">Condição visível</div>
+              <select onchange="drawToken()" id="tok-cond" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none;width:100%">
+                <option value="">Nenhuma</option><option>Abalado</option><option>Apavorado</option><option>Sangrando</option><option>Maldito</option><option>Inconsciente</option><option>Exausto</option>
+              </select>
+            </div>
+            <div>
+              <div class="ctrl-label">Barra de vida</div>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--white-ash)"><input type="checkbox" id="tok-hp" onchange="drawToken()" style="accent-color:var(--crimson)"> Mostrar barra de PV</label>
+            </div>
+            <div>
+              <div class="ctrl-label">Espessura do anel</div>
+              <input type="range" id="tok-ring-size" min="2" max="14" value="5" oninput="drawToken()" style="width:100%;accent-color:var(--crimson)">
+            </div>
+            <div>
+              <div class="ctrl-label">Cor do texto personalizada</div>
+              <input type="color" id="tok-text-color" value="#e8e0e0" onchange="drawToken()" style="width:100%;height:32px;background:transparent;border:1px solid var(--blood-deep);cursor:pointer">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- MAPA -->
+    <div id="tab-mapa" class="tab-content">
+      <div class="map-wrap">
+        <div class="map-toolbar">
+          <button class="tool-btn" id="tool-select" onclick="setTool('select',this)" title="Selecionar e mover tokens">↖ Selecionar</button>
+          <button class="tool-btn active" id="tool-wall" onclick="setTool('wall',this)" title="Traçar paredes (clique e arraste)">🧱 Parede</button>
+          <button class="tool-btn" id="tool-pencil" onclick="setTool('pencil',this)" title="Lápis livre (arraste)">✏️ Lápis</button>
+          <button class="tool-btn" id="tool-rect" onclick="setTool('rect',this)" title="Retângulo preenchido (arraste)">▭ Área</button>
+          <button class="tool-btn" id="tool-circle" onclick="setTool('circle',this)" title="Círculo/Elipse (arraste)">⭕ Círculo</button>
+          <button class="tool-btn" id="tool-line" onclick="setTool('line',this)" title="Linha reta (arraste)">⟋ Linha</button>
+          <button class="tool-btn" id="tool-text" onclick="setTool('text',this)" title="Inserir texto no mapa">T Texto</button>
+          <button class="tool-btn" id="tool-token" onclick="setTool('token-place',this)" title="Colocar token de personagem">🔵 Token</button>
+          <button class="tool-btn" onclick="placeMyToken()" title="Colocar SEU token no mapa com o estado atual">⭐ Meu Token</button>
+          <button class="tool-btn" id="tool-erase" onclick="setTool('erase',this)" title="Borracha (arraste para apagar)">⌫ Apagar</button>
+          <div class="tool-sep"></div>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px">Cor <input type="color" id="map-color" value="#8b0000"></label>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px">Esp.<input type="range" id="map-sz" min="1" max="24" value="4" style="width:70px;accent-color:var(--crimson)"></label>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px">Opa.<input type="range" id="map-op" min="10" max="100" value="100" style="width:60px;accent-color:var(--crimson)"></label>
+          <div class="tool-sep"></div>
+          <button class="tool-btn" onclick="mapUndo()" title="Desfazer última ação (Ctrl+Z)">↩ Desfazer</button>
+          <button class="tool-btn" onclick="mapClear()" title="Apagar tudo do mapa">🗑 Limpar</button>
+          <button class="tool-btn" onclick="mapReset()" title="Restaurar mapa base padrão">🔄 Base</button>
+          <button class="tool-btn" onclick="downloadMap()" title="Baixar imagem PNG do mapa">⤓ PNG</button>
+          <button class="tool-btn" onclick="saveMapData()" title="Salvar estado do mapa">💾 Salvar</button>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px"><input type="checkbox" id="map-grid" checked onchange="drawMapGrid()" style="accent-color:var(--crimson)"> Grid</label>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px"><input type="checkbox" id="map-snap" checked style="accent-color:var(--crimson)"> Snap</label>
+        </div>
+        <!-- PRESETS DE MÓVEIS E AMBIENTE -->
+        <div style="padding:8px 14px;background:rgba(8,0,6,0.85);border:1px solid var(--blood-deep);border-top:none">
+          <div class="preset-group-label">⛧ Móveis & Objetos — clique para inserir no mapa</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+            <span class="preset-group-label" style="width:100%;margin-top:2px;margin-bottom:2px">Mobiliário</span>
+            <button class="preset-btn" onclick="placePreset('mesa')">🪵 Mesa</button>
+            <button class="preset-btn" onclick="placePreset('cadeira')">🪑 Cadeira</button>
+            <button class="preset-btn" onclick="placePreset('sofa')">🛋 Sofá</button>
+            <button class="preset-btn" onclick="placePreset('cama')">🛏 Cama</button>
+            <button class="preset-btn" onclick="placePreset('armario')">🗄 Armário</button>
+            <button class="preset-btn" onclick="placePreset('estante')">📚 Estante</button>
+            <button class="preset-btn" onclick="placePreset('geladeira')">🧊 Geladeira</button>
+            <button class="preset-btn" onclick="placePreset('pia')">🚰 Pia</button>
+            <span class="preset-group-label" style="width:100%;margin-top:4px;margin-bottom:2px">Ambiente</span>
+            <button class="preset-btn" onclick="placePreset('porta')">🚪 Porta</button>
+            <button class="preset-btn" onclick="placePreset('janela')">🪟 Janela</button>
+            <button class="preset-btn" onclick="placePreset('escada')">🪜 Escada</button>
+            <button class="preset-btn" onclick="placePreset('caixa')">📦 Caixa</button>
+            <button class="preset-btn" onclick="placePreset('barril')">🪣 Barril</button>
+            <button class="preset-btn" onclick="placePreset('computador')">🖥 Computador</button>
+            <span class="preset-group-label" style="width:100%;margin-top:4px;margin-bottom:2px">Paranormal</span>
+            <button class="preset-btn" onclick="placePreset('altar')">⛧ Altar</button>
+            <button class="preset-btn" onclick="placePreset('pentagrama')">✦ Pentagrama</button>
+            <button class="preset-btn" onclick="placePreset('vela')">🕯 Velas</button>
+            <button class="preset-btn" onclick="placePreset('portal')">🌀 Portal</button>
+          </div>
+          <div style="font-size:10px;color:var(--white-dust);margin-top:6px;font-family:'Courier Prime',monospace">Após clicar, clique no mapa para posicionar o objeto.</div>
+        </div>
+        <div class="map-canvas-wrap" id="map-canvas-wrap">
+          <canvas id="map-canvas"></canvas>
+        </div>
+        <div class="map-bottom">
+          <div>
+            <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;margin-bottom:8px;font-family:'Oswald',sans-serif">⛧ Legenda</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px">
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#8b0000"></div> Paredes</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#1fc8a0"></div> Zona segura</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#e25454"></div> Zona de perigo</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#c49a00"></div> Ponto de interesse</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#7c6fff"></div> Paranormal</div>
+            </div>
+          </div>
+          <div class="map-tokens-panel">
+            <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;margin-bottom:8px;font-family:'Oswald',sans-serif">⛧ Tokens no mapa</div>
+            <div id="map-tok-list"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- MESTRE -->
+    <div id="tab-mestre" class="tab-content">
+      <!-- PRESENÇA EM TEMPO REAL -->
+      <div class="presence-panel">
+        <div class="presence-title"><span class="presence-dot"></span> Agentes Online Agora</div>
+        <div class="online-list" id="online-list"><span style="color:var(--white-dust);font-size:12px">Nenhum agente online.</span></div>
+      </div>
+      <div class="broadcast-bar visible" id="broadcast-bar">
+        <input id="broadcast-input" placeholder="Mensagem para todos os agentes online..." onkeydown="if(event.key==='Enter')fbSendBroadcast()">
+        <button onclick="fbSendBroadcast()">⛧ Enviar a Todos</button>
+      </div>
+      <div class="panel" style="border-color:rgba(138,106,0,0.3)">
+        <div class="panel-title" style="color:var(--gold-light)">⛧ Painel do Mestre — Visão Geral dos Agentes</div>
+        <div id="players-panel"></div>
+      </div>
+      <div class="panel" style="border-color:rgba(138,106,0,0.3)">
+        <div class="panel-title" style="color:var(--gold-light)">⛧ Notas Secretas do Mestre</div>
+        <div class="field"><label class="gold-label">Notas da sessão (visível só para você)</label><textarea class="mestre-note" id="mestre-notes" oninput="saveMestreNotes()" style="min-height:120px"></textarea></div>
+        <div class="field"><label class="gold-label">Notas por personagem</label>
+          <select id="mestre-sel-player" style="background:rgba(20,8,0,.8);border:1px solid rgba(138,106,0,0.3);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none;width:200px" onchange="loadPlayerNote()"></select>
+        </div>
+        <textarea class="mestre-note" id="mestre-player-note" oninput="savePlayerNote()" style="min-height:80px;margin-top:8px" placeholder="Anotações sobre este agente..."></textarea>
+      </div>
+      <div class="panel" style="border-color:rgba(138,106,0,0.3)">
+        <div class="panel-title" style="color:var(--gold-light)">⛧ Histórico de Rolagens — Todos os Agentes</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <select id="roll-filter-player" style="background:rgba(20,8,0,.8);border:1px solid rgba(138,106,0,0.3);color:var(--white-bone);padding:6px 10px;font-size:12px;outline:none" onchange="renderAllRolls()">
+            <option value="">Todos os agentes</option>
+          </select>
+          <button class="btn-add" onclick="renderAllRolls()" style="border-color:var(--gold);color:var(--gold-light)">↻ Atualizar</button>
+          <button class="btn-add" onclick="resetAllRolls()" style="border-color:var(--blood);color:#cc4444">Limpar tudo</button>
+          <span id="roll-summary" style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;margin-left:4px"></span>
+        </div>
+        <div id="all-rolls-log" style="max-height:280px;overflow-y:auto"></div>
+      </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-add" onclick="broadcastMessage()" style="border-color:var(--gold);color:var(--gold-light)">Enviar mensagem para todos</button>
+          <button class="btn-add" onclick="resetAllRolls()" style="border-color:var(--gold);color:var(--gold-light)">Limpar histórico de rolagens</button>
+        </div>
+        <div id="mestre-inbox" style="margin-top:14px;max-height:200px;overflow-y:auto"></div>
+      </div>
+    </div>
+ 
+  </div>
+</div>
+ 
+<div id="broadcast-incoming" class="broadcast-incoming">
+  <div style="font-size:10px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;font-family:'Oswald',sans-serif">⛧ Mensagem do Mestre</div>
+  <div id="broadcast-text"></div>
+  <button onclick="document.getElementById('broadcast-incoming').classList.remove('show')" style="margin-top:10px;background:transparent;border:1px solid rgba(138,106,0,0.4);color:var(--gold-light);padding:4px 14px;font-family:'Cinzel',serif;font-size:11px;cursor:pointer;letter-spacing:.1em">Dispensar</button>
+</div>
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+ 
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+ 
+ 
+<!-- MODAL MESTRE LOGIN -->
+<div id="modal-mestre" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:500;align-items:center;justify-content:center">
+  <div style="background:rgba(8,0,6,0.98);border:1px solid #8a6a00;padding:2rem 2.5rem;max-width:360px;width:90%;position:relative">
+    <div style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:1.4rem;padding-bottom:.8rem;border-bottom:1px solid #3a3000">⛧ Acesso Restrito — Mestre</div>
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Codinome</label>
+      <input id="m-user" type="text" placeholder="codinome do mestre" autocomplete="off"
+        style="width:100%;background:rgba(30,20,0,0.7);border:1px solid #5a4a00;color:#e8e0e0;font-family:'Courier Prime',monospace;font-size:14px;padding:10px 14px;outline:none"
+        onkeydown="if(event.key==='Enter')document.getElementById('m-pass').focus()">
+    </div>
+    <div style="margin-bottom:1.2rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Senha</label>
+      <input id="m-pass" type="password" placeholder="••••••••" autocomplete="off"
+        style="width:100%;background:rgba(30,20,0,0.7);border:1px solid #5a4a00;color:#e8e0e0;font-family:'Courier Prime',monospace;font-size:14px;padding:10px 14px;outline:none"
+        onkeydown="if(event.key==='Enter')doMestreLogin()">
+    </div>
+    <div id="m-err" style="color:#cc4444;font-size:12px;font-family:'Courier Prime',monospace;min-height:16px;margin-bottom:.8rem"></div>
+    <button onclick="doMestreLogin()" style="width:100%;padding:11px;background:transparent;border:1px solid #8a6a00;color:#c49a00;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(138,106,0,0.15)'" onmouseout="this.style.background='transparent'">⛧ Entrar ⛧</button>
+    <button onclick="closeMestreModal()" style="position:absolute;top:10px;right:14px;background:transparent;border:none;color:#6a6060;font-size:20px;cursor:pointer;line-height:1">×</button>
+  </div>
+</div>
+ 
+<script>
+/* ══════════════════════════════════════════════
+   DATA LAYER — Firebase (online) + localStorage (fallback)
+══════════════════════════════════════════════ */
+const DB_KEY = 'op_mesa_v5';
+let db = {};
+let currentUser = null;
+let isMestre = false;
+let _fbWatching = false; // evita loop de sync
+
+/* ── Firebase Setup Screen ── */
+function checkFirebaseSetup(){
+  const cfg = localStorage.getItem('op_firebase_config');
+  let hasCfg = false;
+  try { const c = JSON.parse(cfg); hasCfg = c && c.apiKey && c.apiKey !== 'AIzaSyPLACEHOLDER'; } catch(e){}
+  if(!hasCfg){
+    // Mostra tela de configuração
+    document.getElementById('screen-firebase').style.display = 'flex';
+    document.getElementById('screen-login').classList.remove('active');
+  }
+}
+
+function saveFirebaseConfig(){
+  const apiKey = document.getElementById('cfg-apiKey').value.trim();
+  const databaseURL = document.getElementById('cfg-dbUrl').value.trim();
+  const projectId = document.getElementById('cfg-projectId').value.trim();
+  const appId = document.getElementById('cfg-appId').value.trim();
+  const messagingSenderId = document.getElementById('cfg-senderId').value.trim();
+  const errEl = document.getElementById('cfg-err');
+  if(!apiKey || !databaseURL || !projectId){
+    errEl.textContent = 'Preencha API Key, Database URL e Project ID.'; return;
+  }
+  errEl.textContent = 'Testando conexão...';
+  const cfg = {
+    apiKey, databaseURL, projectId,
+    authDomain: projectId + '.firebaseapp.com',
+    storageBucket: projectId + '.appspot.com',
+    messagingSenderId: messagingSenderId || '000000000000',
+    appId: appId || '1:000000000000:web:000000000000000000'
+  };
+  localStorage.setItem('op_firebase_config', JSON.stringify(cfg));
+  errEl.style.color = '#22cc66';
+  errEl.textContent = '⛧ Configuração salva! Recarregando...';
+  setTimeout(()=>location.reload(), 1200);
+}
+
+function skipFirebaseSetup(){
+  document.getElementById('screen-firebase').style.display = 'none';
+  document.getElementById('screen-login').classList.add('active');
+}
+
+async function testFirebaseNow(){
+  const diagEl = document.getElementById('cfg-diag');
+  diagEl.style.display = 'block';
+  diagEl.textContent = '⏳ Testando...\n';
+
+  const cfg = {
+    apiKey:    document.getElementById('cfg-apiKey').value.trim()    || (()=>{try{return JSON.parse(localStorage.getItem('op_firebase_config')||'{}').apiKey}catch(e){return ''}})(),
+    databaseURL: document.getElementById('cfg-dbUrl').value.trim()   || (()=>{try{return JSON.parse(localStorage.getItem('op_firebase_config')||'{}').databaseURL}catch(e){return ''}})(),
+    projectId: document.getElementById('cfg-projectId').value.trim() || (()=>{try{return JSON.parse(localStorage.getItem('op_firebase_config')||'{}').projectId}catch(e){return ''}})(),
+  };
+
+  const log = msg => { diagEl.textContent += msg + '\n'; };
+
+  if(!cfg.apiKey)      { log('❌ API Key vazia'); return; }
+  if(!cfg.databaseURL) { log('❌ Database URL vazia'); return; }
+  if(!cfg.projectId)   { log('❌ Project ID vazio'); return; }
+
+  log('✓ Campos preenchidos');
+  log('📡 API Key: ' + cfg.apiKey.substring(0,12) + '...');
+  log('📡 Database: ' + cfg.databaseURL);
+
+  // Tenta conectar via fetch direto ao REST API do Firebase
+  // (não precisa do SDK — funciona para testar se o banco está acessível)
+  try {
+    log('🔌 Testando acesso ao banco...');
+    const url = cfg.databaseURL.replace(/\/$/, '') + '/presence.json?shallow=true&timeout=5s';
+    const resp = await fetch(url);
+    if(resp.ok){
+      const data = await resp.json();
+      log('✅ Banco acessível! Dados de presença: ' + JSON.stringify(data));
+      log('');
+      log('👥 Se aparece null = ninguém online ainda (normal)');
+      log('👥 Se aparece nomes = esses usuários estão online');
+      diagEl.style.color = '#22cc88';
+    } else {
+      const txt = await resp.text();
+      log('❌ Erro HTTP ' + resp.status + ': ' + txt);
+      if(resp.status === 401 || txt.includes('Permission denied')){
+        log('');
+        log('⚠️  REGRAS DO FIREBASE BLOQUEANDO!');
+        log('   Vá em Firebase Console → Realtime Database');
+        log('   → Regras → e cole isso:');
+        log('   { "rules": { ".read": true, ".write": true } }');
+        log('   (modo de teste — válido por 30 dias)');
+      }
+      diagEl.style.color = '#cc6644';
+    }
+  } catch(e) {
+    log('❌ Falha na conexão: ' + e.message);
+    log('');
+    log('Possíveis causas:');
+    log('• Database URL incorreta');
+    log('• Projeto Firebase não existe mais');
+    log('• Bloqueio de rede/firewall');
+    diagEl.style.color = '#cc6644';
+  }
+}
+
+function openFirebaseSettings(){
+  const cfg = localStorage.getItem('op_firebase_config');
+  try {
+    const c = JSON.parse(cfg||'{}');
+    document.getElementById('cfg-apiKey').value = c.apiKey||'';
+    document.getElementById('cfg-dbUrl').value = c.databaseURL||'';
+    document.getElementById('cfg-projectId').value = c.projectId||'';
+    document.getElementById('cfg-appId').value = c.appId||'';
+    document.getElementById('cfg-senderId').value = c.messagingSenderId||'';
+  } catch(e){}
+  document.getElementById('cfg-err').textContent='';
+  document.getElementById('screen-firebase').style.display = 'flex';
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-app').classList.remove('active');
+}
+
+/* ── Load: localStorage imediato, Firebase em background (nunca bloqueia) ── */
+function loadDB(){
+  try{const d=localStorage.getItem(DB_KEY);if(d)db=JSON.parse(d);}catch(e){db={};}
+  _ensureDB();
+  // Firebase sincroniza em background — não bloqueia a tela de login
+  _syncFromFirebase();
+}
+
+function _syncFromFirebase(){
+  const doSync = () => {
+    if(!window.fbLoadDB) return;
+    window.fbLoadDB().then(remote => {
+      if(!remote) return;
+      Object.assign(db.users, remote.users||{});
+      // Merge personagens garantindo que arrays nunca fiquem undefined
+      const remChars = remote.characters || {};
+      Object.keys(remChars).forEach(u => {
+        const def = defaultChar();
+        db.characters[u] = Object.assign({}, def, db.characters[u]||{}, remChars[u]);
+        // Garante que arrays existam
+        const c = db.characters[u];
+        if(!c.habs)     c.habs=[];
+        if(!c.inv)      c.inv=[];
+        if(!c.rituais)  c.rituais=[];
+        if(!c.pistaList) c.pistaList=[];
+        if(!c.notas)    c.notas=[];
+        if(!c.conds)    c.conds={};
+        if(!c.attrs)    c.attrs={Agilidade:1,Força:1,Intelecto:1,Presença:1,Vigor:1};
+        if(!c.token)    c.token=def.token;
+      });
+      Object.assign(db.rolls, remote.rolls||{});
+      if(remote.mestre) db.mestre = Object.assign({notes:'',playerNotes:{},messages:[]}, remote.mestre);
+      localStorage.setItem(DB_KEY, JSON.stringify(db));
+      console.log('[DB] Sincronizado com Firebase');
+    }).catch(e => console.warn('[DB] Firebase indisponível:', e));
+  };
+  if(window._fbReady){ doSync(); }
+  else { window.addEventListener('fb-module-ready', doSync, { once: true }); }
+}
+
+function _ensureDB(){
+  if(!db.users) db.users={};
+  if(!db.characters) db.characters={};
+  if(!db.maps) db.maps={};
+  if(!db.mestre) db.mestre={notes:'',playerNotes:{},messages:[]};
+  if(!db.rolls) db.rolls={};
+}
+
+function saveDB(){
+  _ensureDB();
+  _isSaving=true;
+  localStorage.setItem(DB_KEY, JSON.stringify(db));
+  if(window.fbSaveDB) window.fbSaveDB(db);
+  // Limpa flag após tempo suficiente para o Firebase processar
+  setTimeout(()=>{ _isSaving=false; }, 3000);
+}
+
+/* ── Inicia escuta em tempo real de mudanças remotas ── */
+let _isSaving=false;
+function startRemoteSync(){
+  if(_fbWatching) return;
+  const doSync = () => {
+    if(!window.fbWatchDB) return;
+    _fbWatching = true;
+    setTimeout(()=>{
+      window.fbWatchDB(remote => {
+        if(!remote) return;
+        if(_isSaving) return;
+        const prevUsers = JSON.stringify(Object.keys(db.users||{}));
+        Object.assign(db.users, remote.users||{});
+        // Merge com sanitização de arrays
+        const remChars = remote.characters || {};
+        Object.keys(remChars).forEach(u => {
+          const def = defaultChar();
+          db.characters[u] = Object.assign({}, def, db.characters[u]||{}, remChars[u]);
+          const c = db.characters[u];
+          if(!c.habs)      c.habs=[];
+          if(!c.inv)       c.inv=[];
+          if(!c.rituais)   c.rituais=[];
+          if(!c.pistaList) c.pistaList=[];
+          if(!c.notas)     c.notas=[];
+          if(!c.conds)     c.conds={};
+          if(!c.attrs)     c.attrs={Agilidade:1,Força:1,Intelecto:1,Presença:1,Vigor:1};
+          if(!c.token)     c.token=def.token;
+        });
+        Object.assign(db.rolls, remote.rolls||{});
+        if(remote.mestre){
+          db.mestre = Object.assign({notes:'',playerNotes:{},messages:[]}, remote.mestre);
+        }
+        // Aplica bg do mapa compartilhado se mudou e não sou o Mestre
+        if(!isMestre && remote.mapbg && remote.mapbg !== (db.maps&&db.maps['shared'])){
+          if(!db.maps) db.maps={};
+          db.maps['shared'] = remote.mapbg;
+          applyRemoteBg(remote.mapbg);
+        }
+        localStorage.setItem(DB_KEY, JSON.stringify(db));
+        if(isMestre && JSON.stringify(Object.keys(db.users||{})) !== prevUsers){
+          if(document.getElementById('tab-mestre').classList.contains('active')) populateMestre();
+        }
+      });
+    }, 2000);
+  };
+  if(window._fbReady){ doSync(); }
+  else { window.addEventListener('fb-module-ready', doSync, { once: true }); }
+}
+ 
+function userChar(u){return db.characters[u]||(db.characters[u]=defaultChar());}
+function saveChar(){if(!currentUser)return;db.characters[currentUser]=Object.assign(userChar(currentUser),getFormChar());saveDB();}
+ 
+function defaultChar(){
+  return{
+    nome:'',classe:'Combatente',nex:5,origem:'',trilha:'',historia:'',
+    pv:10,pvMax:10,san:12,sanMax:12,esf:8,esfMax:8,
+    attrs:{Agilidade:1,Força:1,Intelecto:1,Presença:1,Vigor:1},
+    conds:{},habs:[],inv:[],rituais:[],pistaList:[],notas:[],
+    opNome:'',opLocal:'',opAmeaca:'Baixo',opEnt:'',opResumo:'',
+    token:{ring:'#8b0000',bg:'#0f000c',icon:'skull',label:'',cond:'',showHp:false,ringSize:5,textColor:'#e8e0e0',imgData:null}
+  };
+}
+ 
+function getFormChar(){
+  return{
+    nome:v('f-nome'),classe:v('f-classe'),nex:parseInt(v('f-nex'))||5,
+    origem:v('f-origem'),trilha:v('f-trilha'),historia:v('f-historia'),
+    opNome:v('m-nome'),opLocal:v('m-local'),opAmeaca:v('m-ameaca'),opEnt:v('m-ent'),opResumo:v('m-resumo')
+  };
+}
+ 
+function v(id){const e=document.getElementById(id);return e?e.value:'';}
+function sv(id,val){const e=document.getElementById(id);if(e)e.value=(val===undefined||val===null)?'':val;}
+ 
+/* ══════════════════════════════════════════════
+   AUTH
+══════════════════════════════════════════════ */
+ 
+// Credenciais do Mestre — pode ter múltiplos logins de mestre
+const MESTRE_CREDENTIALS = [
+  { user: 'devil',  pass: 'mestre123' },
+  { user: 'mestre', pass: 'mestre123' },
+  { user: 'billy',  pass: 'eu sou billy' },
+  { user: 'billy',  pass: 'eusoubilly' },
+  { user: 'master', pass: 'master123' },
+  { user: 'dm',     pass: 'dm123' },
+];
+ 
+function isMestreCredential(user, pass){
+  return MESTRE_CREDENTIALS.some(c => c.user === user && c.pass === pass);
+}
+ 
+function doLogin(){
+  const user=document.getElementById('li-user').value.trim().toLowerCase();
+  const pass=document.getElementById('li-pass').value.trim();
+  document.getElementById('li-err').textContent='';
+  if(!user||!pass){document.getElementById('li-err').textContent='Preencha todos os campos.';return;}
+ 
+  // Verifica credenciais de Mestre (hardcoded)
+  if(isMestreCredential(user, pass)){
+    loginAs(user, true, true);
+    return;
+  }
+ 
+  // Verifica se é mestre salvo no banco (criado via cadastro especial)
+  if(db.users[user] && db.users[user].isMestre && db.users[user].pass === btoa(pass)){
+    loginAs(user, true, false);
+    return;
+  }
+ 
+  // Login de jogador normal
+  if(!db.users[user]){document.getElementById('li-err').textContent='Agente não encontrado.';return;}
+  if(db.users[user].pass!==btoa(pass)){document.getElementById('li-err').textContent='Senha incorreta.';return;}
+  loginAs(user,false,false);
+}
+ 
+function doRegister(){
+  const user=document.getElementById('rg-user').value.trim().toLowerCase();
+  const pass=document.getElementById('rg-pass').value;
+  const pass2=document.getElementById('rg-pass2').value;
+  document.getElementById('rg-err').textContent='';
+  if(!user||!pass){document.getElementById('rg-err').textContent='Preencha todos os campos.';return;}
+  if(pass.length<4){document.getElementById('rg-err').textContent='Senha muito curta (mín. 4 caracteres).';return;}
+  if(pass!==pass2){document.getElementById('rg-err').textContent='Senhas não coincidem.';return;}
+  if(user==='billy'){document.getElementById('rg-err').textContent='Este codinome está reservado.';return;}
+  if(db.users[user]){document.getElementById('rg-err').textContent='Codinome já em uso.';return;}
+  db.users[user]={pass:btoa(pass),createdAt:Date.now()};
+  saveDB();
+  loginAs(user,false,false);
+}
+ 
+function loginAs(user,roleFlag,skipDB){
+  currentUser=user;
+  isMestre=!!roleFlag;
+  if(!skipDB&&!db.users[user]){
+    db.users[user]={pass:btoa(''),createdAt:Date.now()};
+    saveDB();
+  }
+  document.getElementById('screen-login').classList.remove('active');
+  document.getElementById('screen-app').classList.add('active');
+  document.getElementById('topbar-username').textContent=user;
+  document.getElementById('topbar-role').innerHTML=isMestre?
+    '<span class="role-badge role-mestre">Mestre</span>':
+    '<span class="role-badge role-player">Agente</span>';
+  const mestreTab=document.getElementById('tab-mestre-btn');
+  if(mestreTab) mestreTab.style.display=isMestre?'':'none';
+  populateAll();
+  showTab('ficha',document.querySelector('.tab-btn'));
+  // Mostra o próprio usuário imediatamente no painel (antes do Firebase responder)
+  renderOnlineList({ [user]: { user, isMestre: !!roleFlag, since: Date.now(), online: true } });
+  // Mostra o indicador de online na topbar
+  const ind = document.getElementById('online-indicator');
+  if(ind) ind.style.display = '';
+  fbConnect(user, isMestre);
+  startRemoteSync();
+  toast('Bem-vindo, '+user+(isMestre?' — Mestre da mesa.':'.'));
+}
+ 
+function doLogout(){
+  if(currentUser && window.fbRemovePresence) window.fbRemovePresence(currentUser);
+  saveChar();currentUser=null;isMestre=false;
+  document.getElementById('screen-app').classList.remove('active');
+  document.getElementById('screen-login').classList.add('active');
+  document.getElementById('li-pass').value='';document.getElementById('li-err').textContent='';
+}
+ 
+function showRegister(){document.getElementById('login-form').style.display='none';document.getElementById('register-form').style.display='block';}
+function showLogin(){document.getElementById('register-form').style.display='none';document.getElementById('login-form').style.display='block';}
+ 
+function openMestreModal(){
+  const m=document.getElementById('modal-mestre');
+  m.style.display='flex';
+  document.getElementById('m-user').value='';
+  document.getElementById('m-pass').value='';
+  document.getElementById('m-err').textContent='';
+  setTimeout(()=>document.getElementById('m-user').focus(),50);
+}
+function closeMestreModal(){
+  document.getElementById('modal-mestre').style.display='none';
+}
+function doMestreLogin(){
+  const mUserEl=document.getElementById('m-user');
+  const mPassEl=document.getElementById('m-pass');
+  const mErrEl=document.getElementById('m-err');
+  if(!mUserEl||!mPassEl||!mErrEl){console.error('Elementos do modal de mestre nao encontrados');return;}
+  const u=mUserEl.value.trim().toLowerCase();
+  const p=mPassEl.value.trim();
+  if(!u||!p){mErrEl.textContent='Preencha todos os campos.';return;}
+  if(isMestreCredential(u,p)){
+    closeMestreModal();
+    loginAs(u,true,true);
+  } else {
+    mErrEl.textContent='Credenciais invalidas.';
+    mPassEl.value='';
+    mPassEl.focus();
+  }
+}
+function quickMestreLogin(){ openMestreModal(); }
+ 
+function renderTrilhaInfo(){
+  const trilha=(document.getElementById('f-trilha')||{}).value||'';
+  const el=document.getElementById('trilha-info');
+  if(!el)return;
+  el.textContent=trilha?'Trilha: '+trilha:'';
+}
+ 
+/* ══════════════════════════════════════════════
+   POPULATE / AUTO-SAVE
+══════════════════════════════════════════════ */
+function populateAll(){
+  const c=userChar(currentUser);
+  sv('f-nome',c.nome);sv('f-classe',c.classe);sv('f-nex',c.nex);sv('f-origem',c.origem);sv('f-trilha',c.trilha);sv('f-historia',c.historia);
+  sv('m-nome',c.opNome);sv('m-local',c.opLocal);sv('m-ameaca',c.opAmeaca);sv('m-ent',c.opEnt);sv('m-resumo',c.opResumo);
+  document.getElementById('s-pv').textContent=c.pv;document.getElementById('s-pvmax').textContent=c.pvMax;
+  document.getElementById('s-san').textContent=c.san;document.getElementById('s-sanmax').textContent=c.sanMax;
+  document.getElementById('s-esf').textContent=c.esf;document.getElementById('s-esfmax').textContent=c.esfMax;
+  renderAttrs();renderConds();renderHabs();renderInv();renderRit();renderPistas();renderNotas();renderLog();
+  buildTokenControls();
+  if(isMestre){sv('mestre-notes',db.mestre.notes||'');populateMestre();}
+}
+ 
+let saveTimer=null;
+function autoSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{saveChar();flashSave('save-ficha');flashSave('save-missao');},800);}
+ 
+function flashSave(id){const e=document.getElementById(id);if(e){e.textContent='⛧ Salvo.';setTimeout(()=>e.textContent='',2000);}}
+ 
+/* ══════════════════════════════════════════════
+   TABS
+══════════════════════════════════════════════ */
+function showTab(t,btn){
+  document.querySelectorAll('.tab-content').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  if(btn)btn.classList.add('active');
+  if(t==='mapa'){setTimeout(initMap,60);}
+  if(t==='token'){setTimeout(()=>{buildTokenControls();drawToken();},60);}
+  if(t==='mestre'&&isMestre){populateMestre();}
+}
+ 
+/* ══════════════════════════════════════════════
+   STATS
+══════════════════════════════════════════════ */
+function adjStat(stat,d){
+  const c=userChar(currentUser);
+  c[stat]=Math.max(0,Math.min(c[stat+'Max'],c[stat]+d));
+  document.getElementById('s-'+stat).textContent=c[stat];
+  saveDB();drawToken();
+}
+function adjMax(stat,d){
+  const c=userChar(currentUser);
+  c[stat+'Max']=Math.max(1,c[stat+'Max']+d);
+  c[stat]=Math.min(c[stat],c[stat+'Max']);
+  document.getElementById('s-'+stat).textContent=c[stat];
+  document.getElementById('s-'+stat+'max').textContent=c[stat+'Max'];
+  saveDB();
+}
+ 
+/* ══════════════════════════════════════════════
+   ATTRS
+══════════════════════════════════════════════ */
+const ATTRS=['Agilidade','Força','Intelecto','Presença','Vigor'];
+function renderAttrs(){
+  const el=document.getElementById('attr-list');el.innerHTML='';
+  const c=userChar(currentUser);
+  ATTRS.forEach(a=>{
+    const vv=c.attrs[a]||1;
+    const row=document.createElement('div');row.className='attr-row';
+    row.innerHTML=`<span class="attr-name">${a}</span>
+      <div class="attr-track"><div class="attr-fill" style="width:${vv*20}%"></div></div>
+      <span class="attr-val">${vv}</span>
+      <button class="adj" onclick="adjAttr('${a}',-1)">−</button>
+      <button class="adj" onclick="adjAttr('${a}',1)">+</button>`;
+    el.appendChild(row);
+  });
+}
+function adjAttr(a,d){const c=userChar(currentUser);c.attrs[a]=Math.max(1,Math.min(5,(c.attrs[a]||1)+d));renderAttrs();saveDB();}
+ 
+/* ══════════════════════════════════════════════
+   CONDITIONS
+══════════════════════════════════════════════ */
+const CONDS=['Abalado','Apavorado','Inconsciente','Sangrando','Exausto','Paralisado','Maldito','Alucinando','Perturbado'];
+function renderConds(){
+  const el=document.getElementById('cond-grid');el.innerHTML='';
+  const c=userChar(currentUser);
+  if(!c.conds) c.conds={};
+  CONDS.forEach(co=>{
+    const b=document.createElement('button');
+    b.className='cond-chip'+(c.conds[co]?' on':'');
+    b.textContent=co;
+    b.onclick=()=>{c.conds[co]=!c.conds[co];renderConds();saveDB();};
+    el.appendChild(b);
+  });
+}
+ 
+/* ══════════════════════════════════════════════
+   HABS
+══════════════════════════════════════════════ */
+function renderHabs(){
+  const el=document.getElementById('hab-list');el.innerHTML='';
+  const c=userChar(currentUser);
+  if(!c.habs) c.habs=[];
+  if(!c.habs.length){el.innerHTML='<div style="color:var(--white-dust);font-size:13px;padding:4px 0">Nenhuma habilidade registrada.</div>';return;}
+  c.habs.forEach((h,i)=>{
+    const row=document.createElement('div');row.className='list-item';
+    const cls=h.t==='p'?'badge-p':h.t==='r'?'badge-r':'badge-h';
+    const lbl=h.t==='p'?'Paranormal':h.t==='r'?'Ritual':'Habilidade';
+    row.innerHTML=`<div class="list-body"><span class="badge ${cls}">${lbl}</span>${h.nome}${h.desc?'<div class="list-meta">'+h.desc+'</div>':''}</div>
+      <button class="del-btn" onclick="delHab(${i})">×</button>`;
+    el.appendChild(row);
+  });
+}
+function addHab(){
+  const n=document.getElementById('hab-inp').value.trim();if(!n)return;
+  const c=userChar(currentUser);
+  if(!c.habs) c.habs=[];
+  c.habs.push({nome:n,t:document.getElementById('hab-tipo').value,desc:document.getElementById('hab-desc').value.trim()});
+  document.getElementById('hab-inp').value='';document.getElementById('hab-desc').value='';
+  renderHabs();saveDB();toast('Habilidade adicionada.');
+}
+function delHab(i){const c=userChar(currentUser);c.habs.splice(i,1);renderHabs();saveDB();}
+ 
+/* ══════════════════════════════════════════════
+   INVENTORY
+══════════════════════════════════════════════ */
+function renderInv(){
+  const el=document.getElementById('inv-list');el.innerHTML='';
+  const c=userChar(currentUser);
+  if(!c.inv) c.inv=[];
+  if(!c.inv.length){el.innerHTML='<div style="color:var(--white-dust);font-size:13px">Nenhum item.</div>';return;}
+  c.inv.forEach((it,i)=>{
+    const row=document.createElement('div');row.className='list-item';
+    row.innerHTML=`<div class="list-body">${it.nome}${it.qtd>1?' <span style="color:var(--crimson);font-size:11px">×'+it.qtd+'</span>':''}${it.desc?'<div class="list-meta">'+it.desc+'</div>':''}</div>
+      <button class="del-btn" onclick="delInv(${i})">×</button>`;
+    el.appendChild(row);
+  });
+}
+function addInv(){
+  const n=document.getElementById('inv-nome').value.trim();if(!n)return;
+  const c=userChar(currentUser);
+  if(!c.inv) c.inv=[];
+  c.inv.push({nome:n,desc:document.getElementById('inv-desc').value.trim(),qtd:parseInt(document.getElementById('inv-qtd').value)||1});
+  document.getElementById('inv-nome').value='';document.getElementById('inv-desc').value='';
+  renderInv();saveDB();flashSave('save-inv');
+}
+function delInv(i){const c=userChar(currentUser);c.inv.splice(i,1);renderInv();saveDB();}
+ 
+/* ══════════════════════════════════════════════
+   RITUAIS
+══════════════════════════════════════════════ */
+function renderRit(){
+  const el=document.getElementById('rit-list');el.innerHTML='';
+  const c=userChar(currentUser);
+  if(!c.rituais) c.rituais=[];
+  if(!c.rituais.length){el.innerHTML='<div style="color:var(--white-dust);font-size:13px">Nenhum ritual.</div>';return;}
+  c.rituais.forEach((r,i)=>{
+    const row=document.createElement('div');row.className='list-item';
+    row.innerHTML=`<div class="list-body"><span class="badge badge-r">Ritual</span>${r.nome}${r.nex?' <span style="color:var(--crimson);font-size:11px">NEX '+r.nex+'%</span>':''}${r.desc?'<div class="list-meta">'+r.desc+'</div>':''}</div>
+      <button class="del-btn" onclick="delRit(${i})">×</button>`;
+    el.appendChild(row);
+  });
+}
+function addRit(){
+  const n=document.getElementById('rit-nome').value.trim();if(!n)return;
+  const c=userChar(currentUser);
+  c.rituais.push({nome:n,nex:document.getElementById('rit-nex').value.trim(),desc:document.getElementById('rit-desc').value.trim()});
+  document.getElementById('rit-nome').value='';document.getElementById('rit-nex').value='';document.getElementById('rit-desc').value='';
+  renderRit();saveDB();
+}
+function delRit(i){const c=userChar(currentUser);c.rituais.splice(i,1);renderRit();saveDB();}
+ 
+/* ══════════════════════════════════════════════
+   PISTAS / NOTAS
+══════════════════════════════════════════════ */
+const PISTA_COLORS={pista:'#c49a00',npc:'#1fc8a0',local:'#5b9cf6',ocult:'#bb88ff'};
+function renderPistas(){
+  const el=document.getElementById('pista-list');el.innerHTML='';
+  const c=userChar(currentUser);
+  if(!c.pistaList||!c.pistaList.length){el.innerHTML='<div style="color:var(--white-dust);font-size:13px">Nenhuma pista registrada.</div>';return;}
+  c.pistaList.forEach((p,i)=>{
+    const row=document.createElement('div');row.className='list-item';
+    const col=PISTA_COLORS[p.tipo]||'#888';
+    row.innerHTML=`<div style="width:4px;background:${col};align-self:stretch;flex-shrink:0"></div>
+      <div class="list-body">${p.texto}<div class="list-meta">${p.tipo.toUpperCase()} — ${p.h}</div></div>
+      <button class="del-btn" onclick="delPista(${i})">×</button>`;
+    el.appendChild(row);
+  });
+}
+function addPista(){
+  const t=document.getElementById('pista-inp').value.trim();if(!t)return;
+  const c=userChar(currentUser);if(!c.pistaList)c.pistaList=[];
+  const h=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  c.pistaList.push({texto:t,tipo:document.getElementById('pista-tipo').value,h});
+  document.getElementById('pista-inp').value='';renderPistas();saveDB();
+}
+function delPista(i){const c=userChar(currentUser);c.pistaList.splice(i,1);renderPistas();saveDB();}
+ 
+function renderNotas(){
+  const el=document.getElementById('nota-list');el.innerHTML='';
+  const c=userChar(currentUser);
+  if(!c.notas) c.notas=[];
+  if(!c.notas.length){el.innerHTML='<div style="color:var(--white-dust);font-size:13px">Nenhuma anotação.</div>';return;}
+  c.notas.forEach((n,i)=>{
+    const row=document.createElement('div');row.className='list-item';
+    row.innerHTML=`<div class="list-body">${n.t}<div class="list-meta">${n.h}</div></div>
+      <button class="del-btn" onclick="delNota(${i})">×</button>`;
+    el.appendChild(row);
+  });
+}
+function addNota(){
+  const t=document.getElementById('nota-inp').value.trim();if(!t)return;
+  const c=userChar(currentUser);
+  c.notas.unshift({t,h:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
+  document.getElementById('nota-inp').value='';renderNotas();saveDB();flashSave('save-missao');
+}
+function delNota(i){const c=userChar(currentUser);c.notas.splice(i,1);renderNotas();saveDB();}
+ 
+/* ══════════════════════════════════════════════
+   DICE
+══════════════════════════════════════════════ */
+function rollDie(f){
+  const r=Math.floor(Math.random()*f)+1;
+  showRoll('D'+f,[r],0,r,'');
+}
+function rollCustom(){
+  const q=parseInt(document.getElementById('r-qtd').value)||1;
+  const f=parseInt(document.getElementById('r-faces').value)||20;
+  const mod=parseInt(document.getElementById('r-mod').value)||0;
+  const lbl=document.getElementById('r-label').value.trim();
+  const rolls=Array.from({length:q},()=>Math.floor(Math.random()*f)+1);
+  const total=rolls.reduce((a,b)=>a+b,0)+mod;
+  showRoll(q+'d'+f+(mod?(mod>0?'+':'')+mod:''),rolls,mod,total,lbl);
+}
+function showRoll(label,rolls,mod,total,ctx){
+  document.getElementById('roll-res').textContent=total;
+  const detail=rolls.join(' + ')+(mod&&mod!==0?(mod>0?' + ':' ')+mod:'');
+  document.getElementById('roll-detail').textContent=label+(ctx?' ('+ctx+')':'')+': ['+detail+']';
+  const h=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  if(!db.rolls[currentUser])db.rolls[currentUser]=[];
+  const maxV=parseInt(label.replace(/\d+d/,''))||20;
+  db.rolls[currentUser].unshift({label,total,h,ctx,user:currentUser,ts:Date.now(),maxVal:maxV});
+  if(db.rolls[currentUser].length>50)db.rolls[currentUser].pop();
+  renderLog();saveDB();
+}
+function renderLog(){
+  const el=document.getElementById('roll-log');el.innerHTML='';
+  const logs=db.rolls[currentUser]||[];
+  if(!logs.length){el.innerHTML='<div style="color:var(--white-dust);font-size:13px">Nenhuma rolagem ainda.</div>';return;}
+  logs.forEach(r=>{
+    const d=document.createElement('div');d.className='log-line';
+    d.innerHTML=`<span class="log-tag">${r.h}</span> <span>${r.label}${r.ctx?' — '+r.ctx:''}</span> <b>→ ${r.total}</b>`;
+    el.appendChild(d);
+  });
+}
+function resetAllRolls(){if(confirm('Limpar histórico de rolagens de todos?')){db.rolls={};saveDB();renderLog();toast('Histórico limpo.');}}
+ 
+/* ══════════════════════════════════════════════
+   TOKEN
+══════════════════════════════════════════════ */
+const RINGS=['#8b0000','#cc0000','#1fc8a0','#5b9cf6','#c49a00','#bb88ff','#d45486','#e8e0e0','#ff6600','#00ccaa'];
+const BGS=['#0f000c','#050005','#0a1a0a','#0a0a1a','#1a0a00','#050010','#1a0010','#000000'];
+const ICONS={skull:'☠',eye:'👁',flame:'🔥',bolt:'⚡',moon:'🌙',star:'★',shield:'⛊',ghost:'👻',blood:'🩸',rune:'⛧'};
+let tokImgData=null;
+ 
+function buildTokenControls(){
+  const c=userChar(currentUser);
+  const tok=c.token||{};
+  const rs=document.getElementById('ring-swatches');
+  if(rs&&!rs.dataset.built){
+    rs.dataset.built='1';rs.innerHTML='';
+    RINGS.forEach(col=>{
+      const d=document.createElement('div');d.className='swatch';d.style.background=col;d.title=col;
+      d.onclick=()=>{c.token.ring=col;rs.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active'));d.classList.add('active');drawToken();saveDB();};
+      rs.appendChild(d);
+    });
+  }
+  const bs=document.getElementById('bg-swatches');
+  if(bs&&!bs.dataset.built){
+    bs.dataset.built='1';bs.innerHTML='';
+    BGS.forEach(col=>{
+      const d=document.createElement('div');d.className='swatch';d.style.cssText=`background:${col};border:1px solid rgba(255,255,255,0.15)`;d.title=col;
+      d.onclick=()=>{c.token.bg=col;bs.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active'));d.classList.add('active');drawToken();saveDB();};
+      bs.appendChild(d);
+    });
+  }
+  const io=document.getElementById('icon-opts');
+  if(io&&!io.dataset.built){
+    io.dataset.built='1';io.innerHTML='';
+    Object.entries(ICONS).forEach(([k,em])=>{
+      const d=document.createElement('div');d.className='icon-opt';d.textContent=em;d.title=k;
+      d.onclick=()=>{c.token.icon=k;io.querySelectorAll('.icon-opt').forEach(x=>x.classList.remove('active'));d.classList.add('active');drawToken();saveDB();};
+      io.appendChild(d);
+    });
+  }
+  sv('tok-label',tok.label||'');sv('tok-cond',tok.cond||'');
+  if(document.getElementById('tok-hp'))document.getElementById('tok-hp').checked=tok.showHp||false;
+  if(document.getElementById('tok-ring-size'))document.getElementById('tok-ring-size').value=tok.ringSize||5;
+  if(document.getElementById('tok-text-color'))document.getElementById('tok-text-color').value=tok.textColor||'#e8e0e0';
+  if(tok.imgData&&!tokImgData){
+    const img=new Image();img.onload=()=>{tokImgData=img;drawToken();};img.src=tok.imgData;
+  }
+  markActiveSwatches();
+}
+ 
+function markActiveSwatches(){
+  const c=userChar(currentUser);const tok=c.token||{};
+  document.querySelectorAll('#ring-swatches .swatch').forEach(s=>{s.classList.toggle('active',s.style.background===tok.ring||s.title===tok.ring);});
+  document.querySelectorAll('#bg-swatches .swatch').forEach(s=>{s.classList.toggle('active',s.title===tok.bg);});
+  document.querySelectorAll('#icon-opts .icon-opt').forEach(s=>{s.classList.toggle('active',s.title===tok.icon);});
+}
+ 
+function drawToken(){
+  const canvas=document.getElementById('token-canvas');if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=220,H=220,cx=110,cy=110,R=100;
+  const c=userChar(currentUser);const tok=c.token||{};
+  const ring=tok.ring||'#8b0000';
+  const bg=tok.bg||'#0f000c';
+  const ringSize=parseInt(document.getElementById('tok-ring-size')?.value||tok.ringSize||5);
+  const textCol=document.getElementById('tok-text-color')?.value||tok.textColor||'#e8e0e0';
+  const label=document.getElementById('tok-label')?.value||tok.label||'';
+  const cond=document.getElementById('tok-cond')?.value||tok.cond||'';
+  const showHp=document.getElementById('tok-hp')?.checked||tok.showHp||false;
+  ctx.clearRect(0,0,W,H);
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R-ringSize/2,0,Math.PI*2);ctx.clip();
+  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
+  if(tokImgData){ctx.drawImage(tokImgData,0,0,W,H);}
+  else{
+    ctx.fillStyle=ring+'33';ctx.beginPath();ctx.arc(cx,cy,55,0,Math.PI*2);ctx.fill();
+    ctx.font='62px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=ring;
+    ctx.fillText(ICONS[tok.icon||'skull']||'☠',cx,cy);
+  }
+  ctx.restore();
+  ctx.beginPath();ctx.arc(cx,cy,R-ringSize/2,0,Math.PI*2);
+  ctx.strokeStyle=ring;ctx.lineWidth=ringSize;ctx.stroke();
+  if(label){
+    const lblY=H-18;
+    ctx.fillStyle='rgba(0,0,0,0.72)';ctx.beginPath();ctx.rect(0,lblY-14,W,28);ctx.fill();
+    ctx.fillStyle=textCol;ctx.font='bold 13px "Cinzel",serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,cx,lblY);
+  }
+  if(cond){
+    ctx.fillStyle='rgba(139,0,0,0.82)';ctx.beginPath();ctx.rect(0,0,W,22);ctx.fill();
+    ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(cond.toUpperCase(),cx,11);
+  }
+  if(showHp){
+    const pv=c.pv||0;const pvMax=c.pvMax||1;const pct=pv/pvMax;
+    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(18,H-14,W-36,8);
+    ctx.fillStyle=pct>0.5?'#22aa55':pct>0.25?'#cc8822':'#cc2222';
+    ctx.fillRect(18,H-14,(W-36)*pct,8);
+  }
+  const name=c.nome||currentUser||'Agente';
+  document.getElementById('tok-name-display').textContent=name;
+  tok.ring=ring;tok.bg=bg;tok.ringSize=ringSize;tok.textColor=textCol;
+  tok.label=label;tok.cond=cond;tok.showHp=showHp;tok.icon=tok.icon||'skull';
+  c.token=tok;
+}
+ 
+function loadTokImg(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{tokImgData=img;const c=userChar(currentUser);c.token.imgData=ev.target.result;drawToken();saveDB();};
+    img.src=ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function clearTokImg(){tokImgData=null;const c=userChar(currentUser);c.token.imgData=null;drawToken();saveDB();}
+function exportToken(){
+  drawToken();const canvas=document.getElementById('token-canvas');
+  const a=document.createElement('a');a.download='token_'+(userChar(currentUser).nome||currentUser)+'.png';a.href=canvas.toDataURL();a.click();
+}
+function exportTokenJSON(){
+  const c=userChar(currentUser);const tok=c.token||{};
+  const data=JSON.stringify({version:1,token:tok,nome:c.nome,classe:c.classe},null,2);
+  const blob=new Blob([data],{type:'application/json'});
+  const a=document.createElement('a');a.download='token_'+(c.nome||currentUser)+'.json';a.href=URL.createObjectURL(blob);a.click();
+  toast('Token exportado como JSON.');
+}
+function importTokenJSON(e){
+  const file=e.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=ev=>{
+    try{
+      const data=JSON.parse(ev.target.result);
+      if(!data.token)throw new Error('JSON inválido');
+      const c=userChar(currentUser);c.token=data.token;
+      tokImgData=null;
+      document.getElementById('ring-swatches').removeAttribute('data-built');
+      document.getElementById('bg-swatches').removeAttribute('data-built');
+      document.getElementById('icon-opts').removeAttribute('data-built');
+      buildTokenControls();drawToken();saveDB();
+      toast('Token importado com sucesso!');
+    }catch(err){toast('Erro ao importar token JSON.');}
+  };
+  reader.readAsText(file);
+  e.target.value='';
+}
+ 
+/* ══════════════════════════════════════════════
+   MAP
+══════════════════════════════════════════════ */
+let mapCtx,mapTool='wall',mapDrawing=false,mapLX=0,mapLY=0;
+let mapHistory=[],mapTokens=[];
+let mapStartX=0,mapStartY=0;
+let mapBgImage=null; // stored background separate from tokens
+ 
+// Token interaction state
+let selectedToken=null; // index into mapTokens
+let draggingToken=false;
+let rotatingToken=false;
+let rotateStartAngle=0;
+let rotateMouseStart=0;
+ 
+const GRID_SIZE=40;
+ 
+// Aplica bg remoto no canvas (pode ser chamado antes ou depois do initMap)
+function applyRemoteBg(dataUrl){
+  if(!dataUrl) return;
+  const canvas = document.getElementById('map-canvas');
+  // Se o mapa ainda não foi aberto, guarda pra aplicar quando abrir
+  window._pendingRemoteBg = dataUrl;
+  if(!canvas || !mapCtx) return;
+  const img = new Image();
+  img.onload = () => {
+    const bg = _getBgCanvas();
+    if(!bg) return;
+    const ctx2 = bg.getContext('2d');
+    ctx2.clearRect(0,0,bg.width,bg.height);
+    ctx2.drawImage(img,0,0,bg.width,bg.height);
+    mapPushHistory();
+    fullRedraw();
+  };
+  img.src = dataUrl;
+}
+
+function initMap(){
+  const canvas=document.getElementById('map-canvas');
+  if(!canvas)return;
+  if(canvas._init)return;
+  canvas._init=true;
+  const wrap=document.getElementById('map-canvas-wrap');
+  canvas.width=wrap.offsetWidth||900;
+  canvas.height=Math.round(canvas.width*0.6);
+  mapCtx=canvas.getContext('2d');
+  // Reseta o bgCanvas para as novas dimensoes
+  _bgCanvas=null;
+  mapHistory=[];
+  mapTokens=[];
+  // Carrega mapa compartilhado
+  // Prioridade: bg pendente do Firebase > shared local > mapa base (só Mestre)
+  const bgToLoad = window._pendingRemoteBg || db.maps['shared'] || (isMestre ? db.maps[currentUser] : null);
+  window._pendingRemoteBg = null;
+  if(bgToLoad){
+    const img=new Image();
+    img.onload=()=>{
+      const bg=_getBgCanvas();
+      bg.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      mapPushHistory();
+      loadMapTokens();
+      loadStructures();
+      fullRedraw();
+    };
+    img.src=bgToLoad;
+  }else{
+    if(isMestre) drawBaseMap();
+    mapPushHistory();
+    loadMapTokens();
+    loadStructures();
+    fullRedraw();
+  }
+  canvas.addEventListener('mousedown',mapDown);
+  canvas.addEventListener('mousemove',mapMove);
+  canvas.addEventListener('mousemove',mapHoverCheck);
+  canvas.addEventListener('mouseup',mapUp);
+  canvas.addEventListener('mouseleave',mapUp);
+  canvas.addEventListener('wheel',mapWheel,{passive:false});
+  canvas.addEventListener('contextmenu',mapRightClick);
+  canvas.addEventListener('touchstart',e=>{e.preventDefault();mapDown(e.touches[0]);},{passive:false});
+  canvas.addEventListener('touchmove',e=>{e.preventDefault();mapMove(e.touches[0]);},{passive:false});
+  canvas.addEventListener('touchend',e=>{mapUp();},{passive:false});
+}
+ 
+function mapPosRaw(e){
+  const canvas=document.getElementById('map-canvas');
+  const r=canvas.getBoundingClientRect();
+  const sx=canvas.width/r.width,sy=canvas.height/r.height;
+  return{x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy};
+}
+ 
+function mapPos(e){
+  const p=mapPosRaw(e);
+  if(document.getElementById('map-snap')?.checked){
+    return{x:Math.round(p.x/GRID_SIZE)*GRID_SIZE, y:Math.round(p.y/GRID_SIZE)*GRID_SIZE};
+  }
+  return p;
+}
+ 
+function mapDown(e){
+  const p=mapPos(e);
+ 
+  // Place furniture preset -> agora cria objeto clicavel
+  if(placingPreset){
+    mapStructures.push({preset:placingPreset,x:p.x,y:p.y,angle:0});
+    placingPreset=null;
+    selectedStruct=mapStructures.length-1;
+    document.getElementById('map-canvas').style.cursor='crosshair';
+    fullRedraw();saveStructures();return;
+  }
+ 
+  // Erase: verifica token e estrutura
+  if(mapTool==='erase'){
+    const hitTok=mapTokens.findIndex(t=>Math.hypot(t.x-p.x,t.y-p.y)<=t.r+6);
+    if(hitTok>=0){
+      if(!isMestre){toast('⛧ Apenas o Mestre pode remover tokens.');return;}
+      mapTokens.splice(hitTok,1);if(selectedToken===hitTok)selectedToken=null;else if(selectedToken>hitTok)selectedToken--;fullRedraw();renderMapTokList();saveMapData();return;
+    }
+    const hitStr=hitTestStruct(p.x,p.y);
+    if(hitStr>=0){
+      if(!isMestre){toast('⛧ Apenas o Mestre pode remover objetos.');return;}
+      mapStructures.splice(hitStr,1);if(selectedStruct===hitStr)selectedStruct=null;else if(selectedStruct>hitStr)selectedStruct--;fullRedraw();saveStructures();return;
+    }
+    if(!isMestre){return;}
+    selectedToken=null;selectedStruct=null;
+    mapDrawing=true;mapStartX=p.x;mapStartY=p.y;mapLX=p.x;mapLY=p.y;mapPushHistory();return;
+  }
+ 
+  // Check token hit first (usa posicao raw para hit test preciso)
+  const pRaw=mapPosRaw(e);
+  const hitIdx=mapTokens.findIndex(t=>Math.hypot(t.x-pRaw.x,t.y-pRaw.y)<=t.r+6);
+  if(hitIdx>=0){
+    const hitTok=mapTokens[hitIdx];
+    // Players so podem arrastar seu proprio token (owner)
+    if(!isMestre && !(hitTok.isPlayer && hitTok.owner===currentUser)){
+      toast('⛧ Você só pode mover seu próprio token.');
+      selectedToken=hitIdx;renderMapTokList();fullRedraw();return;
+    }
+    selectedToken=hitIdx;selectedStruct=null;
+    draggingToken=true;
+    hitTok._dragOX=pRaw.x-hitTok.x; hitTok._dragOY=pRaw.y-hitTok.y;
+    hitTok._lastX=undefined; hitTok._lastY=undefined;
+    renderMapTokList();fullRedraw();return;
+  }
+ 
+  // Check structure hit
+  const hitStr=hitTestStruct(pRaw.x,pRaw.y);
+  if(hitStr>=0){
+    selectedStruct=hitStr;selectedToken=null;
+    if(isMestre){
+      draggingStruct=true;
+      const s=mapStructures[hitStr];
+      s._dragOX=pRaw.x-s.x; s._dragOY=pRaw.y-s.y;
+    }
+    renderMapTokList();fullRedraw();return;
+  }
+ 
+  // Deselect tudo com select tool
+  if(mapTool==='select'){selectedToken=null;selectedStruct=null;renderMapTokList();fullRedraw();return;}
+ 
+  selectedToken=null;selectedStruct=null;
+  mapDrawing=true;mapStartX=p.x;mapStartY=p.y;mapLX=p.x;mapLY=p.y;
+ 
+  if(mapTool==='text'){
+    if(!isMestre){toast('⛧ Apenas o Mestre pode adicionar texto.');return;}
+    const txt=prompt('Texto para o mapa:');
+    if(txt){
+      const bgCtx2=getBgCtx();
+      if(bgCtx2){
+        bgCtx2.fillStyle=document.getElementById('map-color').value;
+        bgCtx2.font='13px "Cinzel",serif';bgCtx2.textAlign='left';bgCtx2.textBaseline='middle';
+        bgCtx2.fillText(txt,p.x,p.y);
+      }
+    }
+    mapDrawing=false;mapPushHistory();saveMapData();return;
+  }
+  if(mapTool==='token-place'){
+    if(!isMestre){toast('⛧ Apenas o Mestre pode colocar tokens avulsos. Use ⭐ Meu Token.');return;}
+    const name=prompt('Nome do token (ex: PJ1, Inimigo):','');
+    const col=document.getElementById('map-color').value;
+    const c=userChar(currentUser);
+    const isPlayer=!!(name&&(name.toLowerCase()===currentUser||(c.nome&&name.toLowerCase().includes(c.nome.toLowerCase()))));
+    mapTokens.push({x:p.x,y:p.y,name:name||'?',col,r:GRID_SIZE/2-4,isPlayer,state:'comum',angle:0});
+    mapDrawing=false;fullRedraw();renderMapTokList();saveMapData();return;
+  }
+  if(!isMestre){return;}
+  mapPushHistory();
+}
+ 
+function mapMove(e){
+  const p=mapPos(e);
+  const pRaw=mapPosRaw(e);   // sempre livre, para drag
+  const canvas=document.getElementById('map-canvas');
+ 
+  // Dragging a selected token — movimento LIVRE (sem snap)
+  if(draggingToken && selectedToken!==null && mapTokens[selectedToken]){
+    const t=mapTokens[selectedToken];
+    const nx=pRaw.x-(t._dragOX||0), ny=pRaw.y-(t._dragOY||0);
+    if(t._lastX!==undefined) t.angle=Math.atan2(ny-t._lastY, nx-t._lastX);
+    t._lastX=t.x; t._lastY=t.y;
+    t.x=nx; t.y=ny;
+    fullRedrawSync();fbPublishMap(false);canvas.style.cursor='grabbing';return;
+  }
+ 
+  // Dragging a selected structure — movimento LIVRE (sem snap)
+  if(draggingStruct && selectedStruct!==null && mapStructures[selectedStruct]){
+    const s=mapStructures[selectedStruct];
+    s.x=pRaw.x-(s._dragOX||0);
+    s.y=pRaw.y-(s._dragOY||0);
+    fullRedrawSync();fbPublishMap(false);canvas.style.cursor='grabbing';return;
+  }
+ 
+  // Hover cursor change
+  if(!mapDrawing){
+    const hitTok=mapTokens.findIndex(t=>Math.hypot(t.x-p.x,t.y-p.y)<=t.r+6);
+    if(hitTok>=0 && mapTool!=='erase'){canvas.style.cursor='grab';return;}
+    const hitStr=hitTestStruct(p.x,p.y);
+    if(hitStr>=0 && mapTool!=='erase'){canvas.style.cursor='grab';return;}
+    if(placingPreset){canvas.style.cursor='copy';return;}
+    canvas.style.cursor='crosshair';
+  }
+ 
+  if(!mapDrawing)return;
+  const sz=parseInt(document.getElementById('map-sz').value)||4;
+  const col=document.getElementById('map-color').value;
+  const op=parseInt(document.getElementById('map-op').value)/100;
+  // Todos os traços vão para o bgCanvas — tokens nunca são desenhados nele
+  const bgCtx=getBgCtx();
+  if(!bgCtx)return;
+ 
+  if(mapTool==='pencil'||mapTool==='wall'){
+    bgCtx.globalAlpha=op;
+    bgCtx.beginPath();bgCtx.moveTo(mapLX,mapLY);bgCtx.lineTo(p.x,p.y);
+    bgCtx.strokeStyle=col;bgCtx.lineWidth=sz;bgCtx.lineCap='round';bgCtx.lineJoin='round';bgCtx.stroke();
+    bgCtx.globalAlpha=1;
+    fullRedrawSync();fbPublishMap(false);
+  }else if(mapTool==='erase'){
+    bgCtx.clearRect(p.x-sz*2,p.y-sz*2,sz*4,sz*4);
+    fullRedrawSync();fbPublishMap(false);
+  }else if(mapTool==='rect'){
+    // Preview: restaura bgCanvas do ultimo snapshot, desenha shape temporario, compoe
+    const last=mapHistory[mapHistory.length-1];
+    if(last){
+      const img=new Image();
+      img.onload=()=>{
+        bgCtx.clearRect(0,0,_bgCanvas.width,_bgCanvas.height);
+        bgCtx.drawImage(img,0,0);
+        bgCtx.globalAlpha=op;
+        bgCtx.fillStyle=col+'44';bgCtx.strokeStyle=col;bgCtx.lineWidth=sz*0.5;
+        bgCtx.fillRect(mapStartX,mapStartY,p.x-mapStartX,p.y-mapStartY);
+        bgCtx.strokeRect(mapStartX,mapStartY,p.x-mapStartX,p.y-mapStartY);
+        bgCtx.globalAlpha=1;
+        fullRedrawSync();fbPublishMap(false);
+      };
+      img.src=last;
+    }
+  }else if(mapTool==='circle'){
+    const last=mapHistory[mapHistory.length-1];
+    if(last){
+      const img=new Image();
+      img.onload=()=>{
+        bgCtx.clearRect(0,0,_bgCanvas.width,_bgCanvas.height);
+        bgCtx.drawImage(img,0,0);
+        bgCtx.globalAlpha=op;
+        const rx=Math.abs(p.x-mapStartX)/2,ry=Math.abs(p.y-mapStartY)/2;
+        const ex=(mapStartX+p.x)/2,ey=(mapStartY+p.y)/2;
+        bgCtx.beginPath();bgCtx.ellipse(ex,ey,rx||1,ry||1,0,0,Math.PI*2);
+        bgCtx.fillStyle=col+'33';bgCtx.fill();
+        bgCtx.strokeStyle=col;bgCtx.lineWidth=sz*0.5;bgCtx.stroke();
+        bgCtx.globalAlpha=1;
+        fullRedrawSync();fbPublishMap(false);
+      };
+      img.src=last;
+    }
+  }else if(mapTool==='line'){
+    const last=mapHistory[mapHistory.length-1];
+    if(last){
+      const img=new Image();
+      img.onload=()=>{
+        bgCtx.clearRect(0,0,_bgCanvas.width,_bgCanvas.height);
+        bgCtx.drawImage(img,0,0);
+        bgCtx.globalAlpha=op;
+        bgCtx.beginPath();bgCtx.moveTo(mapStartX,mapStartY);bgCtx.lineTo(p.x,p.y);
+        bgCtx.strokeStyle=col;bgCtx.lineWidth=sz;bgCtx.lineCap='round';bgCtx.stroke();
+        bgCtx.globalAlpha=1;
+        fullRedrawSync();fbPublishMap(false);
+      };
+      img.src=last;
+    }
+  }
+  mapLX=p.x;mapLY=p.y;
+}
+ 
+function mapUp(){
+  if(draggingToken){
+    draggingToken=false;
+    if(selectedToken!==null && mapTokens[selectedToken]){
+      const t=mapTokens[selectedToken];
+      delete t._lastX;delete t._lastY;delete t._dragOX;delete t._dragOY;
+    }
+    fullRedraw();saveMapData();
+    document.getElementById('map-canvas').style.cursor='crosshair';return;
+  }
+  if(draggingStruct){
+    draggingStruct=false;
+    if(selectedStruct!==null && mapStructures[selectedStruct]){
+      const s=mapStructures[selectedStruct];
+      delete s._dragOX;delete s._dragOY;
+    }
+    fullRedraw();saveStructures();
+    document.getElementById('map-canvas').style.cursor='crosshair';return;
+  }
+  if(mapDrawing){mapDrawing=false;mapPushHistory();saveMapData();}
+}
+ 
+// Scroll wheel = rotate selected token or structure
+function mapWheel(e){
+  e.preventDefault();
+  const delta=e.deltaY>0?0.15:-0.15;
+  if(selectedToken!==null && mapTokens[selectedToken]){
+    mapTokens[selectedToken].angle=(mapTokens[selectedToken].angle||0)+delta;
+    fullRedraw();saveMapData();return;
+  }
+  if(selectedStruct!==null && mapStructures[selectedStruct]){
+    mapStructures[selectedStruct].angle=(mapStructures[selectedStruct].angle||0)+delta;
+    fullRedraw();saveStructures();
+  }
+}
+ 
+// Right click = delete token or structure under cursor
+function mapRightClick(e){
+  e.preventDefault();
+  const p=mapPos(e);
+  const hitIdx=mapTokens.findIndex(t=>Math.hypot(t.x-p.x,t.y-p.y)<=t.r+6);
+  if(hitIdx>=0){
+    if(!isMestre){toast('⛧ Apenas o Mestre pode remover tokens.');return;}
+    if(confirm('Remover token "'+mapTokens[hitIdx].name+'"?')){
+      mapTokens.splice(hitIdx,1);
+      if(selectedToken===hitIdx)selectedToken=null;
+      else if(selectedToken>hitIdx)selectedToken--;
+      fullRedraw();renderMapTokList();saveMapData();
+    }
+    return;
+  }
+  const hitStr=hitTestStruct(p.x,p.y);
+  if(hitStr>=0){
+    if(!isMestre){toast('⛧ Apenas o Mestre pode remover objetos do mapa.');return;}
+    const f=FURNITURE[mapStructures[hitStr].preset];
+    if(confirm('Remover estrutura "'+(f&&f.label||mapStructures[hitStr].preset)+'"?')){
+      mapStructures.splice(hitStr,1);
+      if(selectedStruct===hitStr)selectedStruct=null;
+      else if(selectedStruct>hitStr)selectedStruct--;
+      fullRedraw();saveStructures();
+    }
+  }
+}
+ 
+// ══════════════════════════════════════════════
+//  RENDER ENGINE — fundo separado dos tokens
+//  bgCanvas: offscreen, recebe apenas traços/edições
+//  Render: sempre limpa o main canvas e compõe
+//  bgCanvas + estruturas + tokens em uma passada
+// ══════════════════════════════════════════════
+let _bgCanvas = null;   // offscreen — só traços/edições
+let _rafPending = false;
+ 
+function _getBgCanvas(){
+  const mc = document.getElementById('map-canvas');
+  if(!mc) return null;
+  if(!_bgCanvas){
+    _bgCanvas = document.createElement('canvas');
+    _bgCanvas.width = mc.width;
+    _bgCanvas.height = mc.height;
+  }
+  return _bgCanvas;
+}
+ 
+// Chame sempre que o tamanho do main canvas mudar
+function _syncBgSize(){
+  const mc = document.getElementById('map-canvas');
+  if(!mc || !_bgCanvas) return;
+  if(_bgCanvas.width !== mc.width || _bgCanvas.height !== mc.height){
+    const tmp = document.createElement('canvas');
+    tmp.width = mc.width; tmp.height = mc.height;
+    tmp.getContext('2d').drawImage(_bgCanvas, 0, 0);
+    _bgCanvas.width = mc.width; _bgCanvas.height = mc.height;
+    _bgCanvas.getContext('2d').drawImage(tmp, 0, 0);
+  }
+}
+ 
+// Devolve o contexto 2d do bgCanvas (para desenhar traços)
+function getBgCtx(){
+  const bg = _getBgCanvas();
+  return bg ? bg.getContext('2d') : null;
+}
+ 
+// ── Histórico: snapshots do bgCanvas ──
+function mapPushHistory(){
+  const bg = _getBgCanvas();
+  if(!bg) return;
+  mapHistory.push(bg.toDataURL());
+  if(mapHistory.length > 30) mapHistory.shift();
+}
+ 
+// ── Compõe e exibe: bg + grid + estruturas + tokens ──
+function _compose(){
+  if(!mapCtx) return;
+  const mc = document.getElementById('map-canvas');
+  if(!mc) return;
+  const bg = _getBgCanvas();
+  mapCtx.clearRect(0, 0, mc.width, mc.height);
+  if(bg) mapCtx.drawImage(bg, 0, 0);
+  drawMapGrid();
+  drawAllStructures();
+  _drawTokens(mc);
+}
+ 
+// Versão com rAF (chamadas normais — não durante drag)
+function fullRedraw(){
+  if(_rafPending) return;
+  _rafPending = true;
+  requestAnimationFrame(()=>{
+    _rafPending = false;
+    _compose();
+  });
+}
+ 
+// Versão síncrona imediata — usada somente durante drag para evitar lag
+function fullRedrawSync(){
+  _compose();
+}
+ 
+// ── Undo: restaura bg a partir do histórico ──
+function mapUndo(){
+  if(mapHistory.length <= 1) return;
+  mapHistory.pop();
+  const last = mapHistory[mapHistory.length - 1];
+  if(!last){ fullRedraw(); return; }
+  const img = new Image();
+  img.onload = ()=>{
+    const bg = _getBgCanvas();
+    if(!bg) return;
+    const bgCtx = bg.getContext('2d');
+    bgCtx.clearRect(0, 0, bg.width, bg.height);
+    bgCtx.drawImage(img, 0, 0);
+    fullRedraw();
+  };
+  img.src = last;
+}
+ 
+// ══════════════════════════════════════════════════════════════
+//  SINCRONIZAÇÃO DO MAPA — ARQUITETURA SIMPLIFICADA
+//
+//  Firebase só trafega JSON pequeno (tokens + structs).
+//  bgCanvas (desenhos) é salvo no Firebase DB separadamente e
+//  carregado UMA VEZ quando o mapa é aberto.
+//  Durante drag/draw: só tokens+structs em tempo real (< 1KB).
+// ══════════════════════════════════════════════════════════════
+
+let _fbPublishTimer=null;
+let _fbLastPublish=0;
+window._myLastMapPublish=0;
+
+// Publica tokens + structs em tempo real (leve)
+function fbPublishMap(immediate){
+  if(!window.fbSaveMap) return;
+  const now=Date.now();
+  clearTimeout(_fbPublishTimer);
+  if(!immediate && (now-_fbLastPublish)<50){
+    _fbPublishTimer=setTimeout(()=>fbPublishMap(true), 50-(now-_fbLastPublish));
+    return;
+  }
+  _fbLastPublish=now;
+  const ts=Date.now();
+  window._myLastMapPublish=ts;
+  try{
+    window.fbSaveMap('main',{
+      tokens:JSON.stringify(mapTokens),
+      structs:JSON.stringify(mapStructures),
+      ts:ts
+    });
+  }catch(e){}
+}
+
+// Salva local + publica
+function saveMapData(){
+  try{
+    const bg=_getBgCanvas();
+    if(!db.maps) db.maps={};
+    db.maps['shared']=bg ? bg.toDataURL() : '';
+    db.maps['shared_tokens']=JSON.stringify(mapTokens);
+    saveDB(); // dispara fbSaveDB que inclui mapbg no gamedata
+    fbPublishMap(true); // tokens+structs em tempo real via SSE
+  }catch(e){}
+}
+ 
+// ── Desenha todos os tokens sobre o main canvas ──
+function _drawTokens(mc){
+  mapTokens.forEach((t, i)=>{
+    // Usa o estado guardado no token; para o token do usuário atual, pode usar currentTokenState
+    const tokenState = (t.isPlayer && t.owner===currentUser) ? currentTokenState : (t.state||'comum');
+    const tst = TOKEN_STATES[tokenState] || TOKEN_STATES.comum;
+    const ringCol = t.isPlayer ? (tst.ring || t.col) : t.col;
+    const angle = t.angle || 0;
+    mapCtx.save();
+    mapCtx.translate(t.x, t.y);
+    // Lantern cone
+    if(tokenState === 'lanterna'){
+      mapCtx.save(); mapCtx.rotate(angle);
+      mapCtx.beginPath(); mapCtx.moveTo(0,0);
+      mapCtx.arc(0, 0, 88, -Math.PI/4.5, Math.PI/4.5);
+      mapCtx.closePath();
+      const g = mapCtx.createRadialGradient(0,0,t.r,0,0,88);
+      g.addColorStop(0,'rgba(220,180,60,0.3)'); g.addColorStop(1,'rgba(196,154,0,0.0)');
+      mapCtx.fillStyle = g; mapCtx.fill(); mapCtx.restore();
+    }
+    // Dying aura
+    if(tokenState === 'morrendo'){
+      mapCtx.beginPath(); mapCtx.arc(0,0,t.r+7,0,Math.PI*2);
+      const g = mapCtx.createRadialGradient(0,0,t.r,0,0,t.r+7);
+      g.addColorStop(0,'rgba(100,0,0,0.5)'); g.addColorStop(1,'rgba(100,0,0,0)');
+      mapCtx.fillStyle = g; mapCtx.fill();
+    }
+    // Selection ring
+    if(i === selectedToken){
+      mapCtx.beginPath(); mapCtx.arc(0,0,t.r+9,0,Math.PI*2);
+      mapCtx.strokeStyle = 'rgba(255,255,200,0.8)'; mapCtx.lineWidth = 1.5;
+      mapCtx.setLineDash([5,3]); mapCtx.stroke(); mapCtx.setLineDash([]);
+    }
+    // Body + direction pointer
+    mapCtx.save(); mapCtx.rotate(angle);
+    mapCtx.beginPath(); mapCtx.arc(0,0,t.r,0,Math.PI*2);
+    mapCtx.fillStyle = ringCol+'bb'; mapCtx.fill();
+    mapCtx.strokeStyle = i===selectedToken ? '#ffffc8' : ringCol;
+    mapCtx.lineWidth = i===selectedToken ? 2.5 : 2; mapCtx.stroke();
+    mapCtx.beginPath();
+    mapCtx.moveTo(t.r+1,0); mapCtx.lineTo(t.r-8,-5); mapCtx.lineTo(t.r-8,5);
+    mapCtx.closePath(); mapCtx.fillStyle='rgba(255,255,255,0.7)'; mapCtx.fill();
+    mapCtx.restore();
+    // Overlay emoji or name
+    const overlay = tst.overlay;
+    if(overlay){
+      mapCtx.font = `${Math.round(t.r*0.82)}px serif`;
+      mapCtx.textAlign='center'; mapCtx.textBaseline='middle';
+      mapCtx.fillText(overlay, 0, 0);
+    } else {
+      mapCtx.fillStyle='#e8e0e0';
+      mapCtx.font = `bold ${t.name.length>3?9:11}px "Cinzel",serif`;
+      mapCtx.textAlign='center'; mapCtx.textBaseline='middle';
+      mapCtx.fillText(t.name.slice(0,4), 0, 0);
+    }
+    // Weapon badge
+    if(tokenState === 'arma'){
+      mapCtx.beginPath(); mapCtx.arc(t.r-5,-t.r+5,5,0,Math.PI*2);
+      mapCtx.fillStyle='rgba(220,70,0,0.95)'; mapCtx.fill();
+    }
+    mapCtx.restore();
+  });
+  // HUD selected token
+  if(selectedToken!==null && mapTokens[selectedToken]){
+    const t = mapTokens[selectedToken];
+    const ang = Math.round((t.angle||0)*180/Math.PI);
+    const st = TOKEN_STATES[t.isPlayer?currentTokenState:(t.state||'comum')];
+    mapCtx.save();
+    mapCtx.fillStyle='rgba(0,0,0,0.75)';
+    mapCtx.fillRect(6, mc.height-30, 300, 22);
+    mapCtx.fillStyle='#c8c0c0'; mapCtx.font='10px "Courier Prime",monospace';
+    mapCtx.textAlign='left'; mapCtx.textBaseline='middle';
+    mapCtx.fillText('● '+t.name+'  ↻'+ang+'°  ['+(st&&st.label||'—')+']  scroll=girar · arrastar=mover · clique-dir=remover', 12, mc.height-19);
+    mapCtx.restore();
+  }
+  // HUD selected structure
+  if(selectedStruct!==null && mapStructures[selectedStruct]){
+    const s = mapStructures[selectedStruct];
+    const f = FURNITURE[s.preset];
+    const ang = Math.round((s.angle||0)*180/Math.PI);
+    mapCtx.save();
+    mapCtx.fillStyle='rgba(0,0,0,0.75)';
+    mapCtx.fillRect(6, mc.height-30, 320, 22);
+    mapCtx.fillStyle='#c8d4a0'; mapCtx.font='10px "Courier Prime",monospace';
+    mapCtx.textAlign='left'; mapCtx.textBaseline='middle';
+    const hintS = isMestre
+      ? '▣ '+(f&&f.label||s.preset)+'  ↻'+ang+'°  scroll=girar · arrastar=mover · clique-dir=remover · Del=apagar'
+      : '▣ '+(f&&f.label||s.preset)+'  ↻'+ang+'°  [somente Mestre pode mover ou remover]';
+    mapCtx.fillText(hintS, 12, mc.height-19);
+    mapCtx.restore();
+  }
+}
+ 
+// ── Alias para compatibilidade ──
+function redrawMapWithTokens(){ _compose(); }
+ 
+ 
+function mapHoverCheck(e){
+  // Hover não cicla mais o estado — use Q para ciclar ou os botões na aba Token
+}
+ 
+ 
+function renderMapTokList(){
+  const el=document.getElementById('map-tok-list');el.innerHTML='';
+  if(!mapTokens.length){el.innerHTML='<div style="color:var(--white-dust);font-size:12px">Nenhum token no mapa.</div>';return;}
+  mapTokens.forEach((t,i)=>{
+    const row=document.createElement('div');row.className='map-token-item';
+    const isSel=i===selectedToken;
+    const ang=Math.round((t.angle||0)*180/Math.PI);
+    row.style.cssText=isSel?'background:rgba(139,0,0,0.15);border-left:2px solid #cc0000;padding-left:6px':'';
+    row.innerHTML=`<div class="mini-token" style="border-color:${t.col};color:#e8e0e0;font-size:10px">${t.name.slice(0,2)}</div>
+      <div style="flex:1;min-width:0"><div style="font-size:12px;color:${isSel?'#cc8888':'var(--white-ash)'}">${t.name}${t.isPlayer?' ⭐':''}</div>
+      <div style="font-size:10px;color:var(--white-dust);font-family:monospace">↻${ang}°</div></div>
+      <button title="Selecionar" onclick="selectTok(${i})" style="background:transparent;border:none;color:${isSel?'#cc0000':'var(--white-dust)'};cursor:pointer;font-size:14px">◎</button>
+      <button class="del-btn" onclick="removeTok(${i})" title="Remover">×</button>`;
+    el.appendChild(row);
+  });
+}
+function selectTok(i){selectedToken=i;renderMapTokList();fullRedraw();}
+ 
+function removeTok(i){
+  if(!isMestre){toast('⛧ Apenas o Mestre pode remover tokens.');return;}
+  mapTokens.splice(i,1);
+  if(selectedToken===i)selectedToken=null;
+  else if(selectedToken!==null&&selectedToken>i)selectedToken--;
+  renderMapTokList();fullRedraw();saveMapData();
+}
+function loadMapTokens(){const d=db.maps['shared_tokens']||db.maps[currentUser+'_tokens'];if(d)try{mapTokens=JSON.parse(d);}catch(e){mapTokens=[];}loadStructures();}
+ 
+function drawMapGrid(){
+  const canvas=document.getElementById('map-canvas');if(!canvas||!mapCtx)return;
+  const show=document.getElementById('map-grid')?.checked;
+  if(!show)return;
+  const W=canvas.width,H=canvas.height;
+  mapCtx.save();mapCtx.globalAlpha=0.08;mapCtx.strokeStyle='#8b0000';mapCtx.lineWidth=1;
+  for(let x=0;x<=W;x+=GRID_SIZE){mapCtx.beginPath();mapCtx.moveTo(x,0);mapCtx.lineTo(x,H);mapCtx.stroke();}
+  for(let y=0;y<=H;y+=GRID_SIZE){mapCtx.beginPath();mapCtx.moveTo(0,y);mapCtx.lineTo(W,y);mapCtx.stroke();}
+  mapCtx.restore();
+}
+ 
+function drawBaseMap(){
+  const canvas=document.getElementById('map-canvas');
+  const W=canvas.width,H=canvas.height;
+  const ctx=getBgCtx();
+  if(!ctx)return;
+ 
+  // ── Background: dark stone floor ──
+  ctx.fillStyle='#0c0008';ctx.fillRect(0,0,W,H);
+  // Subtle stone texture via noise-like rectangles
+  for(let i=0;i<300;i++){
+    const sx=Math.random()*W,sy=Math.random()*H;
+    const sw=Math.random()*30+10,sh=Math.random()*3+1;
+    ctx.fillStyle=`rgba(${20+Math.random()*15},${5+Math.random()*5},${10+Math.random()*10},${0.04+Math.random()*0.06})`;
+    ctx.fillRect(sx,sy,sw,sh);
+  }
+ 
+  drawMapGrid();
+ 
+  // ── Helper to draw a room with gradient + label ──
+  function room(x,y,w,h,baseColor,label,danger){
+    const g=ctx.createLinearGradient(x,y,x+w,y+h);
+    g.addColorStop(0,baseColor+'28');g.addColorStop(1,baseColor+'10');
+    ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
+    // Inner border glow
+    ctx.strokeStyle=baseColor+'99';ctx.lineWidth=1.5;ctx.strokeRect(x+1,y+1,w-2,h-2);
+    ctx.strokeStyle=baseColor+'40';ctx.lineWidth=3;ctx.strokeRect(x,y,w,h);
+    // Floor tiles hint
+    ctx.save();ctx.globalAlpha=0.04;ctx.strokeStyle=baseColor;ctx.lineWidth=0.5;
+    for(let tx=x;tx<x+w;tx+=20){ctx.beginPath();ctx.moveTo(tx,y);ctx.lineTo(tx,y+h);ctx.stroke();}
+    for(let ty=y;ty<y+h;ty+=20){ctx.beginPath();ctx.moveTo(x,ty);ctx.lineTo(x+w,ty);ctx.stroke();}
+    ctx.restore();
+    // Label
+    ctx.save();
+    ctx.fillStyle='rgba(0,0,0,0.55)';
+    ctx.fillRect(x+4,y+4,ctx.measureText(label).width+8,16);
+    ctx.fillStyle=baseColor+'dd';ctx.font='bold 10px "Cinzel",serif';
+    ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(label,x+8,y+6);
+    ctx.restore();
+  }
+ 
+  // ── Helper: thick wall ──
+  function wall(x1,y1,x2,y2,w=4){
+    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
+    ctx.strokeStyle='#2a0000';ctx.lineWidth=w+2;ctx.stroke();
+    ctx.strokeStyle='#5c0000';ctx.lineWidth=w;ctx.stroke();
+    ctx.strokeStyle='rgba(139,0,0,0.2)';ctx.lineWidth=1;ctx.stroke();
+  }
+ 
+  // ── Helper: door ──
+  function door(x,y,horiz){
+    const L=30;
+    ctx.clearRect(horiz?x:x-2,horiz?y-2:y,horiz?L:4,horiz?4:L);
+    ctx.save();ctx.strokeStyle='#8b4500';ctx.lineWidth=2;
+    if(horiz){ctx.beginPath();ctx.arc(x,y,L,0,Math.PI/2);ctx.stroke();}
+    else{ctx.beginPath();ctx.arc(x,y,L,-Math.PI/2,0);ctx.stroke();}
+    ctx.restore();
+  }
+ 
+  // ── Helper: small furniture rect ──
+  function furn(x,y,w,h,col,lbl){
+    ctx.fillStyle=col+'66';ctx.fillRect(x,y,w,h);
+    ctx.strokeStyle=col+'cc';ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);
+    if(lbl){ctx.fillStyle='rgba(200,190,190,0.5)';ctx.font='8px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lbl,x+w/2,y+h/2);}
+  }
+ 
+  // ═══ ROOMS ═══
+  // Recepção  (top-left large)
+  room(40,40,200,160,'#8b0000','Recepção');
+  furn(60,60,70,36,'#5a3a20','Mesa Rec.');
+  furn(70,66,14,24,'#4a4a6a','Cad.');
+  furn(100,66,14,24,'#4a4a6a','Cad.');
+  furn(130,66,14,24,'#4a4a6a','Cad.');
+  furn(155,52,24,16,'#3a5a6a','Arq.');
+  furn(185,52,24,16,'#3a5a6a','Arq.');
+ 
+  // Corredor horizontal Norte
+  room(240,40,120,60,'#1fc8a0','Corredor N.');
+ 
+  // Zona Infectada
+  room(240,160,120,90,'#cc2222','Zona Infectada',true);
+  // blood splatter hints
+  ctx.save();ctx.globalAlpha=0.18;
+  [[260,180],[310,200],[320,175],[270,215]].forEach(([bx,by])=>{
+    ctx.beginPath();ctx.arc(bx,by,5+Math.random()*6,0,Math.PI*2);ctx.fillStyle='#cc0000';ctx.fill();
+  });ctx.restore();
+ 
+  // Arquivo (left-bottom)
+  room(40,220,180,130,'#c49a00','Arquivo');
+  for(let sx=0;sx<3;sx++)furn(55+sx*44,235,38,16,'#7a5a30','Estante');
+  furn(55,260,38,16,'#7a5a30','Estante');
+  furn(55,280,38,16,'#7a5a30','Estante');
+  furn(140,260,60,36,'#3a3a5a','Mesa');
+ 
+  // Laboratório (center-right large)
+  room(380,40,190,180,'#5b9cf6','Laboratório');
+  furn(400,60,60,30,'#3a5a9a','Bancada');
+  furn(470,60,60,30,'#3a5a9a','Bancada');
+  furn(530,60,30,80,'#2a3a6a','Equip.');
+  furn(400,100,36,24,'#4a6a3a','Micro.');
+  furn(450,100,36,24,'#4a6a3a','Centr.');
+  // lab glow
+  ctx.save();ctx.globalAlpha=0.06;
+  const lg=ctx.createRadialGradient(475,130,0,475,130,80);
+  lg.addColorStop(0,'#5b9cf6');lg.addColorStop(1,'transparent');
+  ctx.fillStyle=lg;ctx.fillRect(380,40,190,180);ctx.restore();
+ 
+  // Subsolo Paranormal (wide bottom)
+  room(220,310,360,100,'#bb88ff','Subsolo Paranormal');
+  // pentagram
+  ctx.save();ctx.translate(400,360);ctx.strokeStyle='rgba(187,136,255,0.5)';ctx.lineWidth=1.2;
+  for(let i=0;i<5;i++){const a1=i*Math.PI*4/5-Math.PI/2;const a2=((i+2)%5)*Math.PI*4/5-Math.PI/2;ctx.beginPath();ctx.moveTo(Math.cos(a1)*30,Math.sin(a1)*30);ctx.lineTo(Math.cos(a2)*30,Math.sin(a2)*30);ctx.stroke();}
+  ctx.beginPath();ctx.arc(0,0,30,0,Math.PI*2);ctx.strokeStyle='rgba(187,136,255,0.25)';ctx.stroke();
+  ctx.restore();
+  // paranormal glow
+  ctx.save();ctx.globalAlpha=0.08;
+  const pg=ctx.createRadialGradient(400,360,0,400,360,70);
+  pg.addColorStop(0,'#bb88ff');pg.addColorStop(1,'transparent');
+  ctx.fillStyle=pg;ctx.fillRect(220,310,360,100);ctx.restore();
+ 
+  // Saída  (top-right)
+  room(590,40,110,90,'#cc2222','⚠ Saída');
+  // danger stripes
+  ctx.save();ctx.globalAlpha=0.06;ctx.strokeStyle='#cc2222';ctx.lineWidth=6;
+  for(let i=-90;i<110;i+=16){ctx.beginPath();ctx.moveTo(590+i,40);ctx.lineTo(590+i+80,130);ctx.stroke();}
+  ctx.restore();
+ 
+  // Acesso (center small)
+  room(380,240,100,70,'#1fc8a0','Acesso');
+  furn(390,252,20,20,'#2a4a3a','Escad.');
+ 
+  // Depósito (right)
+  room(490,240,160,130,'#8b0000','Depósito');
+  furn(500,255,30,30,'#5a4020','Caixa');furn(540,255,30,30,'#5a4020','Caixa');
+  furn(580,255,30,30,'#5a4020','Caixa');furn(500,295,30,30,'#5a4020','Caixa');
+  furn(610,260,24,90,'#5a3010','Estante');
+ 
+  // ═══ WALLS ═══
+  wall(240,40,240,310);   // center-left vertical
+  wall(380,40,380,240);   // center-right upper
+  wall(490,240,490,370);  // right vertical
+  wall(40,220,240,220);   // left horizontal mid
+  wall(380,220,490,220);  // right horizontal mid
+  wall(220,310,220,410);  // subsolo left
+  wall(580,310,580,410);  // subsolo right
+  wall(220,410,580,410);  // subsolo bottom
+  wall(590,40,590,240);   // saída left
+  wall(700,40,700,130);   // saída right
+  wall(590,130,700,130);  // saída bottom
+ 
+  // ═══ DOORS ═══
+  door(240,120,false);  // Recepção→Corredor
+  door(240,260,false);  // Recepção→Arquivo
+  door(380,130,false);  // Corredor→Lab
+  door(380,290,false);  // Acesso→Lab lower
+  door(490,290,false);  // Acesso→Depósito
+  door(310,310,true);   // Zona→Subsolo
+ 
+  // ═══ PJ MARKERS (default positions) ═══
+  const pjStarts=[
+    {x:140,y:120,col:'#1fc8a0',lbl:'PJ1'},
+    {x:180,y:120,col:'#5b9cf6',lbl:'PJ2'},
+    {x:140,y:150,col:'#c49a00',lbl:'PJ3'},
+  ];
+  pjStarts.forEach(p=>{
+    ctx.save();
+    ctx.beginPath();ctx.arc(p.x,p.y,16,0,Math.PI*2);
+    ctx.fillStyle=p.col+'44';ctx.fill();
+    ctx.strokeStyle=p.col;ctx.lineWidth=2;ctx.stroke();
+    // direction pointer
+    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.beginPath();
+    ctx.moveTo(p.x+16,p.y);ctx.lineTo(p.x+8,-5+p.y);ctx.lineTo(p.x+8,5+p.y);ctx.closePath();ctx.fill();
+    ctx.fillStyle='#e8e0e0';ctx.font='bold 9px "Cinzel",serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(p.lbl,p.x,p.y);ctx.restore();
+  });
+ 
+  // ═══ AMBIENT LIGHT GLOWS ═══
+  ctx.save();ctx.globalAlpha=0.04;
+  // Reception light
+  const rg=ctx.createRadialGradient(140,120,0,140,120,90);
+  rg.addColorStop(0,'#ffdd88');rg.addColorStop(1,'transparent');
+  ctx.fillStyle=rg;ctx.fillRect(40,40,200,160);
+  // Lab cold light
+  const cl=ctx.createRadialGradient(475,130,0,475,130,90);
+  cl.addColorStop(0,'#aaccff');cl.addColorStop(1,'transparent');
+  ctx.fillStyle=cl;ctx.fillRect(380,40,190,180);
+  ctx.restore();
+ 
+  // ═══ COMPASS ROSE ═══
+  ctx.save();ctx.translate(W-40,H-40);ctx.globalAlpha=0.25;
+  ctx.strokeStyle='#8b0000';ctx.lineWidth=1;
+  [[0,-14,'N'],[0,14,'S'],[14,0,'L'],[-14,0,'O']].forEach(([dx,dy,lbl])=>{
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(dx,dy);ctx.stroke();
+    ctx.fillStyle='#cc4444';ctx.font='8px "Cinzel",serif';ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(lbl,dx*1.5,dy*1.5);
+  });
+  ctx.restore();
+}
+ 
+function mapClear(){
+  if(!isMestre){toast('⛧ Apenas o Mestre pode limpar o mapa.');return;}
+  if(!confirm('Limpar o mapa completamente?'))return;
+  const bg=_getBgCanvas();
+  if(bg){const bgCtx=bg.getContext('2d');bgCtx.clearRect(0,0,bg.width,bg.height);}
+  mapTokens=[];selectedToken=null;selectedStruct=null;
+  mapStructures=[];mapHistory=[];
+  mapPushHistory();
+  renderMapTokList();
+  fullRedraw();
+  saveMapData();
+  saveStructures();
+  toast('Mapa limpo.');
+}
+function mapReset(){
+  if(!isMestre){toast('⛧ Apenas o Mestre pode restaurar o mapa base.');return;}
+  if(confirm('Restaurar o mapa base?')){
+    const bg=_getBgCanvas();
+    if(bg){const bgCtx=bg.getContext('2d');bgCtx.clearRect(0,0,bg.width,bg.height);}
+    mapTokens=[];selectedToken=null;mapStructures=[];selectedStruct=null;
+    drawBaseMap();mapPushHistory();renderMapTokList();saveMapData();saveStructures();
+    toast('Mapa base restaurado.');
+  }
+}
+function downloadMap(){const a=document.createElement('a');a.download='mapa_op.png';a.href=document.getElementById('map-canvas').toDataURL();a.click();}
+function setTool(t,btn){
+  const mestreTools=['wall','pencil','rect','circle','line','text','erase'];
+  if(!isMestre && mestreTools.includes(t)){toast('⛧ Apenas o Mestre pode usar ferramentas de edição.');return;}
+  mapTool=t;
+  document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+}
+ 
+/* ══════════════════════════════════════════════
+   MESTRE
+══════════════════════════════════════════════ */
+function populateMestre(){
+  if(!isMestre)return;
+  populateRollFilterSelect();
+  renderAllRolls();
+  const el=document.getElementById('players-panel');el.innerHTML='';
+  const sel=document.getElementById('mestre-sel-player');sel.innerHTML='';
+  const users=Object.keys(db.users).filter(u=>u!=='billy');
+  if(!users.length){el.innerHTML='<div style="color:var(--white-dust);font-size:13px;padding:12px 0">Nenhum agente registrado ainda.</div>';return;}
+  users.forEach(u=>{
+    const c=db.characters[u]||defaultChar();
+    const pvPct=c.pvMax?Math.round((c.pv/c.pvMax)*100):100;
+    const sanPct=c.sanMax?Math.round((c.san/c.sanMax)*100):100;
+    const activeConds=Object.entries(c.conds||{}).filter(([k,v])=>v).map(([k])=>k);
+    const card=document.createElement('div');card.className='player-card';
+    card.innerHTML=`
+      <div class="player-avatar" style="border-color:${c.token?.ring||'#8b0000'}">${c.token?.imgData?`<img src="${c.token.imgData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">`:ICONS[c.token?.icon||'skull']||'☠'}</div>
+      <div class="player-info">
+        <div class="player-name">${c.nome||u} <span style="font-size:11px;color:var(--white-dust);font-family:'Oswald',sans-serif;letter-spacing:.06em">${c.classe||'—'} · NEX ${c.nex||5}%</span></div>
+        <div class="player-class">${c.trilha||'Sem trilha definida'}</div>
+        <div class="player-vitals">
+          <span class="vital-mini pv">PV <span>${c.pv}/${c.pvMax}</span></span>
+          <span class="vital-mini san">SAN <span>${c.san}/${c.sanMax}</span></span>
+          <span class="vital-mini esf">ESF <span>${c.esf}/${c.esfMax}</span></span>
+          <span style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace">NEX ${c.nex}%</span>
+        </div>
+        <div style="display:flex;gap:6px;margin-top:6px">
+          <div style="flex:1;background:rgba(30,0,20,.6);height:4px"><div style="height:100%;background:#cc2222;width:${pvPct}%"></div></div>
+          <div style="flex:1;background:rgba(20,30,20,.6);height:4px"><div style="height:100%;background:#22aa88;width:${sanPct}%"></div></div>
+        </div>
+        ${activeConds.length?`<div class="player-conds">${activeConds.map(co=>`<span class="pcond">${co}</span>`).join('')}</div>`:''}
+      </div>
+      <div class="player-actions">
+        <button onclick="mestreRollFor('${u}')">Rolar para agente ↗</button>
+        <button onclick="mestreViewChar('${u}')">Ver ficha completa</button>
+        <button onclick="mestreEditVitals('${u}')">Editar vitais</button>
+      </div>`;
+    el.appendChild(card);
+    const opt=document.createElement('option');opt.value=u;opt.textContent=c.nome||u;sel.appendChild(opt);
+  });
+}
+ 
+function loadPlayerNote(){
+  const u=document.getElementById('mestre-sel-player').value;
+  sv('mestre-player-note',(db.mestre.playerNotes||{})[u]||'');
+}
+function savePlayerNote(){
+  const u=document.getElementById('mestre-sel-player').value;
+  if(!db.mestre.playerNotes)db.mestre.playerNotes={};
+  db.mestre.playerNotes[u]=document.getElementById('mestre-player-note').value;
+  saveDB();
+}
+function saveMestreNotes(){db.mestre.notes=document.getElementById('mestre-notes').value;saveDB();}
+function mestreRollFor(u){
+  const f=20;const r=Math.floor(Math.random()*f)+1;
+  const msg=`[Mestre] Rolou D20 para ${u}: ${r}`;
+  if(!db.mestre.messages)db.mestre.messages=[];
+  db.mestre.messages.unshift({txt:msg,h:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
+  saveDB();renderMestreInbox();toast(msg);
+}
+function mestreViewChar(u){
+  const c=db.characters[u]||defaultChar();
+  openModal('Ficha: '+(c.nome||u),`<div style="font-family:'Courier Prime',monospace;font-size:13px;line-height:2;color:var(--white-bone)">
+    <div><b>Nome:</b> ${c.nome||'—'}</div><div><b>Classe:</b> ${c.classe}</div><div><b>NEX:</b> ${c.nex}%</div>
+    <div><b>Trilha:</b> ${c.trilha||'—'}</div><div><b>PV:</b> ${c.pv}/${c.pvMax}</div>
+    <div><b>Sanidade:</b> ${c.san}/${c.sanMax}</div><div><b>Esforço:</b> ${c.esf}/${c.esfMax}</div>
+    <div><b>Atributos:</b> ${Object.entries(c.attrs||{}).map(([k,v])=>k+' '+v).join(', ')}</div>
+    <div><b>Habilidades:</b> ${(c.habs||[]).map(h=>h.nome).join(', ')||'—'}</div>
+    <div><b>Itens:</b> ${(c.inv||[]).map(i=>i.nome).join(', ')||'—'}</div>
+    <div><b>Rituais:</b> ${(c.rituais||[]).map(r=>r.nome).join(', ')||'—'}</div>
+  </div>`);
+}
+function mestreEditVitals(u){
+  const c=db.characters[u]||defaultChar();
+  openModal('Editar vitais: '+(c.nome||u),`<div style="display:flex;flex-direction:column;gap:12px">
+    ${['pv','pvMax','san','sanMax','esf','esfMax'].map(k=>`
+      <div class="field"><label>${k}</label><input id="mv-${k}" type="number" value="${c[k]||0}" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none"></div>
+    `).join('')}
+    <button class="btn-add" onclick="saveMestreVitals('${u}')">Salvar</button>
+  </div>`);
+}
+function saveMestreVitals(u){
+  const c=db.characters[u]||defaultChar();
+  ['pv','pvMax','san','sanMax','esf','esfMax'].forEach(k=>{const e=document.getElementById('mv-'+k);if(e)c[k]=parseInt(e.value)||0;});
+  db.characters[u]=c;saveDB();closeModal();populateMestre();toast('Vitais de '+(c.nome||u)+' atualizados.');
+}
+function broadcastMessage(){
+  const msg=prompt('Mensagem para todos os agentes:');
+  if(!msg)return;
+  if(!db.mestre.messages)db.mestre.messages=[];
+  db.mestre.messages.unshift({txt:'[Broadcast] '+msg,h:new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})});
+  saveDB();renderMestreInbox();toast('Mensagem enviada.');
+}
+function renderAllRolls(){
+  const el=document.getElementById('all-rolls-log');if(!el)return;
+  const filterUser=document.getElementById('roll-filter-player')?.value||'';
+  const allRolls=[];
+  Object.entries(db.rolls||{}).forEach(([u,rolls])=>{
+    if(filterUser&&u!==filterUser)return;
+    (rolls||[]).forEach(r=>allRolls.push({...r,user:u}));
+  });
+  // Sort newest first
+  allRolls.sort((a,b)=>(b.ts||0)-(a.ts||0));
+  const summary=document.getElementById('roll-summary');
+  if(summary)summary.textContent=`${allRolls.length} rolagem(ns) registrada(s)`;
+  el.innerHTML='';
+  if(!allRolls.length){el.innerHTML='<div style="color:var(--white-dust);font-size:12px;padding:8px 0">Nenhuma rolagem registrada ainda.</div>';return;}
+  allRolls.slice(0,80).forEach(r=>{
+    const c=db.characters[r.user]||{};
+    const name=c.nome||r.user;
+    const pct=r.total/(r.maxVal||20);
+    const col=r.total<=4?'#cc4444':r.total>=(r.maxVal||20)?'#22cc88':'var(--white-bone)';
+    const d=document.createElement('div');d.className='log-line';
+    d.style.cssText='align-items:center;gap:10px;padding:6px 0';
+    d.innerHTML=`<span class="log-tag" style="min-width:38px">${r.h||'—'}</span>
+      <span style="min-width:80px;color:var(--gold-light);font-size:11px;font-family:'Oswald',sans-serif">${name}</span>
+      <span style="flex:1;color:var(--white-ash)">${r.label||'Rolagem'}${r.ctx?' <span style="color:var(--white-dust);font-size:10px">('+r.ctx+')</span>':''}</span>
+      <span style="font-family:'Cinzel Decorative',serif;font-size:16px;color:${col};min-width:30px;text-align:right">${r.total}</span>`;
+    el.appendChild(d);
+  });
+}
+ 
+function populateRollFilterSelect(){
+  const sel=document.getElementById('roll-filter-player');if(!sel)return;
+  sel.innerHTML='<option value="">Todos os agentes</option>';
+  Object.keys(db.users).filter(u=>u!=='billy').forEach(u=>{
+    const c=db.characters[u]||{};
+    const opt=document.createElement('option');opt.value=u;opt.textContent=c.nome||u;sel.appendChild(opt);
+  });
+}
+ 
+function renderMestreInbox(){
+  const el=document.getElementById('mestre-inbox');if(!el)return;
+  const msgs=db.mestre.messages||[];el.innerHTML='';
+  if(!msgs.length){el.innerHTML='<div style="color:var(--white-dust);font-size:12px">Nenhuma mensagem.</div>';return;}
+  msgs.slice(0,20).forEach(m=>{
+    const d=document.createElement('div');d.className='log-line';
+    d.innerHTML=`<span class="log-tag">${m.h}</span> ${m.txt}`;el.appendChild(d);
+  });
+}
+ 
+/* ══════════════════════════════════════════════
+   MODAL / TOAST
+══════════════════════════════════════════════ */
+function openModal(title,bodyHTML){
+  document.getElementById('modal-title').textContent=title;
+  document.getElementById('modal-body').innerHTML=bodyHTML;
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
+let toastTimer=null;
+function toast(msg){
+  const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800);
+}
+ 
+/* ══════════════════════════════════════════════
+   TOKEN STATES (Comum / Arma / Lanterna / Morrendo)
+══════════════════════════════════════════════ */
+const TOKEN_STATES={
+  comum:{label:'Comum',desc:'Estado normal do agente.',ring:'#8b0000',icon:'eye',cond:'',overlay:null},
+  arma:{label:'Com Arma',desc:'Agente em combate, empunhando arma.',ring:'#cc4400',icon:'bolt',cond:'ARMADO',overlay:'🔫'},
+  lanterna:{label:'Lanterna',desc:'Agente com lanterna — emite um cone de luz à frente no mapa.',ring:'#c49a00',icon:'moon',cond:'',overlay:'🔦',light:true},
+  morrendo:{label:'Morrendo',desc:'Agente em estado crítico / inconsciente.',ring:'#3a0000',icon:'skull',cond:'MORRENDO',overlay:'💀'},
+};
+let currentTokenState='comum';
+ 
+let _stateCooldown=false;
+function setTokenState(state){
+  if(!TOKEN_STATES[state])return;
+  if(_stateCooldown)return; // evita duplo-clique acidental
+  _stateCooldown=true;
+  setTimeout(()=>{ _stateCooldown=false; }, 300);
+  currentTokenState=state;
+  const c=userChar(currentUser);
+  const st=TOKEN_STATES[state];
+  if(!c.token)c.token={};
+  c.token.cond=st.cond;
+  // update state buttons
+  document.querySelectorAll('.state-btn').forEach(b=>b.classList.remove('active-state'));
+  const btn=document.getElementById('state-btn-'+state);
+  if(btn)btn.classList.add('active-state');
+  // description
+  const desc=document.getElementById('state-description');
+  if(desc)desc.textContent='→ '+st.desc;
+  // also update tok-cond selector if visible
+  const sel=document.getElementById('tok-cond');
+  if(sel)sel.value=st.cond||'';
+  drawToken();
+  saveDB();
+  // update map token if exists — também sincroniza estado no token do mapa
+  const myTok=mapTokens.find(t=>t.isPlayer && t.owner===currentUser);
+  if(myTok){ myTok.state=state; saveMapData(); }
+  redrawMapWithTokens();
+  toast('Estado: '+st.label);
+}
+ 
+// Q key: pressionar UMA VEZ cicla o estado (debounce 400ms para não disparar múltiplas vezes)
+let qKeyDown=false; // mantido para compatibilidade com mapHoverCheck
+let _qDebounce=false;
+document.addEventListener('keydown',e=>{
+  if((e.key==='q'||e.key==='Q')&&!e.repeat&&!_qDebounce){
+    _qDebounce=true;
+    qKeyDown=true;
+    cycleTokenState();
+    setTimeout(()=>{ _qDebounce=false; qKeyDown=false; },400);
+  }
+});
+ 
+function cycleTokenState(){
+  const states=Object.keys(TOKEN_STATES);
+  const idx=states.indexOf(currentTokenState);
+  const next=states[(idx+1)%states.length];
+  setTokenState(next);
+}
+ 
+function placeMyToken(){
+  const c=userChar(currentUser);
+  const tok=c.token||{};
+  const st=TOKEN_STATES[currentTokenState]||TOKEN_STATES.comum;
+  // Inicializa o mapa se ainda não foi aberto
+  if(!mapCtx){ initMap(); }
+  const canvas=document.getElementById('map-canvas');
+  if(!canvas){ toast('Erro: canvas do mapa não encontrado.'); return; }
+  const cx=canvas.width/2,cy=canvas.height/2;
+  // Remove apenas o token deste usuário (não os de outros players)
+  mapTokens=mapTokens.filter(t=>!(t.isPlayer && t.owner===currentUser));
+  mapTokens.push({
+    x:cx, y:cy,
+    name:(c.nome||currentUser).slice(0,4),
+    col:tok.ring||'#1fc8a0',
+    r:GRID_SIZE/2-4,
+    isPlayer:true,
+    owner:currentUser,
+    state:currentTokenState,
+    angle:0
+  });
+  // Garante que o mapa está visível para o player ver o próprio token
+  if(!document.getElementById('tab-mapa')?.classList.contains('active')){
+    showTab('mapa', document.querySelector('.tab-btn[onclick*="mapa"]'));
+  }
+  redrawMapWithTokens();renderMapTokList();saveMapData();
+  toast('⭐ Token colocado no mapa — estado: '+st.label);
+}
+ 
+ 
+ 
+let placingPreset=null;
+ 
+// ── FURNITURE DEFINITIONS ──
+const FURNITURE={
+  mesa:      {w:80, h:48, fill:'#8b5e2e44',stroke:'#8b5e2e',label:'Mesa',   shape:'rect'},
+  cadeira:   {w:28, h:28, fill:'#6e4a2044',stroke:'#6e4a20',label:'Cad',    shape:'rect'},
+  sofa:      {w:90, h:36, fill:'#4a5a8a44',stroke:'#4a5a8a',label:'Sofa',   shape:'rect'},
+  cama:      {w:70, h:110,fill:'#3a5a6a44',stroke:'#3a5a6a',label:'Cama',   shape:'rect'},
+  armario:   {w:56, h:24, fill:'#5a3a2044',stroke:'#5a3a20',label:'Arm.',   shape:'rect'},
+  estante:   {w:80, h:16, fill:'#7a5a3044',stroke:'#7a5a30',label:'Est.',   shape:'rect'},
+  geladeira: {w:28, h:36, fill:'#4a7a8a44',stroke:'#4a7a8a',label:'Gel.',   shape:'rect'},
+  pia:       {w:36, h:28, fill:'#6a8a9a44',stroke:'#6a8a9a',label:'Pia',    shape:'rect'},
+  porta:     {w:8,  h:40, fill:'#8b000044',stroke:'#8b0000',label:'',       shape:'door'},
+  janela:    {w:8,  h:36, fill:'#5b9cf644',stroke:'#5b9cf6',label:'',       shape:'window'},
+  escada:    {w:60, h:40, fill:'#9a8a6a44',stroke:'#9a8a6a',label:'Esc',    shape:'stair'},
+  caixa:     {w:28, h:28, fill:'#8a6a0044',stroke:'#8a6a00',label:'Cx',     shape:'rect'},
+  barril:    {w:24, h:24, fill:'#5a4a2044',stroke:'#5a4a20',label:'',       shape:'circle'},
+  computador:{w:32, h:24, fill:'#3a5a9a44',stroke:'#3a5a9a',label:'PC',     shape:'rect'},
+  altar:     {w:60, h:44, fill:'#8b000066',stroke:'#cc0000',label:'Altar',  shape:'rect'},
+  pentagrama:{w:60, h:60, fill:'#bb88ff22',stroke:'#bb88ff',label:'',       shape:'penta'},
+  vela:      {w:10, h:10, fill:'#c49a0066',stroke:'#c49a00',label:'',       shape:'circle'},
+  portal:    {w:50, h:50, fill:'#534ab766',stroke:'#7c6fff',label:'Portal', shape:'circle'},
+};
+ 
+// ── STRUCTURE OBJECTS (array de objetos clicaveis e arrastaveis) ──
+let mapStructures=[];
+let selectedStruct=null;
+let draggingStruct=false;
+ 
+function hitTestStruct(px,py){
+  for(let i=mapStructures.length-1;i>=0;i--){
+    const s=mapStructures[i];
+    const f=FURNITURE[s.preset];if(!f)continue;
+    const dx=px-s.x,dy=py-s.y;
+    if(f.shape==='circle'||f.shape==='penta'){
+      if(Math.hypot(dx,dy)<=f.w/2+8)return i;
+    }else{
+      const hw=f.w/2+6,hh=f.h/2+6;
+      if(dx>=-hw&&dx<=hw&&dy>=-hh&&dy<=hh)return i;
+    }
+  }
+  return -1;
+}
+ 
+function placePreset(name){
+  if(!isMestre){toast('⛧ Apenas o Mestre pode adicionar objetos ao mapa.');return;}
+  placingPreset=name;
+  const canvas=document.getElementById('map-canvas');
+  if(canvas)canvas.style.cursor='copy';
+  toast('Clique no mapa para posicionar: '+(FURNITURE[name]&&FURNITURE[name].label||name));
+}
+ 
+function drawFurnitureObj(ctx,s,isSelected){
+  const f=FURNITURE[s.preset];if(!f)return;
+  const x=s.x,y=s.y,cx2=x-f.w/2,cy2=y-f.h/2;
+  ctx.save();
+  ctx.translate(x,y);ctx.rotate(s.angle||0);ctx.translate(-x,-y);
+  ctx.globalAlpha=0.85;
+  const stroke=isSelected?'#ffffc8':f.stroke;
+  const lw=isSelected?2.5:1.5;
+  if(f.shape==='circle'){
+    ctx.beginPath();ctx.arc(x,y,f.w/2,0,Math.PI*2);
+    ctx.fillStyle=f.fill;ctx.fill();
+    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();
+  }else if(f.shape==='penta'){
+    ctx.beginPath();
+    for(let i=0;i<5;i++){
+      const a1=i*Math.PI*4/5-Math.PI/2,a2=((i+2)%5)*Math.PI*4/5-Math.PI/2;
+      ctx.moveTo(x+Math.cos(a1)*f.w/2,y+Math.sin(a1)*f.h/2);
+      ctx.lineTo(x+Math.cos(a2)*f.w/2,y+Math.sin(a2)*f.h/2);
+    }
+    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();
+    ctx.beginPath();ctx.arc(x,y,f.w/2,0,Math.PI*2);
+    ctx.strokeStyle=f.stroke+'80';ctx.lineWidth=0.8;ctx.stroke();
+  }else if(f.shape==='door'){
+    ctx.fillStyle=f.fill;ctx.fillRect(cx2,cy2,f.w,f.h);
+    ctx.strokeStyle=stroke;ctx.lineWidth=lw+0.5;ctx.strokeRect(cx2,cy2,f.w,f.h);
+    ctx.beginPath();ctx.arc(cx2,cy2,f.h,0,Math.PI/2);ctx.strokeStyle=f.stroke+'80';ctx.lineWidth=0.8;ctx.stroke();
+  }else if(f.shape==='window'){
+    ctx.fillStyle=f.fill;ctx.fillRect(cx2,cy2,f.w,f.h);
+    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.strokeRect(cx2,cy2,f.w,f.h);
+    ctx.beginPath();ctx.moveTo(cx2,cy2+f.h/2);ctx.lineTo(cx2+f.w,cy2+f.h/2);ctx.stroke();
+  }else if(f.shape==='stair'){
+    ctx.strokeStyle=stroke;ctx.lineWidth=1.2;
+    const steps=5,sw=f.w/steps;
+    for(let i=0;i<=steps;i++){ctx.beginPath();ctx.moveTo(cx2+i*sw,cy2);ctx.lineTo(cx2+i*sw,cy2+f.h);ctx.stroke();}
+    ctx.strokeRect(cx2,cy2,f.w,f.h);
+  }else{
+    ctx.fillStyle=f.fill;ctx.fillRect(cx2,cy2,f.w,f.h);
+    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.strokeRect(cx2,cy2,f.w,f.h);
+  }
+  // halo de selecao
+  if(isSelected){
+    ctx.setLineDash([4,3]);
+    ctx.strokeStyle='rgba(255,255,160,0.5)';ctx.lineWidth=1;
+    const hw=f.w/2+10,hh=f.h/2+10;
+    if(f.shape==='circle'||f.shape==='penta'){
+      ctx.beginPath();ctx.arc(x,y,f.w/2+10,0,Math.PI*2);ctx.stroke();
+    }else{
+      ctx.strokeRect(x-hw,y-hh,hw*2,hh*2);
+    }
+    ctx.setLineDash([]);
+  }
+  if(f.label){
+    ctx.globalAlpha=0.75;
+    ctx.fillStyle=isSelected?'#ffffc8':'rgba(200,190,190,0.7)';
+    ctx.font='10px "Cinzel",serif';
+    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(f.label,x,y);
+  }
+  ctx.restore();
+}
+ 
+function drawAllStructures(){
+  if(!mapCtx)return;
+  mapStructures.forEach((s,i)=>drawFurnitureObj(mapCtx,s,i===selectedStruct));
+}
+ 
+function saveStructures(){
+  if(!db.maps) db.maps={};
+  db.maps['shared_structs']=JSON.stringify(mapStructures);
+  // Salva só os structs no localStorage sem disparar o fbSaveDB pesado (que inclui bg do mapa)
+  try{ localStorage.setItem('op_db', JSON.stringify(db)); }catch(e){}
+  fbPublishMap(true); // publica em tempo real via SSE (leve, só JSON)
+}
+function loadStructures(){
+  try{const d=db.maps['shared_structs']||db.maps[currentUser+'_structs'];mapStructures=d?JSON.parse(d):[];}
+  catch(e){mapStructures=[];}
+}
+ 
+
+/* ══════════════════════════════════════════════
+   FIREBASE — PRESENÇA E TEMPO REAL
+══════════════════════════════════════════════ */
+
+// Executa cb() quando o módulo Firebase estiver pronto.
+// Se já estiver pronto, executa imediatamente.
+function _whenFbReady(cb){
+  if(window._fbReady){
+    cb();
+  } else {
+    window.addEventListener('fb-module-ready', cb, { once: true });
+  }
+}
+
+function fbConnect(user, isMestreFlag){
+  _whenFbReady(()=>{
+    // Verifica se Firebase está configurado (fbSetPresence existe mas fbInit pode retornar null)
+    if(!window.fbSetPresence){
+      console.warn('[Firebase] funções não disponíveis');
+      return;
+    }
+    _doFbConnect(user, isMestreFlag);
+  });
+}
+
+function _doFbConnect(user, isMestreFlag){
+  // Monitora estado de conexão real e atualiza indicador visual
+  if(window.fbWatchConnection){
+    window.fbWatchConnection(connected => {
+      const statusEl = document.getElementById('fb-status');
+      if(statusEl){
+        statusEl.style.display = '';
+        statusEl.textContent = connected ? '● ONLINE' : '○ OFFLINE';
+        statusEl.style.color = connected ? 'rgba(34,204,102,0.8)' : 'rgba(200,80,80,0.8)';
+        statusEl.style.borderColor = connected ? 'rgba(34,204,102,0.35)' : 'rgba(200,80,80,0.35)';
+      }
+    });
+  }
+
+  // Grava presença no Firebase
+  window.fbSetPresence(user, isMestreFlag);
+
+  // Escuta lista de presença — todos os usuários (polling a cada 3s)
+  if(window.fbWatchPresence){
+    window.fbWatchPresence(presence => {
+      renderOnlineList(presence);
+    });
+  }
+
+  // Todos: escuta broadcasts do Mestre
+  if(window.fbWatchBroadcast){
+    window.fbWatchBroadcast(data => {
+      if(!data || data.from === user) return;
+      const el = document.getElementById('broadcast-incoming');
+      const txt = document.getElementById('broadcast-text');
+      if(el && txt){
+        txt.textContent = data.msg;
+        el.classList.add('show');
+        setTimeout(()=>el.classList.remove('show'), 8000);
+      }
+    });
+  }
+
+  // Todos: escuta kick do próprio usuário
+  if(!isMestreFlag && window.fbWatchKick){
+    window.fbWatchKick(user, ()=>{
+      toast('⛧ Você foi desconectado pelo Mestre.');
+      setTimeout(()=>doLogout(), 2000);
+    });
+  }
+
+  // Todos: recebe tokens + structs em tempo real (JSON leve)
+  if(window.fbWatchMap){
+    let _lastMapTs=0;
+    window.fbWatchMap(data => {
+      if(!data || !data.ts) return;
+      if(data.ts <= _lastMapTs) return;
+      _lastMapTs = data.ts;
+      // Anti-eco: ignora update que eu mesmo publiquei
+      if(data.ts === window._myLastMapPublish) return;
+      try{
+        const newTokens = JSON.parse(data.tokens || '[]');
+        const newStructs = JSON.parse(data.structs || '[]');
+        // Tokens: se estou arrastando o meu agora, preserva posição local
+        const myTok = draggingToken && !isMestreFlag
+          ? mapTokens.find(t=>t.isPlayer && t.owner===user)
+          : null;
+        mapTokens = newTokens;
+        if(myTok){
+          const idx = mapTokens.findIndex(t=>t.isPlayer && t.owner===user);
+          if(idx>=0) mapTokens[idx]=myTok; else mapTokens.push(myTok);
+        }
+        // Estruturas: todos recebem sempre
+        if(!draggingStruct) mapStructures = newStructs;
+        fullRedraw();
+        renderMapTokList();
+      }catch(e){ console.warn('[mapa] sync err:',e); }
+    });
+  }
+
+  // Todos: recebe bg do mapa quando Mestre salva (separado dos tokens)
+  if(window.fbWatchBg){
+    let _lastBgTs=0;
+    window.fbWatchBg(data=>{
+      if(!data || !data.ts) return;
+      if(data.ts <= _lastBgTs) return;
+      _lastBgTs = data.ts;
+      if(!data.data) return;
+      // Salva local para reload
+      db.maps['shared'] = data.data;
+      saveDB();
+      const bgImg=new Image();
+      bgImg.onload=()=>{
+        const bg=_getBgCanvas();
+        if(!bg) return;
+        const ctx2=bg.getContext('2d');
+        ctx2.clearRect(0,0,bg.width,bg.height);
+        ctx2.drawImage(bgImg,0,0,bg.width,bg.height);
+        mapPushHistory();
+        fullRedraw();
+      };
+      bgImg.src=data.data;
+    });
+  }
+}
+
+function renderOnlineList(presence){
+  const entries = Object.values(presence || {});
+
+  // ── Atualiza indicador da topbar (visível para todos) ──
+  const indicator = document.getElementById('online-indicator');
+  const countEl   = document.getElementById('online-count');
+  const popupList = document.getElementById('online-popup-list');
+  if(indicator){
+    if(entries.length > 0){
+      indicator.style.display = '';
+      if(countEl) countEl.textContent = entries.length;
+    } else {
+      indicator.style.display = 'none';
+    }
+  }
+  if(popupList){
+    if(!entries.length){
+      popupList.innerHTML = '<span style="color:var(--white-dust);font-size:12px">Nenhum agente online.</span>';
+    } else {
+      popupList.innerHTML = '';
+      entries.forEach(p => {
+        const sinceStr = p.since ? new Date(p.since).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '--:--';
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:7px;font-size:12px;font-family:"Oswald",sans-serif;letter-spacing:.05em;color:'+(p.isMestre?'#c49a00':'var(--white-ash)');
+        row.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#22cc66;flex-shrink:0;display:inline-block"></span><span>${p.isMestre?'⛧ ':''}${p.user}</span><span style="font-size:10px;color:var(--white-dust);margin-left:auto">${sinceStr}</span>`;
+        popupList.appendChild(row);
+      });
+    }
+  }
+
+  // ── Atualiza painel da aba Mestre ──
+  const el = document.getElementById('online-list');
+  if(!el) return;
+  if(!entries.length){
+    el.innerHTML = '<span style="color:var(--white-dust);font-size:12px">Nenhum agente online.</span>';
+    return;
+  }
+  el.innerHTML = '';
+  entries.forEach(p => {
+    const card = document.createElement('div');
+    card.className = 'online-card' + (p.isMestre ? ' mestre-card' : '');
+    const sinceStr = p.since ? new Date(p.since).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '--:--';
+    const kickBtn = (isMestre && !p.isMestre && p.user !== currentUser)
+      ? `<button class="kick-btn" onclick="fbKickPlayer('${p.user}')" title="Desconectar agente">✕</button>`
+      : '';
+    card.innerHTML = `<span class="o-dot"></span><span>${p.isMestre ? '⛧ ' : ''}${p.user}</span><span style="font-size:10px;color:var(--white-dust);margin-left:4px">${sinceStr}</span>${kickBtn}`;
+    el.appendChild(card);
+  });
+}
+
+function toggleOnlinePopup(){
+  const popup = document.getElementById('online-popup');
+  if(!popup) return;
+  popup.style.display = popup.style.display === 'none' ? 'block' : 'none';
+}
+// Fecha popup ao clicar fora
+document.addEventListener('click', e => {
+  const popup = document.getElementById('online-popup');
+  const indicator = document.getElementById('online-indicator');
+  if(popup && indicator && !popup.contains(e.target) && !indicator.contains(e.target)){
+    popup.style.display = 'none';
+  }
+});
+
+function fbSendBroadcast(){
+  if(!isMestre){toast('⛧ Apenas o Mestre pode enviar broadcasts.');return;}
+  const inp = document.getElementById('broadcast-input');
+  const msg = inp ? inp.value.trim() : '';
+  if(!msg){toast('Digite uma mensagem.');return;}
+  if(!window.fbBroadcast){toast('Firebase não conectado.');return;}
+  window.fbBroadcast(msg, currentUser);
+  if(inp) inp.value = '';
+  toast('⛧ Mensagem enviada a todos.');
+}
+
+function fbKickPlayer(user){
+  if(!isMestre){return;}
+  if(!confirm('Desconectar o agente "' + user + '"?'))return;
+  if(!window.fbKick){toast('Firebase não conectado.');return;}
+  window.fbKick(user);
+  toast('Agente ' + user + ' desconectado.');
+}
+
+function updateMapToolbarVisibility(){
+  const mestreOnlyIds=['tool-wall','tool-pencil','tool-rect','tool-circle','tool-line','tool-text','tool-token','tool-erase'];
+  mestreOnlyIds.forEach(id=>{
+    const btn=document.getElementById(id);
+    if(btn) btn.style.display=isMestre?'':'none';
+  });
+  const presetBtns=document.querySelectorAll('.preset-btn');
+  presetBtns.forEach(b=>b.style.display=isMestre?'':'none');
+  const presetLabels=document.querySelectorAll('.preset-group-label');
+  presetLabels.forEach(l=>l.style.display=isMestre?'':'none');
+  ['mapUndo','mapClear','mapReset'].forEach(fn=>{
+    document.querySelectorAll('.tool-btn').forEach(b=>{
+      if(b.getAttribute('onclick')&&b.getAttribute('onclick').includes(fn))
+        b.style.display=isMestre?'':'none';
+    });
+  });
+  let hint=document.getElementById('map-player-hint');
+  if(!isMestre){
+    if(!hint){
+      hint=document.createElement('div');hint.id='map-player-hint';
+      hint.style.cssText='padding:6px 14px;background:rgba(50,0,30,0.7);border:1px solid var(--blood-deep);font-size:11px;color:var(--white-dust);font-family:"Courier Prime",monospace;border-top:none';
+      hint.textContent='⛧ Modo Agente — você pode mover seu token. Todos os jogadores veem o mapa em tempo real.';
+      const toolbar=document.querySelector('.map-toolbar');
+      if(toolbar&&toolbar.parentElement)toolbar.parentElement.insertBefore(hint,toolbar.nextSibling);
+    }
+    hint.style.display='';
+  } else {
+    if(hint) hint.style.display='none';
+  }
+}
+
+// Inicialização — síncrono, nunca trava
+checkFirebaseSetup();
+loadDB();
+document.addEventListener('keydown',e=>{
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();if(isMestre)mapUndo();}
+  if((e.key==='Delete'||e.key==='Backspace')&&selectedStruct!==null){
+    if(!isMestre){toast('⛧ Apenas o Mestre pode remover objetos.');return;}
+    e.preventDefault();
+    mapStructures.splice(selectedStruct,1);
+    selectedStruct=null;
+    fullRedraw();saveStructures();
+    toast('Estrutura removida.');
+  }
+});
+</script>
+ 
+</body>
+</html>
