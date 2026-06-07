@@ -294,184 +294,145 @@ body::before{content:'';position:fixed;inset:0;background:radial-gradient(ellips
 <!-- Firebase -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp, remove, get, update }
+import { getDatabase, ref, set, onValue, onDisconnect, serverTimestamp, remove, get }
   from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
-// ══════════════════════════════════════════════
-//  FIREBASE — carrega config do localStorage
-// ══════════════════════════════════════════════
-let _fbApp, _fbDb;
+let _db = null;
 
-function fbGetConfig(){
+function getConfig(){
   try { return JSON.parse(localStorage.getItem('op_firebase_config') || 'null'); } catch(e){ return null; }
 }
 
-function fbInit(){
-  if(_fbDb) return _fbDb;
-  const cfg = fbGetConfig();
-  if(!cfg || !cfg.apiKey || cfg.apiKey === 'AIzaSyPLACEHOLDER'){
-    console.warn('[Firebase] Configuração não encontrada.');
-    return null;
-  }
+function initDB(){
+  if(_db) return _db;
+  const cfg = getConfig();
+  if(!cfg || !cfg.apiKey || cfg.apiKey === 'AIzaSyPLACEHOLDER') return null;
   try {
-    _fbApp = initializeApp(cfg, 'op-mesa');
-    _fbDb  = getDatabase(_fbApp);
-    console.log('[Firebase] conectado:', cfg.databaseURL);
-    return _fbDb;
-  } catch(e) {
-    console.error('[Firebase] Erro ao inicializar:', e);
-    return null;
-  }
+    const app = initializeApp(cfg, 'op-mesa');
+    _db = getDatabase(app);
+    return _db;
+  } catch(e){ console.error('[FB] init error:', e); return null; }
 }
 
-// ── Utilitário: espera conexão real com o servidor Firebase ──
-function _waitConnected(db, cb){
-  const connRef = ref(db, '.info/connected');
-  const unsub = onValue(connRef, snap => {
-    if(snap.val() === true){
-      unsub(); // para de escutar após conectar
-      cb();
-    }
+// Espera o Firebase confirmar conexão com o servidor
+function waitConnected(db){
+  return new Promise(resolve => {
+    const unsub = onValue(ref(db, '.info/connected'), snap => {
+      if(snap.val() === true){ unsub(); resolve(); }
+    });
   });
 }
 
-// ── Presença ──
-window.fbSetPresence = function(user, isMestre){
-  const db = fbInit(); if(!db) return;
-  // Espera conexão real antes de gravar presença
-  _waitConnected(db, async () => {
-    const presRef = ref(db, 'presence/' + user);
-    await set(presRef, { user, isMestre: !!isMestre, since: serverTimestamp(), online: true });
-    onDisconnect(presRef).remove();
-    console.log('[Presença] registrado:', user);
-    // Dispara evento para o script principal saber que presença foi gravada
-    window.dispatchEvent(new CustomEvent('fb-presence-set', { detail: { user } }));
-  });
+// ── PRESENÇA ──
+window.fbSetPresence = async function(user, isMestre){
+  const db = initDB(); if(!db){ console.warn('[FB] sem config'); return; }
+  try {
+    await waitConnected(db);
+    const r = ref(db, 'presence/' + user);
+    await set(r, { user, isMestre: !!isMestre, since: serverTimestamp(), online: true });
+    onDisconnect(r).remove();
+    console.log('[FB] presença gravada:', user);
+  } catch(e){ console.error('[FB] fbSetPresence error:', e); }
 };
 
 window.fbRemovePresence = async function(user){
-  const db = fbInit(); if(!db) return;
-  await remove(ref(db, 'presence/' + user));
+  const db = initDB(); if(!db) return;
+  try { await remove(ref(db, 'presence/' + user)); } catch(e){}
 };
 
 window.fbWatchPresence = function(cb){
-  const db = fbInit(); if(!db) return;
-  // Escuta imediatamente — onValue já lida com reconexões automaticamente
+  const db = initDB(); if(!db) return;
   onValue(ref(db, 'presence'), snap => {
-    console.log('[Presença] update recebido:', snap.val());
-    cb(snap.val() || {});
+    const val = snap.val() || {};
+    console.log('[FB] presence snapshot:', Object.keys(val));
+    cb(val);
   });
 };
 
-// Expõe estado de conexão para debug
 window.fbWatchConnection = function(cb){
-  const db = fbInit(); if(!db) return;
+  const db = initDB(); if(!db) return;
   onValue(ref(db, '.info/connected'), snap => cb(!!snap.val()));
 };
 
-// ── Broadcast ──
+// ── BROADCAST ──
 window.fbBroadcast = async function(msg, from){
-  const db = fbInit(); if(!db) return;
+  const db = initDB(); if(!db) return;
   await set(ref(db, 'broadcast'), { msg, from, ts: serverTimestamp() });
 };
-
 window.fbWatchBroadcast = function(cb){
-  const db = fbInit(); if(!db) return;
+  const db = initDB(); if(!db) return;
   onValue(ref(db, 'broadcast'), snap => { if(snap.val()) cb(snap.val()); });
 };
 
-// ── Kick ──
+// ── KICK ──
 window.fbKick = async function(user){
-  const db = fbInit(); if(!db) return;
+  const db = initDB(); if(!db) return;
   await set(ref(db, 'kicks/' + user), { ts: serverTimestamp() });
 };
-
 window.fbWatchKick = function(user, cb){
-  const db = fbInit(); if(!db) return;
+  const db = initDB(); if(!db) return;
   onValue(ref(db, 'kicks/' + user), snap => { if(snap.val()) cb(); });
 };
 
-// ══════════════════════════════════════════════
-//  SINCRONIZAÇÃO COMPLETA DO BANCO DE DADOS
-// ══════════════════════════════════════════════
-
-// Salva o DB completo no Firebase (throttled)
-let _fbSaveTimer = null;
+// ── BANCO DE DADOS ──
+let _saveTimer = null;
 window.fbSaveDB = function(dbObj){
-  const db = fbInit(); if(!db) return;
-  clearTimeout(_fbSaveTimer);
-  _fbSaveTimer = setTimeout(async () => {
+  const db = initDB(); if(!db) return;
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(async () => {
     try {
-      // Salva users, characters, rolls, mestre (sem maps — muito grande)
-      const payload = {
+      await set(ref(db, 'gamedata'), {
         users: dbObj.users || {},
         characters: dbObj.characters || {},
         rolls: dbObj.rolls || {},
         mestre: dbObj.mestre || {}
-      };
-      await set(ref(db, 'gamedata'), payload);
-    } catch(e){ console.error('[Firebase] Erro ao salvar:', e); }
+      });
+    } catch(e){ console.error('[FB] save error:', e); }
   }, 600);
 };
 
-// Salva mapa (separado por ser grande — só o Mestre salva)
 window.fbSaveMap = function(mapKey, mapData){
-  const db = fbInit(); if(!db) return;
-  // Mapa como dataURL é muito grande para Realtime DB (1MB limit por nó)
-  // Salvamos tokens + estruturas; o canvas base fica local
+  const db = initDB(); if(!db) return;
   try {
-    const payload = {
+    set(ref(db, 'mapstate'), {
       tokens: mapData.tokens || '[]',
       structs: mapData.structs || '[]',
       ts: Date.now()
-    };
-    set(ref(db, 'mapstate'), payload);
+    });
   } catch(e){}
 };
 
-// Escuta mudanças remotas no banco (para sincronizar em tempo real)
 window.fbWatchDB = function(cb){
-  const db = fbInit(); if(!db) return;
-  onValue(ref(db, 'gamedata'), snap => {
-    if(snap.val()) cb(snap.val());
-  });
+  const db = initDB(); if(!db) return;
+  onValue(ref(db, 'gamedata'), snap => { if(snap.val()) cb(snap.val()); });
 };
 
-// Escuta mudanças no mapa
 window.fbWatchMap = function(cb){
-  const db = fbInit(); if(!db) return;
-  onValue(ref(db, 'mapstate'), snap => {
-    if(snap.val()) cb(snap.val());
-  });
+  const db = initDB(); if(!db) return;
+  onValue(ref(db, 'mapstate'), snap => { if(snap.val()) cb(snap.val()); });
 };
 
-// Carrega o banco uma vez (para o login inicial)
 window.fbLoadDB = async function(){
-  const db = fbInit(); if(!db) return null;
-  try {
-    const snap = await get(ref(db, 'gamedata'));
-    return snap.val();
-  } catch(e){ return null; }
+  const db = initDB(); if(!db) return null;
+  try { const snap = await get(ref(db, 'gamedata')); return snap.val(); } catch(e){ return null; }
 };
 
-// Verifica se a configuração é válida tentando conectar
 window.fbTestConfig = async function(cfg){
   try {
-    const app = initializeApp(cfg, 'op-mesa-test-' + Date.now());
-    const testDb = getDatabase(app);
-    await get(ref(testDb, '.info/connected'));
+    const app = initializeApp(cfg, 'op-test-' + Date.now());
+    const db = getDatabase(app);
+    await waitConnected(db);
     return { ok: true };
-  } catch(e){
-    return { ok: false, err: e.message };
-  }
+  } catch(e){ return { ok: false, err: e.message }; }
 };
 
+// Inicializa imediatamente se já tiver config
+initDB();
+
+// Marca como pronto e notifica o script principal
 window._fbReady = true;
-// Tenta inicializar imediatamente se já tiver config salva
-fbInit();
-console.log('[Firebase] módulo carregado');
-// Dispara evento para o script principal saber que o módulo está pronto
 window.dispatchEvent(new CustomEvent('fb-module-ready'));
+console.log('[FB] módulo carregado, db:', !!_db);
 </script>
 </head>
 <body>
@@ -517,6 +478,8 @@ window.dispatchEvent(new CustomEvent('fb-module-ready'));
     </div>
     <div id="cfg-err" style="color:#cc4444;font-size:12px;font-family:'Courier Prime',monospace;min-height:16px;margin-bottom:.8rem;text-align:center"></div>
     <button onclick="saveFirebaseConfig()" style="width:100%;padding:13px;background:transparent;border:1px solid #8a6a00;color:#c49a00;font-family:'Cinzel',serif;font-size:13px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;margin-bottom:.6rem;transition:all .2s" onmouseover="this.style.background='rgba(138,106,0,0.15)'" onmouseout="this.style.background='transparent'">⛧ Salvar e Conectar ⛧</button>
+    <button onclick="testFirebaseNow()" style="width:100%;padding:9px;background:transparent;border:1px solid rgba(91,156,246,0.5);color:#5b9cf6;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;margin-bottom:.6rem;transition:all .2s">🔍 Testar Conexão Agora</button>
+    <div id="cfg-diag" style="display:none;background:rgba(0,10,20,0.8);border:1px solid rgba(91,156,246,0.3);padding:10px 14px;font-size:11px;font-family:'Courier Prime',monospace;color:#a0c0e0;line-height:1.8;margin-bottom:.8rem;white-space:pre-wrap"></div>
     <button onclick="skipFirebaseSetup()" style="width:100%;padding:9px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(139,0,0,0.08)'" onmouseout="this.style.background='transparent'">Usar offline (apenas nesta máquina)</button>
     <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--blood-deep);font-size:11px;color:var(--white-dust);text-align:center;font-family:'Courier Prime',monospace">
       Já tem configuração salva? <a onclick="skipFirebaseSetup()" style="color:var(--crimson-mid);cursor:pointer">Continuar sem alterar</a>
@@ -1104,6 +1067,64 @@ function saveFirebaseConfig(){
 function skipFirebaseSetup(){
   document.getElementById('screen-firebase').style.display = 'none';
   document.getElementById('screen-login').classList.add('active');
+}
+
+async function testFirebaseNow(){
+  const diagEl = document.getElementById('cfg-diag');
+  diagEl.style.display = 'block';
+  diagEl.textContent = '⏳ Testando...\n';
+
+  const cfg = {
+    apiKey:    document.getElementById('cfg-apiKey').value.trim()    || (()=>{try{return JSON.parse(localStorage.getItem('op_firebase_config')||'{}').apiKey}catch(e){return ''}})(),
+    databaseURL: document.getElementById('cfg-dbUrl').value.trim()   || (()=>{try{return JSON.parse(localStorage.getItem('op_firebase_config')||'{}').databaseURL}catch(e){return ''}})(),
+    projectId: document.getElementById('cfg-projectId').value.trim() || (()=>{try{return JSON.parse(localStorage.getItem('op_firebase_config')||'{}').projectId}catch(e){return ''}})(),
+  };
+
+  const log = msg => { diagEl.textContent += msg + '\n'; };
+
+  if(!cfg.apiKey)      { log('❌ API Key vazia'); return; }
+  if(!cfg.databaseURL) { log('❌ Database URL vazia'); return; }
+  if(!cfg.projectId)   { log('❌ Project ID vazio'); return; }
+
+  log('✓ Campos preenchidos');
+  log('📡 API Key: ' + cfg.apiKey.substring(0,12) + '...');
+  log('📡 Database: ' + cfg.databaseURL);
+
+  // Tenta conectar via fetch direto ao REST API do Firebase
+  // (não precisa do SDK — funciona para testar se o banco está acessível)
+  try {
+    log('🔌 Testando acesso ao banco...');
+    const url = cfg.databaseURL.replace(/\/$/, '') + '/presence.json?shallow=true&timeout=5s';
+    const resp = await fetch(url);
+    if(resp.ok){
+      const data = await resp.json();
+      log('✅ Banco acessível! Dados de presença: ' + JSON.stringify(data));
+      log('');
+      log('👥 Se aparece null = ninguém online ainda (normal)');
+      log('👥 Se aparece nomes = esses usuários estão online');
+      diagEl.style.color = '#22cc88';
+    } else {
+      const txt = await resp.text();
+      log('❌ Erro HTTP ' + resp.status + ': ' + txt);
+      if(resp.status === 401 || txt.includes('Permission denied')){
+        log('');
+        log('⚠️  REGRAS DO FIREBASE BLOQUEANDO!');
+        log('   Vá em Firebase Console → Realtime Database');
+        log('   → Regras → e cole isso:');
+        log('   { "rules": { ".read": true, ".write": true } }');
+        log('   (modo de teste — válido por 30 dias)');
+      }
+      diagEl.style.color = '#cc6644';
+    }
+  } catch(e) {
+    log('❌ Falha na conexão: ' + e.message);
+    log('');
+    log('Possíveis causas:');
+    log('• Database URL incorreta');
+    log('• Projeto Firebase não existe mais');
+    log('• Bloqueio de rede/firewall');
+    diagEl.style.color = '#cc6644';
+  }
 }
 
 function openFirebaseSettings(){
@@ -2946,11 +2967,16 @@ function _doFbConnect(user, isMestreFlag){
         statusEl.style.color = connected ? 'rgba(34,204,102,0.8)' : 'rgba(200,80,80,0.8)';
         statusEl.style.borderColor = connected ? 'rgba(34,204,102,0.35)' : 'rgba(200,80,80,0.35)';
       }
+      // Atualiza indicador de online na topbar
+      const ind = document.getElementById('online-indicator');
+      if(ind && !connected) ind.style.display = 'none';
     });
   }
 
-  // Grava presença (espera conexão real internamente)
-  window.fbSetPresence(user, isMestreFlag);
+  // Testa se consegue escrever no Firebase e mostra erro claro se falhar
+  window.fbSetPresence(user, isMestreFlag).catch ? 
+    window.fbSetPresence(user, isMestreFlag) : 
+    window.fbSetPresence(user, isMestreFlag);
 
   // Escuta lista de presença — todos os usuários
   if(window.fbWatchPresence){
