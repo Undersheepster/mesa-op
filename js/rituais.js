@@ -1,4 +1,4 @@
-﻿const appRituais = {};
+const appRituais = {};
 /* ══════════════════════════════════════════════
    RITUAIS
 ══════════════════════════════════════════════ */
@@ -350,7 +350,6 @@ function renderLog(){
 function resetAllRolls(){if(confirm('Limpar histórico de rolagens de todos?')){db.rolls={};saveDB();renderLog();toast('Histórico limpo.');}}
  
 
-
 appRituais.addInv = addInv;
 appRituais.addNota = addNota;
 appRituais.addPista = addPista;
@@ -366,6 +365,28 @@ appRituais.renderPistas = renderPistas;
 appRituais.renderRit = renderRit;
 appRituais.renderRituaisTab = renderRituaisTab;
 appRituais.resetAllRolls = resetAllRolls;
+appRituais.rollCustom = rollCustom;
+appRituais.rollDie = rollDie;
+appRituais.showRoll = showRoll;
+appRituais.addInv = addInv;
+appRituais.addNota = addNota;
+appRituais.addPista = addPista;
+appRituais.addRit = addRit;
+appRituais.delInv = delInv;
+appRituais.delNota = delNota;
+appRituais.delPista = delPista;
+appRituais.delRit = delRit;
+appRituais.ELEM_COR = ELEM_COR;
+appRituais.ELEM_ICO = ELEM_ICO;
+appRituais.PISTA_COLORS = PISTA_COLORS;
+appRituais.renderInv = renderInv;
+appRituais.renderLog = renderLog;
+appRituais.renderNotas = renderNotas;
+appRituais.renderPistas = renderPistas;
+appRituais.renderRit = renderRit;
+appRituais.renderRituaisTab = renderRituaisTab;
+appRituais.resetAllRolls = resetAllRolls;
+appRituais.RITUAIS_DB = RITUAIS_DB;
 appRituais.rollCustom = rollCustom;
 appRituais.rollDie = rollDie;
 appRituais.showRoll = showRoll;

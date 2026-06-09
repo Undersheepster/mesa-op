@@ -1,4 +1,4 @@
-﻿const appCriaturas = {};
+const appCriaturas = {};
 // ══ ELEMENTOS & CRIATURAS ══
 const ELEMENTOS = [
   // Morte — preto/cinza/branco (escuridão, silêncio, ausência de cor)
@@ -162,10 +162,6 @@ const CRIATURAS = [
 function renderElementos(){
   const g = document.getElementById('elementos-grid');
   if(!g) return;
-
-
-appAudio.renderElementos = renderElementos;
-Object.assign(window, appAudio);
   g.innerHTML = ELEMENTOS.map(el=>`
     <div onclick="verElemento('${el.id}')" style="background:rgba(10,0,8,0.9);border:1px solid ${el.cor};padding:16px;cursor:pointer;transition:all .2s;position:relative;overflow:hidden">
       <div style="position:absolute;top:0;left:0;right:0;height:2px;background:${el.cor};opacity:.7"></div>
@@ -472,8 +468,6 @@ function showSubTab(sub){
 })();
 
 
-
-
 appCriaturas._patch = _patch;
 appCriaturas.filtrarCriaturas = filtrarCriaturas;
 appCriaturas.filtrarReliquias = filtrarReliquias;
@@ -483,5 +477,4 @@ appCriaturas.renderReliquias = renderReliquias;
 appCriaturas.showSubTab = showSubTab;
 appCriaturas.verCriatura = verCriatura;
 appCriaturas.verElemento = verElemento;
-appCriaturas.verReliquia = verReliquia;
 Object.assign(window, appCriaturas);

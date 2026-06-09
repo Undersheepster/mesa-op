@@ -19,19 +19,14 @@ index.html          — HTML structure, loads CSS + all JS files
 style.css           — All CSS rules (~350 lines, dark horror theme)
 js/
   firebase.js       — Firebase REST API (fetch, SSE, polling). Namespace: appFirebase
-  core.js           — DB layer, auth, Firebase config, class/origin data. Namespace: appCore
-  trilhas.js        — TRILHAS_DATA (class paths) + selection logic. Namespace: appTrilhas
-  rituais.js        — RITUAIS_DB (spells DB) + inventory/mission UI. Namespace: appRituais
-  ficha.js          — Character sheet (stats, attrs, skills, conditions). Namespace: appFicha
-  dados.js          — Dice rolling + roll history. Namespace: appDados
-  token.js          — Token canvas creator + token states. Namespace: appToken
-  mapa.js           — Battle map (canvas, draw, tokens, structures, audio). Namespace: appMapa
-  criaturas.js      — ELEMENTOS, CRIATURAS, RELIQUIAS data + rendering. Namespace: appCriaturas
+  app.js            — All application logic (auth, DB, tabs, ficha, dados, inventário,
+                      missão, trilhas, rituais, token, mapa, mestre, audio, criaturas).
+                      Namespace: appMesa
 ```
 
 ## JS Namespaces
 
-Each `js/*.js` file wraps its functions in a `const` namespace (e.g., `appMapa.initMap()`, `appDados.rollDie()`). All functions are also exposed on `window` for HTML `onclick` compatibility. Load order in `index.html` matches dependency chain (firebase → core → data → features).
+Each `js/*.js` file wraps its functions in a `const` namespace (e.g., `appFirebase.fbTestConfig()`, `appMesa.showTab()`). All functions are also exposed on `window` for HTML `onclick` compatibility. Load order: `firebase.js` → `app.js`.
 
 ## App Screens/Tabs
 

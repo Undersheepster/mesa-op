@@ -1,4 +1,4 @@
-﻿const appFirebase = {};
+const appFirebase = {};
 // ══════════════════════════════════════════════
 //  FIREBASE — REST API + SSE
 // ══════════════════════════════════════════════
@@ -227,5 +227,12 @@ appFirebase._fbDelete = _fbDelete;
 appFirebase._fbGet = _fbGet;
 appFirebase._fbPoll = _fbPoll;
 appFirebase._fbPut = _fbPut;
+appFirebase._fbBase = _fbBase;
+appFirebase._fbCfg = _fbCfg;
+appFirebase._fbPoll = _fbPoll;
 appFirebase._fbSSE = _fbSSE;
+appFirebase._msTimer = _msTimer;
+appFirebase._polls = _polls;
+appFirebase._saveDbTimer = _saveDbTimer;
+appFirebase._sseConnections = _sseConnections;
 Object.assign(window, appFirebase);

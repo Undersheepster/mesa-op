@@ -1,48 +1,4 @@
-﻿const appTrilhas = {};
-/* ══════════════════════════════════════════════
-   CONDITIONS
-══════════════════════════════════════════════ */
-const CONDS=['Abalado','Apavorado','Inconsciente','Sangrando','Exausto','Paralisado','Maldito','Alucinando','Perturbado'];
-function renderConds(){
-  const el=document.getElementById('cond-grid');el.innerHTML='';
-  const c=userChar(currentUser);
-  if(!c.conds) c.conds={};
-  CONDS.forEach(co=>{
-    const b=document.createElement('button');
-    b.className='cond-chip'+(c.conds[co]?' on':'');
-    b.textContent=co;
-    b.onclick=()=>{c.conds[co]=!c.conds[co];renderConds();saveDB();};
-    el.appendChild(b);
-  });
-}
- 
-/* ══════════════════════════════════════════════
-   HABS
-══════════════════════════════════════════════ */
-function renderHabs(){
-  const el=document.getElementById('hab-list');el.innerHTML='';
-  const c=userChar(currentUser);
-  if(!c.habs) c.habs=[];
-  if(!c.habs.length){el.innerHTML='<div style="color:var(--white-dust);font-size:13px;padding:4px 0">Nenhuma habilidade registrada.</div>';return;}
-  c.habs.forEach((h,i)=>{
-    const row=document.createElement('div');row.className='list-item';
-    const cls=h.t==='p'?'badge-p':h.t==='r'?'badge-r':'badge-h';
-    const lbl=h.t==='p'?'Paranormal':h.t==='r'?'Ritual':'Habilidade';
-    row.innerHTML=`<div class="list-body"><span class="badge ${cls}">${lbl}</span>${h.nome}${h.desc?'<div class="list-meta">'+h.desc+'</div>':''}</div>
-      <button class="del-btn" onclick="delHab(${i})">×</button>`;
-    el.appendChild(row);
-  });
-}
-function addHab(){
-  const n=document.getElementById('hab-inp').value.trim();if(!n)return;
-  const c=userChar(currentUser);
-  if(!c.habs) c.habs=[];
-  c.habs.push({nome:n,t:document.getElementById('hab-tipo').value,desc:document.getElementById('hab-desc').value.trim()});
-  document.getElementById('hab-inp').value='';document.getElementById('hab-desc').value='';
-  renderHabs();saveDB();toast('Habilidade adicionada.');
-}
-function delHab(i){const c=userChar(currentUser);c.habs.splice(i,1);renderHabs();saveDB();}
- 
+const appTrilhas = {};
 /* ══════════════════════════════════════════════
    TRILHAS
 ══════════════════════════════════════════════ */
@@ -379,14 +335,14 @@ function loadTrilhaSelects(){
 }
 
 
-
-appTrilhas.addHab = addHab;
 appTrilhas.confirmarTrilha = confirmarTrilha;
-appTrilhas.delHab = delHab;
 appTrilhas.loadTrilhaSelects = loadTrilhaSelects;
-appTrilhas.renderConds = renderConds;
-appTrilhas.renderHabs = renderHabs;
+appTrilhas.renderTrilhaAtiva = renderTrilhaAtiva;
+appTrilhas.renderTrilhasOpts = renderTrilhasOpts;
+appTrilhas.confirmarTrilha = confirmarTrilha;
+appTrilhas.loadTrilhaSelects = loadTrilhaSelects;
 appTrilhas.renderTrilhaAtiva = renderTrilhaAtiva;
 appTrilhas.renderTrilhasOpts = renderTrilhasOpts;
 appTrilhas.toggleTrilhaHab = toggleTrilhaHab;
+appTrilhas.TRILHAS_DATA = TRILHAS_DATA;
 Object.assign(window, appTrilhas);
