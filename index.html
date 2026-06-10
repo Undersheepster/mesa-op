@@ -523,8 +523,13 @@
           <button class="btn-add" onclick="filtrarItens('modificacao')" id="fit-modificacao">Modificações</button>
         </div>
         <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
-          <input id="itens-busca" placeholder="Buscar item..." oninput="filtrarItens(document.querySelector('#tab-itens .btn-add[style*=rgba\\(139])?.textContent?.toLowerCase()||',todas,')" style="flex:1;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 12px;font-size:13px;outline:none">
-          <select id="itens-categoria-fil" onchange=",filtrarItens(document.querySelector('#tab-itens .btn-add[style*=rgba\\(139])?.textContent?.toLowerCase()||',todas,')" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:6px 10px;font-size:11px;outline:none">
+          <input id="itens-busca", placeholder="Buscar item...", oninput="filtrarItens(document.querySelector('#tab-itens .btn-add[style*=rgba\\(139)]')?.textContent?.toLowerCase()||'todas,')", style="flex:1;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 12px;font-size:13px;outline:none"
+          />
+          <select
+            id="itens-categoria-fil"
+            onchange="filtrarItens(document.querySelector('#tab-itens .btn-add[style*=rgba\\(139)]')?.textContent?.toLowerCase()||'todas,')"
+            style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:6px 10px;font-size:11px;outline:none"
+          >
             <option value="">Todas Categorias</option>
             <option value="0">Cat 0</option>
             <option value="I">Cat I</option>
@@ -534,12 +539,15 @@
             <option value="V">Cat V</option>
             <option value="VI">Cat VI</option>
           </select>
-        </div>
-        <div id="itens-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px"></div>
-      </div>
-      <div class="panel" id="item-detail-panel" style="display:none">
-        <button onclick=",document.getElementById('item-detail-panel').style.display='none'" style="background:transparent;border:none;color:var(--white-dust);cursor:pointer;font-size:12px;letter-spacing:.1em;font-family:'Oswald',sans-serif;margin-bottom:12px">← Voltar</button>
-        <div id="item-detail-body"></div>
+          </div>
+          <div id="itens-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px"></div>
+          </div>
+          <div class="panel" id="item-detail-panel" style="display:none">
+            <button
+              onclick="document.getElementById('item-detail-panel').style.display='none'"
+              style="background:transparent;border:none;color:var(--white-dust);cursor:pointer;font-size:12px;letter-spacing:.1em;font-family:'Oswald',sans-serif;margin-bottom:12px"
+            >← Voltar</button>
+            <div id="item-detail-body"></div>
       </div>
     </div>
 
