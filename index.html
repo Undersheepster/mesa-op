@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⛧ Ordem Paranormal — Mesa ⛧</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;600;700;900&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=IM+Fell+English:ital@0;1&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Oswald:wght@200;300;400;500;600;700&family=Philosopher:ital,wght@0,400;0,700;1,400;1,700&family=Special+Elite&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<!-- Firebase -->
+
+</head>
+<body>
+<div class="top-seal"></div>
+
+<!-- FIREBASE SETUP SCREEN -->
+<div id="screen-firebase" class="screen" style="display:none;align-items:center;justify-content:center;flex-direction:column;padding:3rem 1rem;min-height:100vh">
+  <div style="width:100%;max-width:520px;background:rgba(10,0,8,0.97);border:1px solid rgba(138,106,0,0.5);padding:2.5rem;position:relative">
+    <div style="font-family:'Cinzel Decorative',serif;font-size:1.2rem;color:#c49a00;text-align:center;margin-bottom:.4rem;letter-spacing:.08em">⛧ Configuração Firebase ⛧</div>
+    <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:var(--white-ash);text-align:center;margin-bottom:1.8rem">Para jogar online entre máquinas diferentes, você precisa de um projeto Firebase gratuito.</div>
+
+    <div style="background:rgba(138,106,0,0.08);border:1px solid rgba(138,106,0,0.25);padding:14px 16px;margin-bottom:1.4rem;font-size:12px;color:var(--white-ash);font-family:'Courier Prime',monospace;line-height:1.9">
+      <b style="color:#c49a00;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em">COMO CRIAR SEU PROJETO (grátis):</b><br>
+      1. Acesse <a href="https://console.firebase.google.com" target="_blank" style="color:#5b9cf6">console.firebase.google.com</a><br>
+      2. Clique em <b>"Criar um projeto"</b> → dê um nome (ex: op-mesa)<br>
+      3. Vá em <b>Build → Realtime Database → Criar banco de dados</b><br>
+      4. Escolha <b>"Modo de teste"</b> (30 dias, depois ajuste as regras)<br>
+      5. Vá em <b>Configurações do projeto → Seus apps → Web (&lt;/&gt;)</b><br>
+      6. Registre o app e copie o objeto <b>firebaseConfig</b> abaixo
+    </div>
+
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">API Key</label>
+      <input id="cfg-apiKey" type="text" placeholder="AIzaSy..." style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:8px 12px;outline:none">
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Database URL</label>
+      <input id="cfg-dbUrl" type="text" placeholder="https://SEU-PROJETO-default-rtdb.firebaseio.com" style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:8px 12px;outline:none">
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Project ID</label>
+      <input id="cfg-projectId" type="text" placeholder="seu-projeto" style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:8px 12px;outline:none">
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1rem">
+      <div>
+        <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">App ID</label>
+        <input id="cfg-appId" type="text" placeholder="1:000...web:000..." style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:8px 12px;outline:none">
+      </div>
+      <div>
+        <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Messaging Sender ID</label>
+        <input id="cfg-senderId" type="text" placeholder="000000000000" style="width:100%;background:rgba(20,0,15,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:8px 12px;outline:none">
+      </div>
+    </div>
+    <div id="cfg-err" style="color:#cc4444;font-size:12px;font-family:'Courier Prime',monospace;min-height:16px;margin-bottom:.8rem;text-align:center"></div>
+    <button onclick="saveFirebaseConfig()" style="width:100%;padding:13px;background:transparent;border:1px solid #8a6a00;color:#c49a00;font-family:'Cinzel',serif;font-size:13px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;margin-bottom:.6rem;transition:all .2s" onmouseover="this.style.background='rgba(138,106,0,0.15)'" onmouseout="this.style.background='transparent'">⛧ Salvar e Conectar ⛧</button>
+    <button onclick="testFirebaseNow()" style="width:100%;padding:9px;background:transparent;border:1px solid rgba(91,156,246,0.5);color:#5b9cf6;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;margin-bottom:.6rem;transition:all .2s">🔍 Testar Conexão Agora</button>
+    <div id="cfg-diag" style="display:none;background:rgba(0,10,20,0.8);border:1px solid rgba(91,156,246,0.3);padding:10px 14px;font-size:11px;font-family:'Courier Prime',monospace;color:#a0c0e0;line-height:1.8;margin-bottom:.8rem;white-space:pre-wrap"></div>
+    <button onclick="skipFirebaseSetup()" style="width:100%;padding:9px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(139,0,0,0.08)'" onmouseout="this.style.background='transparent'">Usar offline (apenas nesta máquina)</button>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--blood-deep);font-size:11px;color:var(--white-dust);text-align:center;font-family:'Courier Prime',monospace">
+      Já tem configuração salva? <a onclick="skipFirebaseSetup()" style="color:var(--crimson-mid);cursor:pointer">Continuar sem alterar</a>
+    </div>
+  </div>
+</div>
+ 
+<!-- LOGIN SCREEN -->
+<div id="screen-login" class="screen active">
+<div class="login-box">
+    <div class="login-title">Ordo Realitas</div>
+    <div class="login-sub">Mesa de Operações — Acesso Restrito</div>
+    <div id="login-form">
+      <div class="form-field"><label>Codinome do agente</label><input type="text" id="li-user" placeholder="seu codinome" autocomplete="username"></div>
+      <div class="form-field"><label>Senha</label><input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password"></div>
+      <button class="btn-ritual" onclick="doLogin()">⛧ Entrar na Mesa ⛧</button>
+      <div class="login-err" id="li-err"></div>
+      <div class="login-toggle">Primeira vez? <a onclick="showRegister()">Cadastrar agente</a></div>
+      <div style="margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--blood-deep);text-align:center">
+        <div style="font-size:11px;color:var(--white-dust);letter-spacing:.08em;margin-bottom:.6rem;font-family:'Oswald',sans-serif">ACESSO DE MESTRE</div>
+        <button class="btn-ritual" style="font-size:11px;padding:8px;border-color:var(--gold);color:var(--gold)" onclick="openMestreModal()">⛧ Entrar como Mestre ⛧</button>
+      </div>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-field"><label>Codinome do agente</label><input type="text" id="rg-user" placeholder="escolha um codinome" autocomplete="username"></div>
+      <div class="form-field"><label>Senha</label><input type="password" id="rg-pass" placeholder="mínimo 4 caracteres" autocomplete="new-password"></div>
+      <div class="form-field"><label>Confirmar senha</label><input type="password" id="rg-pass2" placeholder="repita a senha" autocomplete="new-password"></div>
+      <button class="btn-ritual" onclick="doRegister()">◭ Registrar Agente ◭</button>
+      <div class="login-err" id="rg-err"></div>
+      <div class="login-toggle">Já tem conta? <a onclick="showLogin()">Entrar</a></div>
+    </div>
+  </div>
+</div>
+ 
+<!-- MAIN APP -->
+<div id="screen-app" class="screen">
+  <div class="topbar">
+    <div class="topbar-logo">⛧ OP<span>Mesa de Operações</span></div>
+    <div class="tab-nav" id="tab-nav">
+      <button class="tab-btn active" onclick="showTab('ficha',this)">Ficha</button>
+      <button class="tab-btn" onclick="showTab('dados',this)">Dados</button>
+      <button class="tab-btn" onclick="showTab('inventario',this)">Inventário</button>
+      <button class="tab-btn" onclick="showTab('missao',this)">Missão</button>
+      <button class="tab-btn" onclick="showTab('trilhas',this)">Trilhas</button>
+      <button class="tab-btn" onclick="showTab('rituais',this)">Rituais</button>
+      <button class="tab-btn" onclick="showTab('token',this)">Token</button>
+      <button class="tab-btn" onclick="showTab('itens',this)">Itens</button>
+      <button class="tab-btn" onclick="showTab('mapa',this)">Mapa</button>
+      <button class="tab-btn" onclick="showTab('elementos',this)">⚗ Elementos</button>
+      <button class="tab-btn" onclick="showTab('criaturas',this)">☠ Criaturas</button>
+      <button class="tab-btn" onclick="showTab('multi',this)" id="tab-multi-btn">⚡ Mesa Online</button>
+      <button class="tab-btn mestre-only" id="tab-mestre-btn" onclick="showTab('mestre',this)" style="display:none">⛧ Mestre</button>
+    </div>
+    <div class="topbar-user">
+      <span id="fb-status" title="Status Firebase" style="font-size:10px;letter-spacing:.06em;padding:2px 7px;border:1px solid rgba(34,204,102,0.3);color:rgba(34,204,102,0.6);font-family:monospace;display:none">● ONLINE</span>
+      <!-- Indicador de online clicável para todos -->
+      <span id="online-indicator" title="Agentes online" onclick="toggleOnlinePopup()" style="display:none;cursor:pointer;font-size:11px;font-family:'Oswald',sans-serif;letter-spacing:.07em;padding:3px 9px;border:1px solid rgba(34,204,102,0.35);color:rgba(34,204,102,0.8);background:rgba(0,30,10,0.4);user-select:none">
+        <span class="presence-dot" style="width:6px;height:6px;display:inline-block;margin-right:4px;vertical-align:middle"></span><span id="online-count">0</span> online
+      </span>
+      <span id="topbar-username" style="font-family:'Courier Prime',monospace"></span>
+      <span id="topbar-role"></span>
+      <button onclick="openFirebaseSettings()" title="Configurar Firebase" style="border-color:rgba(138,106,0,0.4);color:rgba(196,154,0,0.7)">⚙ Firebase</button>
+      <button onclick="doLogout()">Sair</button>
+      <label title="Volume da ambientação" style="display:flex;align-items:center;gap:5px;font-size:10px;color:var(--white-dust);letter-spacing:.06em;font-family:'Oswald',sans-serif;cursor:default;user-select:none">
+        <span>⛧</span>
+        <input type="range" id="ambience-vol" min="0" max="100" value="55"
+          style="width:54px;height:3px;accent-color:var(--crimson);cursor:pointer;vertical-align:middle;opacity:0.7"
+          title="Ambientação sonora"
+          oninput="if(window.setAmbienceVolume)setAmbienceVolume(this.value/100*0.12)">
+      </label>
+      <button id="mute-all-btn" onclick="toggleMuteAll()" title="Mutar/desmutar todos os sons" style="border-color:rgba(139,0,0,0.5);color:var(--white-ash);font-size:13px;padding:4px 9px;line-height:1" aria-label="Mutar sons">🔊</button>
+    </div>
+    <!-- Popup de quem está online (visível para todos) -->
+    <div id="online-popup" style="display:none;position:fixed;top:52px;right:16px;z-index:300;background:rgba(8,0,6,0.97);border:1px solid rgba(138,106,0,0.4);padding:12px 16px;min-width:200px;max-width:280px;box-shadow:0 4px 30px rgba(0,0,0,0.7)">
+      <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.18em;color:#c49a00;text-transform:uppercase;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid rgba(138,106,0,0.25)">⛧ Agentes Online</div>
+      <div id="online-popup-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </div>
+  <div class="app-body">
+ 
+    <!-- FICHA -->
+    <div id="tab-ficha" class="tab-content active">
+      <div class="two-col">
+        <div>
+          <div class="panel">
+            <div class="panel-title">Identidade do Agente</div>
+            <div class="two-col">
+              <div class="field"><label>Nome / Codinome</label><input id="f-nome" oninput="autoSave()"></div>
+              <div class="field"><label>Classe</label><select id="f-classe" onchange="autoSave();renderClasseDesc()"><option>Combatente</option><option>Especialista</option><option>Ocultista</option></select>
+              <div id="classe-desc" style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;padding:5px 8px;border-left:2px solid var(--crimson);margin-top:5px;line-height:1.5;display:none"></div></div>
+            </div>
+            <div class="two-col">
+              <div class="field"><label>NEX (%)</label><input id="f-nex" type="number" min="0" max="99" value="5" oninput="autoSave()"></div>
+              <div class="field"><label>Origem</label>
+                <select id="f-origem" onchange="autoSave();renderOrigemDesc()">
+                  <option value="">— Selecione —</option>
+                  <option>Acadêmico</option>
+                  <option>Agente de Saúde</option>
+                  <option>Amnésico</option>
+                  <option>Artista</option>
+                  <option>Atleta</option>
+                  <option>Chef</option>
+                  <option>Criminoso</option>
+                  <option>Cultista Arrependido</option>
+                  <option>Desgarrado</option>
+                  <option>Engenheiro</option>
+                  <option>Executivo</option>
+                  <option>Investigador</option>
+                  <option>Lutador</option>
+                  <option>Magnata</option>
+                  <option>Mercenário</option>
+                  <option>Militar</option>
+                  <option>Operário</option>
+                  <option>Policial</option>
+                  <option>Religioso</option>
+                  <option>Servidor Público</option>
+                  <option>Teórico da Conspiração</option>
+                  <option>TI</option>
+                  <option>Trabalhador Rural</option>
+                  <option>Trambiqueiro</option>
+                  <option>Universitário</option>
+                  <option>Vítima</option>
+                </select>
+                <div id="origem-desc" style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;padding:5px 8px;border-left:2px solid var(--gold);margin-top:5px;line-height:1.6;display:none"></div>
+              </div>
+            </div>
+            <div class="field"><label>Trilha Paranormal</label>
+              <select id="f-trilha" onchange="autoSave();renderTrilhaInfo()">
+                <option value="">— Selecione —</option>
+                <optgroup label="⚔ Combatente">
+                  <option>Aniquilador</option>
+                  <option>Comandante de Campo</option>
+                  <option>Guerreiro</option>
+                  <option>Operações Especiais</option>
+                  <option>Tropa de Choque</option>
+                </optgroup>
+                <optgroup label="🔍 Especialista">
+                  <option>Atirador de Elite</option>
+                  <option>Infiltrador</option>
+                  <option>Médico de Campo</option>
+                  <option>Negociador</option>
+                  <option>Técnico</option>
+                </optgroup>
+                <optgroup label="🔮 Ocultista">
+                  <option>Conduíte</option>
+                  <option>Flagelador</option>
+                  <option>Graduado</option>
+                  <option>Intuitivo</option>
+                  <option>Lâmina Paranormal</option>
+                </optgroup>
+              </select>
+            </div>
+            <div id="trilha-info" style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;padding:4px 8px;border-left:2px solid var(--blood-deep);margin-bottom:8px;display:none"></div>
+            <div class="field"><label>Motivação / História</label><textarea id="f-historia" oninput="autoSave()"></textarea></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Pontos Vitais</div>
+            <div class="stat-grid">
+              <div class="stat-box">
+                <div class="stat-name">Pontos de Vida</div>
+                <div class="stat-ctrl"><button class="sadj" onclick="adjStat('pv',-1)">−</button><span class="snum pv" id="s-pv">10</span><button class="sadj" onclick="adjStat('pv',1)">+</button></div>
+                <div class="smax">/ <span id="s-pvmax">10</span> <span class="smax-adj"><button class="sadj" onclick="adjMax('pv',-1)">−</button><button class="sadj" onclick="adjMax('pv',1)">+</button></span></div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-name">Sanidade</div>
+                <div class="stat-ctrl"><button class="sadj" onclick="adjStat('san',-1)">−</button><span class="snum san" id="s-san">12</span><button class="sadj" onclick="adjStat('san',1)">+</button></div>
+                <div class="smax">/ <span id="s-sanmax">12</span> <span class="smax-adj"><button class="sadj" onclick="adjMax('san',-1)">−</button><button class="sadj" onclick="adjMax('san',1)">+</button></span></div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-name">Esforço</div>
+                <div class="stat-ctrl"><button class="sadj" onclick="adjStat('esf',-1)">−</button><span class="snum esf" id="s-esf">8</span><button class="sadj" onclick="adjStat('esf',1)">+</button></div>
+                <div class="smax">/ <span id="s-esfmax">8</span> <span class="smax-adj"><button class="sadj" onclick="adjMax('esf',-1)">−</button><button class="sadj" onclick="adjMax('esf',1)">+</button></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div>
+          <div class="panel">
+            <div class="panel-title">Atributos</div>
+            <div id="attr-list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Condições Ativas</div>
+            <div class="cond-wrap" id="cond-grid"></div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Perícias</div>
+        <div id="pericias-wrap" style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px"></div>
+        <div style="font-size:10px;color:var(--white-dust);margin-bottom:10px;font-family:'Courier Prime',monospace">Clique para avançar: Destreinado → Treinado (+5) → Veterano (+10) → Expert (+15) → Destreinado.</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;border-top:1px solid var(--blood-deep);padding-top:10px">
+          <input id="per-inp-nome" placeholder="Nome da perícia..." style="flex:1;min-width:120px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:7px 10px;outline:none">
+          <select id="per-inp-attr" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none">
+            <option value="AGI">AGI</option><option value="FOR">FOR</option><option value="INT">INT</option><option value="PRE">PRE</option><option value="VIG">VIG</option>
+          </select>
+          <button class="btn-add" onclick="addPericia()">+ Adicionar</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Habilidades & Poderes Paranormais</div>
+        <div id="hab-list"></div>
+        <div class="add-row">
+          <input id="hab-inp" placeholder="Nome da habilidade ou poder...">
+          <select id="hab-tipo"><option value="h">Habilidade</option><option value="p">Paranormal</option><option value="r">Ritual</option></select>
+          <input id="hab-desc" placeholder="Descrição breve (opcional)">
+          <button class="btn-add" onclick="addHab()">+ Adicionar</button>
+        </div>
+      </div>
+      <div class="save-ok" id="save-ficha"></div>
+      <!-- Botão Mandar Ficha (só aparece para players) -->
+      <div id="mandar-ficha-wrap" style="display:none;margin-top:8px">
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+          <button id="btn-mandar-ficha" onclick="mandarFichaAoMestre()" style="padding:12px 28px;background:rgba(138,106,0,0.12);border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:13px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .25s" onmouseover="this.style.background='rgba(138,106,0,0.28)'" onmouseout="this.style.background='rgba(138,106,0,0.12)'">⛧ Mandar Ficha ao Mestre ⛧</button>
+          <span id="ficha-enviada-ok" style="font-family:'Courier Prime',monospace;font-size:12px;color:#22cc88;display:none">✓ Ficha enviada ao Mestre!</span>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- DADOS -->
+    <div id="tab-dados" class="tab-content">
+      <div class="two-col">
+        <div>
+          <div class="panel">
+            <div class="panel-title">Rolar Dado</div>
+            <div class="dice-grid">
+              <button class="die-btn" onclick="rollDie(4)"><span style="font-size:18px">⬧</span>D4</button>
+              <button class="die-btn" onclick="rollDie(6)"><span style="font-size:18px">⬡</span>D6</button>
+              <button class="die-btn" onclick="rollDie(8)"><span style="font-size:18px">⬟</span>D8</button>
+              <button class="die-btn" onclick="rollDie(10)"><span style="font-size:18px">◈</span>D10</button>
+              <button class="die-btn" onclick="rollDie(12)"><span style="font-size:18px">⬠</span>D12</button>
+              <button class="die-btn" onclick="rollDie(20)"><span style="font-size:18px">⛧</span>D20</button>
+              <button class="die-btn" onclick="rollDie(100)"><span style="font-size:18px">%</span>D%</button>
+            </div>
+            <div class="ornament"><div class="ornament-line"></div><span class="ornament-sym">⛧</span><div class="ornament-line"></div></div>
+            <div class="panel-title">Rolagem Customizada</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="r-qtd" type="number" min="1" max="20" value="1" style="width:55px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none;font-family:'Courier Prime',monospace">
+              <span style="color:var(--crimson);font-size:14px">d</span>
+              <select id="r-faces" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none"><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option selected>20</option><option>100</option></select>
+              <span style="color:var(--white-dust)">+</span>
+              <input id="r-mod" type="number" value="0" style="width:60px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none;font-family:'Courier Prime',monospace">
+              <input id="r-label" placeholder="Contexto (ex: Agilidade)" style="flex:1;min-width:100px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none;font-family:'Courier Prime',monospace">
+              <button class="btn-add" onclick="rollCustom()">Rolar</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Resultado</div>
+            <div class="roll-result" id="roll-res">—</div>
+            <div class="roll-detail" id="roll-detail"></div>
+          </div>
+        </div>
+        <div class="panel" style="height:fit-content">
+          <div class="panel-title">Histórico de Rolagens</div>
+          <div class="roll-log-wrap" id="roll-log"></div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- INVENTÁRIO -->
+    <div id="tab-inventario" class="tab-content">
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-title">Itens & Equipamentos</div>
+          <div id="inv-list"></div>
+          <div class="add-row">
+            <input id="inv-nome" placeholder="Nome do item">
+            <input id="inv-desc" placeholder="Descrição">
+            <input id="inv-qtd" type="number" value="1" min="1" style="width:60px" placeholder="Qtd">
+            <button class="btn-add" onclick="addInv()">+ Add</button>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Rituais & Grimórios</div>
+          <div id="rit-list"></div>
+          <div class="add-row">
+            <input id="rit-nome" placeholder="Nome do ritual">
+            <input id="rit-nex" placeholder="NEX mín." style="width:80px">
+            <input id="rit-desc" placeholder="Descrição">
+            <button class="btn-add" onclick="addRit()">+ Add</button>
+          </div>
+        </div>
+      </div>
+      <div class="save-ok" id="save-inv"></div>
+    </div>
+ 
+    <!-- MISSÃO -->
+    <div id="tab-missao" class="tab-content">
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-title">Operação Atual</div>
+          <div class="two-col">
+            <div class="field"><label>Nome da operação</label><input id="m-nome" placeholder="Ex: Operação Vazio" oninput="autoSave()"></div>
+            <div class="field"><label>Localização</label><input id="m-local" placeholder="Ex: São Paulo, Subsolo" oninput="autoSave()"></div>
+          </div>
+          <div class="two-col">
+            <div class="field"><label>Nível de ameaça</label><select id="m-ameaca" onchange="autoSave()"><option>Baixo</option><option>Médio</option><option>Alto</option><option>Extremo</option><option>Cataclísmico</option></select></div>
+            <div class="field"><label>Entidade / Fenômeno</label><input id="m-ent" placeholder="Ex: Demiurge, Morte" oninput="autoSave()"></div>
+          </div>
+          <div class="field"><label>Resumo & Objetivos</label><textarea id="m-resumo" oninput="autoSave()"></textarea></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Pistas Encontradas</div>
+          <div id="pista-list"></div>
+          <div class="add-row">
+            <input id="pista-inp" placeholder="Descreva a pista...">
+            <select id="pista-tipo"></select>
+            <button class="btn-add" onclick="addPista()">+ Add</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Anotações da Sessão</div>
+        <div id="nota-list"></div>
+        <div class="add-row">
+          <input id="nota-inp" placeholder="Anotação rápida..." onkeydown="if(event.key==='Enter')addNota()">
+          <button class="btn-add" onclick="addNota()">+ Add</button>
+        </div>
+      </div>
+      <div class="save-ok" id="save-missao"></div>
+    </div>
+ 
+    <!-- TRILHAS -->
+    <div id="tab-trilhas" class="tab-content">
+      <div class="panel">
+        <div class="panel-title">Trilha Ativa</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+          <select id="trilha-classe-sel" onchange="renderTrilhasOpts()" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 12px;font-size:13px;outline:none">
+            <option value="">— Selecione a Classe —</option>
+            <option value="Combatente">Combatente</option>
+            <option value="Especialista">Especialista</option>
+            <option value="Ocultista">Ocultista</option>
+          </select>
+          <select id="trilha-nome-sel" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 12px;font-size:13px;outline:none;flex:1;min-width:160px">
+            <option value="">— Selecione a Trilha —</option>
+          </select>
+          <button class="btn-add" onclick="confirmarTrilha()">Confirmar</button>
+        </div>
+        <div id="trilha-ativa-display"></div>
+      </div>
+      <div id="trilha-habs-panel" class="panel" style="display:none">
+        <div class="panel-title" id="trilha-habs-title">Habilidades da Trilha</div>
+        <div id="trilha-habs-list"></div>
+      </div>
+    </div>
+ 
+    <!-- RITUAIS -->
+    <div id="tab-rituais" class="tab-content">
+      <div class="panel" style="margin-bottom:12px">
+        <div class="panel-title">Grimório de Rituais</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="ritual-busca" placeholder="Buscar ritual..." oninput="renderRituaisTab()" style="flex:1;min-width:140px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:7px 10px;outline:none">
+          <select id="ritual-elem-fil" onchange="renderRituaisTab()" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none">
+            <option value="">Todos os elementos</option>
+            <option value="Sangue"><span class="sym-el sym-sangue" title="Sangue"></span> Sangue</option>
+            <option value="Morte"><span class="sym-el sym-morte" title="Morte"></span> Morte</option>
+            <option value="Energia"><span class="sym-el sym-energia" title="Energia"></span> Energia</option>
+            <option value="Conhecimento"><span class="sym-el sym-conhecimento" title="Conhecimento"></span> Conhecimento</option>
+            <option value="Medo"><span class="sym-el sym-medo" title="Medo"></span> Medo</option>
+            <option value="Fé"><span style="color:#ddaa66">✝</span> Fé</option>
+          </select>
+          <select id="ritual-circ-fil" onchange="renderRituaisTab()" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none">
+            <option value="">Todos os círculos</option>
+            <option value="1">1º Círculo</option>
+            <option value="2">2º Círculo</option>
+            <option value="3">3º Círculo</option>
+            <option value="4">4º Círculo</option>
+          </select>
+          <select id="ritual-apr-fil" onchange="renderRituaisTab()" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none">
+            <option value="">Todos</option>
+            <option value="1">Apenas aprendidos</option>
+            <option value="0">Não aprendidos</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:6px">
+          <div style="font-size:10px;color:var(--white-dust);font-family:'Courier Prime',monospace">Clique no nome do ritual para marcar/desmarcar como aprendido.</div>
+          <div id="ritual-count" style="font-size:10px;color:var(--crimson);font-family:'Cinzel',serif;letter-spacing:.1em"></div>
+        </div>
+      </div>
+      <div id="rituais-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px"></div>
+    </div>
+ 
+    <!-- TOKEN -->
+    <div id="tab-token" class="tab-content">
+      <div class="panel">
+        <div class="panel-title">Estado do Personagem no Mapa</div>
+        <div class="state-hint">💡 Pressione <kbd style="background:rgba(139,0,0,.2);border:1px solid var(--blood);padding:1px 5px;border-radius:2px;font-family:monospace">Q</kbd> para ciclar o estado (1 pressão = próximo estado). Ou clique nos botões abaixo.</div>
+        <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:14px">
+          <button class="state-btn active-state" id="state-btn-comum" data-state="comum" onclick="setTokenState('comum')">🧍 Comum</button>
+          <button class="state-btn" id="state-btn-arma" data-state="arma" onclick="setTokenState('arma')">🔫 Com Arma</button>
+          <button class="state-btn" id="state-btn-lanterna" data-state="lanterna" onclick="setTokenState('lanterna')">🔦 Lanterna</button>
+          <button class="state-btn" id="state-btn-morrendo" data-state="morrendo" onclick="setTokenState('morrendo')"><span class="sym-el sym-morte" title="Morte"></span> Morrendo</button>
+        </div>
+        <div id="state-description" style="font-size:12px;color:var(--white-ash);font-family:'Courier Prime',monospace;min-height:20px;padding:6px 10px;background:rgba(20,0,15,0.5);border-left:2px solid var(--crimson)"></div>
+        <div style="margin-top:10px">
+          <button class="btn-add" onclick="openStateImageModal()" style="border-color:rgba(138,106,0,.5);color:var(--gold-light);font-size:11px;padding:6px 14px">🖼 Fotos por Estado do Token</button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Token do Personagem</div>
+        <div class="token-wrap">
+          <div class="token-preview">
+            <canvas id="token-canvas" width="220" height="220" title="Clique para carregar imagem" onclick="document.getElementById('tok-file').click()"></canvas>
+            <input type="file" id="tok-file" accept="image/*" style="display:none" onchange="loadTokImg(event)">
+            <div class="token-name-display" id="tok-name-display">Agente</div>
+            <div class="token-btns">
+              <button class="btn-add" onclick="document.getElementById('tok-file').click()">Carregar imagem</button>
+              <button class="btn-add" onclick="clearTokImg()">Remover foto</button>
+            </div>
+            <div class="token-btns" style="margin-top:6px">
+              <button class="btn-add" onclick="exportToken()">⤓ Exportar PNG</button>
+              <button class="btn-add" onclick="exportTokenJSON()">⤓ Exportar JSON</button>
+              <button class="btn-add" onclick="document.getElementById('tok-json-file').click()">⤒ Importar JSON</button>
+            </div>
+            <input type="file" id="tok-json-file" accept=".json" style="display:none" onchange="importTokenJSON(event)">
+          </div>
+          <div class="token-controls">
+            <div>
+              <div class="ctrl-label">Cor do anel</div>
+              <div class="swatch-row" id="ring-swatches"></div>
+            </div>
+            <div>
+              <div class="ctrl-label">Cor do fundo</div>
+              <div class="swatch-row" id="bg-swatches"></div>
+            </div>
+            <div>
+              <div class="ctrl-label">Ícone (sem foto)</div>
+              <div class="icon-row" id="icon-opts"></div>
+            </div>
+            <div>
+              <div class="ctrl-label">Texto no token</div>
+              <input class="token-text-input" id="tok-label" placeholder="Nome curto ou código..." oninput="drawToken()">
+            </div>
+            <div>
+              <div class="ctrl-label">Condição visível</div>
+              <select onchange="drawToken()" id="tok-cond" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none;width:100%">
+                <option value="">Nenhuma</option><option>Abalado</option><option>Apavorado</option><option>Sangrando</option><option>Maldito</option><option>Inconsciente</option><option>Exausto</option>
+              </select>
+            </div>
+            <div>
+              <div class="ctrl-label">Barra de vida</div>
+              <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--white-ash)"><input type="checkbox" id="tok-hp" onchange="drawToken()" style="accent-color:var(--crimson)"> Mostrar barra de PV</label>
+            </div>
+            <div>
+              <div class="ctrl-label">Espessura do anel</div>
+              <input type="range" id="tok-ring-size" min="2" max="14" value="5" oninput="drawToken()" style="width:100%;accent-color:var(--crimson)">
+            </div>
+            <div>
+              <div class="ctrl-label">Cor do texto personalizada</div>
+              <input type="color" id="tok-text-color" value="#e8e0e0" onchange="drawToken()" style="width:100%;height:32px;background:transparent;border:1px solid var(--blood-deep);cursor:pointer">
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- ITENS -->
+    <div id="tab-itens" class="tab-content">
+      <div class="panel">
+        <div class="panel-title">⚔ Arsenal & Itens</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+          <button class="btn-add" onclick="filtrarItens('todas')" id="fit-todas" style="background:rgba(139,0,0,0.15)">Todas</button>
+          <button class="btn-add" onclick="filtrarItens('arma')" id="fit-arma">Armas</button>
+          <button class="btn-add" onclick="filtrarItens('protecao')" id="fit-protecao">Proteções</button>
+          <button class="btn-add" onclick="filtrarItens('equipamento')" id="fit-equipamento">Equipamentos</button>
+          <button class="btn-add" onclick="filtrarItens('paranormal')" id="fit-paranormal">Paranormais</button>
+          <button class="btn-add" onclick="filtrarItens('veiculo')" id="fit-veiculo">Veículos</button>
+          <button class="btn-add" onclick="filtrarItens('modificacao')" id="fit-modificacao">Modificações</button>
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;align-items:center">
+          <input id="itens-busca" placeholder="Buscar item..." oninput="filtrarItens(document.querySelector('#tab-itens .btn-add[style*=rgba\\(139])?.textContent?.toLowerCase()||',todas,')" style="flex:1;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 12px;font-size:13px;outline:none">
+          <select id="itens-categoria-fil" onchange=",filtrarItens(document.querySelector('#tab-itens .btn-add[style*=rgba\\(139])?.textContent?.toLowerCase()||',todas,')" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:6px 10px;font-size:11px;outline:none">
+            <option value="">Todas Categorias</option>
+            <option value="0">Cat 0</option>
+            <option value="I">Cat I</option>
+            <option value="II">Cat II</option>
+            <option value="III">Cat III</option>
+            <option value="IV">Cat IV</option>
+            <option value="V">Cat V</option>
+            <option value="VI">Cat VI</option>
+          </select>
+        </div>
+        <div id="itens-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px"></div>
+      </div>
+      <div class="panel" id="item-detail-panel" style="display:none">
+        <button onclick=",document.getElementById('item-detail-panel').style.display='none'" style="background:transparent;border:none;color:var(--white-dust);cursor:pointer;font-size:12px;letter-spacing:.1em;font-family:'Oswald',sans-serif;margin-bottom:12px">← Voltar</button>
+        <div id="item-detail-body"></div>
+      </div>
+    </div>
+
+    <!-- MAPA -->
+    <div id="tab-mapa" class="tab-content">
+      <div class="map-wrap">
+        <div class="map-toolbar">
+          <button class="tool-btn" id="tool-select" onclick="setTool('select',this)" title="Selecionar e mover tokens">↖ Selecionar</button>
+          <button class="tool-btn active" id="tool-wall" onclick="setTool('wall',this)" title="Traçar paredes (clique e arraste)">🧱 Parede</button>
+          <button class="tool-btn" id="tool-pencil" onclick="setTool('pencil',this)" title="Lápis livre (arraste)">✏️ Lápis</button>
+          <button class="tool-btn" id="tool-rect" onclick="setTool('rect',this)" title="Retângulo preenchido (arraste)">▭ Área</button>
+          <button class="tool-btn" id="tool-circle" onclick="setTool('circle',this)" title="Círculo/Elipse (arraste)">⭕ Círculo</button>
+          <button class="tool-btn" id="tool-line" onclick="setTool('line',this)" title="Linha reta (arraste)">⟋ Linha</button>
+          <button class="tool-btn" id="tool-text" onclick="setTool('text',this)" title="Inserir texto no mapa">T Texto</button>
+          <button class="tool-btn" id="tool-token" onclick="setTool('token-place',this)" title="Colocar token de personagem">🔵 Token</button>
+          <button class="tool-btn" onclick="placeMyToken()" title="Colocar SEU token no mapa com o estado atual">⭐ Meu Token</button>
+          <button class="tool-btn" id="tool-erase" onclick="setTool('erase',this)" title="Borracha (arraste para apagar)">⌫ Apagar</button>
+          <div class="tool-sep"></div>
+          <label class="tool-btn" title="Importar PNG para o token selecionado no mapa" style="cursor:pointer">
+            🖼 PNG Token
+            <input type="file" id="map-tok-img-file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="mapTokImportImg(event)">
+          </label>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px">Cor <input type="color" id="map-color" value="#8b0000"></label>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px">Esp.<input type="range" id="map-sz" min="1" max="24" value="4" style="width:70px;accent-color:var(--crimson)"></label>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px">Opa.<input type="range" id="map-op" min="10" max="100" value="100" style="width:60px;accent-color:var(--crimson)"></label>
+          <div class="tool-sep"></div>
+          <button class="tool-btn" onclick="mapUndo()" title="Desfazer última ação (Ctrl+Z)">↩ Desfazer</button>
+          <button class="tool-btn" onclick="mapClear()" title="Apagar tudo do mapa">🗑 Limpar</button>
+          <button class="tool-btn" onclick="mapReset()" title="Restaurar mapa base padrão">🔄 Base</button>
+          <button class="tool-btn" onclick="downloadMap()" title="Baixar imagem PNG do mapa">⤓ PNG</button>
+          <button class="tool-btn" onclick="saveMapData()" title="Salvar estado do mapa">💾 Salvar</button>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px"><input type="checkbox" id="map-grid" checked onchange="drawMapGrid()" style="accent-color:var(--crimson)"> Grid</label>
+          <label style="font-size:11px;color:var(--white-dust);display:flex;align-items:center;gap:5px"><input type="checkbox" id="map-snap" checked style="accent-color:var(--crimson)"> Snap</label>
+        </div>
+        <!-- PRESETS DE MÓVEIS E AMBIENTE -->
+        <div style="padding:8px 14px;background:rgba(8,0,6,0.85);border:1px solid var(--blood-deep);border-top:none">
+          <div class="preset-group-label">⛧ Móveis & Objetos — clique para inserir no mapa</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:4px">
+            <span class="preset-group-label" style="width:100%;margin-top:2px;margin-bottom:2px">Mobiliário</span>
+            <button class="preset-btn" onclick="placePreset('mesa')">🪵 Mesa</button>
+            <button class="preset-btn" onclick="placePreset('cadeira')">🪑 Cadeira</button>
+            <button class="preset-btn" onclick="placePreset('sofa')">🛋 Sofá</button>
+            <button class="preset-btn" onclick="placePreset('cama')">🛏 Cama</button>
+            <button class="preset-btn" onclick="placePreset('armario')">🗄 Armário</button>
+            <button class="preset-btn" onclick="placePreset('estante')"><span class="sym-el sym-conhecimento" title="Conhecimento"></span> Estante</button>
+            <button class="preset-btn" onclick="placePreset('geladeira')">🧊 Geladeira</button>
+            <button class="preset-btn" onclick="placePreset('pia')">🚰 Pia</button>
+            <span class="preset-group-label" style="width:100%;margin-top:4px;margin-bottom:2px">Ambiente</span>
+            <button class="preset-btn" onclick="placePreset('porta')">🚪 Porta</button>
+            <button class="preset-btn" onclick="placePreset('janela')">🪟 Janela</button>
+            <button class="preset-btn" onclick="placePreset('escada')">🪜 Escada</button>
+            <button class="preset-btn" onclick="placePreset('caixa')">📦 Caixa</button>
+            <button class="preset-btn" onclick="placePreset('barril')">🪣 Barril</button>
+            <button class="preset-btn" onclick="placePreset('computador')">🖥 Computador</button>
+            <span class="preset-group-label" style="width:100%;margin-top:4px;margin-bottom:2px">Paranormal</span>
+            <button class="preset-btn" onclick="placePreset('altar')">⛧ Altar</button>
+            <button class="preset-btn" onclick="placePreset('pentagrama')">✦ Pentagrama</button>
+            <button class="preset-btn" onclick="placePreset('vela')">🕯 Velas</button>
+            <button class="preset-btn" onclick="placePreset('portal')">🌀 Portal</button>
+          </div>
+          <div style="font-size:10px;color:var(--white-dust);margin-top:6px;font-family:'Courier Prime',monospace">Após clicar, clique no mapa para posicionar o objeto.</div>
+        </div>
+        <div class="map-canvas-wrap" id="map-canvas-wrap">
+          <canvas id="map-canvas"></canvas>
+        </div>
+        <div class="map-bottom">
+          <div>
+            <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;margin-bottom:8px;font-family:'Oswald',sans-serif">⛧ Legenda</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px">
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#8b0000"></div> Paredes</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#1fc8a0"></div> Zona segura</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#e25454"></div> Zona de perigo</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#c49a00"></div> Ponto de interesse</div>
+              <div style="display:flex;align-items:center;gap:5px;font-size:12px;color:var(--white-dust)"><div style="width:10px;height:10px;border-radius:50%;background:#7c6fff"></div> Paranormal</div>
+            </div>
+          </div>
+          <div class="map-tokens-panel">
+            <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;margin-bottom:8px;font-family:'Oswald',sans-serif">⛧ Tokens no mapa</div>
+            <div id="map-tok-list"></div>
+          </div>
+        </div>
+
+        <!-- PAINEL NPC / CRIATURA — visível para Mestre -->
+        <div id="npc-panel" style="display:none;padding:12px 14px;background:rgba(8,0,6,0.88);border:1px solid rgba(138,106,0,0.25);border-top:none">
+          <div style="font-size:10px;letter-spacing:.15em;color:var(--gold-light);text-transform:uppercase;margin-bottom:10px;font-family:'Oswald',sans-serif">⛧ Tokens de NPC &amp; Criaturas</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;align-items:start">
+            <!-- Criador -->
+            <div>
+              <div style="display:flex;gap:10px;align-items:flex-start">
+                <div style="text-align:center;flex-shrink:0">
+                  <canvas id="npc-prev" width="80" height="80" style="border-radius:50%;border:3px solid #8b0000;display:block"></canvas>
+                </div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:7px">
+                  <input id="npc-nome" placeholder="Nome do NPC / Criatura" oninput="npcDraw()"
+                    style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:6px 9px;outline:none;width:100%">
+                  <select id="npc-tipo" onchange="npcDraw()"
+                    style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:6px 9px;outline:none"></select>
+                  <!-- Cor do anel -->
+                  <div>
+                    <div style="font-size:9px;color:var(--crimson);letter-spacing:.1em;font-family:'Oswald',sans-serif;text-transform:uppercase;margin-bottom:4px">Cor do anel</div>
+                    <div class="npc-swatches" id="npc-sw"></div>
+                  </div>
+                  <!-- Ícone -->
+                  <div>
+                    <div style="font-size:9px;color:var(--crimson);letter-spacing:.1em;font-family:'Oswald',sans-serif;text-transform:uppercase;margin-bottom:4px">Ícone (sem imagem)</div>
+                    <div style="display:flex;flex-wrap:wrap;gap:4px" id="npc-icons"></div>
+                  </div>
+                  <!-- Importar PNG -->
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <label style="padding:5px 10px;background:transparent;border:1px solid var(--crimson);color:var(--crimson-mid);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;cursor:pointer;text-transform:uppercase;white-space:nowrap">
+                      ⤒ PNG
+                      <input type="file" accept="image/png,image/jpeg,image/webp" style="display:none" onchange="npcLoadPng(event)">
+                    </label>
+                    <button onclick="npcClearPng()" style="padding:5px 9px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:10px;cursor:pointer">× Img</button>
+                  </div>
+                  <!-- Botões de ação -->
+                  <div style="display:flex;gap:6px;flex-wrap:wrap">
+                    <button onclick="npcAdd()" style="flex:1;padding:6px 8px;background:transparent;border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;cursor:pointer">+ Salvar</button>
+                    <button onclick="npcAddPlace()" style="flex:1;padding:6px 8px;background:transparent;border:1px solid var(--crimson);color:var(--crimson-mid);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;cursor:pointer">⊕ No Mapa</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Lista de tokens NPC -->
+            <div>
+              <div style="font-size:9px;color:var(--gold-light);letter-spacing:.12em;font-family:'Oswald',sans-serif;text-transform:uppercase;margin-bottom:6px">Tokens criados — duplo clique para colocar no mapa</div>
+              <div id="npc-grid" class="npc-grid"></div>
+              <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+                <button onclick="npcPlaceSel()" style="padding:5px 10px;background:transparent;border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:10px;cursor:pointer">⊕ Colocar selecionado</button>
+                <button onclick="npcClearList()" style="padding:5px 10px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:10px;cursor:pointer">🗑 Limpar lista</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- MESTRE -->
+    <div id="tab-mestre" class="tab-content">
+      <!-- PRESENÇA EM TEMPO REAL -->
+      <div class="presence-panel">
+        <div class="presence-title"><span class="presence-dot"></span> Agentes Online Agora</div>
+        <div class="online-list" id="online-list"><span style="color:var(--white-dust);font-size:12px">Nenhum agente online.</span></div>
+      </div>
+      <div class="broadcast-bar visible" id="broadcast-bar">
+        <input id="broadcast-input" placeholder="Mensagem para todos os agentes online..." onkeydown="if(event.key==='Enter')fbSendBroadcast()">
+        <button onclick="fbSendBroadcast()">⛧ Enviar a Todos</button>
+      </div>
+      <div class="panel" style="border-color:rgba(138,106,0,0.3)">
+        <div class="panel-title" style="color:var(--gold-light)">⛧ Painel do Mestre — Visão Geral dos Agentes</div>
+        <div id="players-panel"></div>
+      </div>
+      <div class="panel" style="border-color:rgba(138,106,0,0.3)">
+        <div class="panel-title" style="color:var(--gold-light)">⛧ Notas Secretas do Mestre</div>
+        <div class="field"><label class="gold-label">Notas da sessão (visível só para você)</label><textarea class="mestre-note" id="mestre-notes" oninput="saveMestreNotes()" style="min-height:120px"></textarea></div>
+        <div class="field"><label class="gold-label">Notas por personagem</label>
+          <select id="mestre-sel-player" style="background:rgba(20,8,0,.8);border:1px solid rgba(138,106,0,0.3);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none;width:200px" onchange="loadPlayerNote()"></select>
+        </div>
+        <textarea class="mestre-note" id="mestre-player-note" oninput="savePlayerNote()" style="min-height:80px;margin-top:8px" placeholder="Anotações sobre este agente..."></textarea>
+      </div>
+      <!-- FICHAS DE NPC -->
+      <div class="panel" style="border-color:rgba(138,106,0,0.3)">
+        <div class="panel-title" style="color:var(--gold-light);display:flex;justify-content:space-between;align-items:center">
+          <span>⛧ Fichas de NPC</span>
+          <button onclick="npcFichaNew()" style="padding:4px 12px;background:transparent;border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;cursor:pointer">+ Nova Ficha</button>
+        </div>
+        <!-- Lista compacta de fichas -->
+        <div id="npc-fichas-lista" style="display:flex;flex-direction:column;gap:8px;margin-bottom:10px"></div>
+        <!-- Formulário de criação/edição (oculto por padrão) -->
+        <div id="npc-ficha-form" style="display:none;background:rgba(6,0,4,0.8);border:1px solid rgba(138,106,0,0.25);padding:16px;margin-top:8px">
+          <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.14em;color:var(--gold-light);text-transform:uppercase;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid rgba(138,106,0,0.2)" id="npc-ficha-form-title">Nova Ficha de NPC</div>
+          <input type="hidden" id="nfid">
+          <div class="two-col">
+            <div class="field"><label>Nome</label><input id="nf-nome" placeholder="Nome do NPC"></div>
+            <div class="field"><label>Tipo</label>
+              <select id="nf-tipo"></select>
+            </div>
+          </div>
+          <div class="two-col">
+            <div class="field"><label>NEX / Ameaça</label><input id="nf-nex" placeholder="Ex: 25% / Ameaça 2"></div>
+            <div class="field"><label>Deslocamento</label><input id="nf-desl" placeholder="Ex: 9m"></div>
+          </div>
+          <!-- Atributos -->
+          <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;font-family:'Oswald',sans-serif;margin-bottom:6px">Atributos</div>
+          <div style="display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:14px">
+            <div class="field"><label>AGI</label><input id="nf-agi" type="number" value="0" min="-5" max="20"></div>
+            <div class="field"><label>FOR</label><input id="nf-for" type="number" value="0" min="-5" max="20"></div>
+            <div class="field"><label>INT</label><input id="nf-int" type="number" value="0" min="-5" max="20"></div>
+            <div class="field"><label>PRE</label><input id="nf-pre" type="number" value="0" min="-5" max="20"></div>
+            <div class="field"><label>VIG</label><input id="nf-vig" type="number" value="0" min="-5" max="20"></div>
+          </div>
+          <!-- Stats de combate -->
+          <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;font-family:'Oswald',sans-serif;margin-bottom:6px">Combate</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px">
+            <div class="field"><label>PV Máx</label><input id="nf-pv" type="number" value="20" min="1"></div>
+            <div class="field"><label>PE Máx</label><input id="nf-pe" type="number" value="0" min="0"></div>
+            <div class="field"><label>Defesa</label><input id="nf-def" type="number" value="10" min="0"></div>
+            <div class="field"><label>Resist. Fort</label><input id="nf-fort" placeholder="Ex: +3"></div>
+            <div class="field"><label>Resist. Ref</label><input id="nf-ref" placeholder="Ex: +1"></div>
+            <div class="field"><label>Resist. Vont</label><input id="nf-vont" placeholder="Ex: +2"></div>
+          </div>
+          <!-- Ataques -->
+          <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;font-family:'Oswald',sans-serif;margin-bottom:6px">Ataques / Ações</div>
+          <div id="nf-ataques-lista" style="display:flex;flex-direction:column;gap:6px;margin-bottom:8px"></div>
+          <button onclick="nfAddAtaque()" style="padding:5px 12px;background:transparent;border:1px solid var(--crimson);color:var(--crimson-mid);font-family:'Oswald',sans-serif;font-size:11px;cursor:pointer;letter-spacing:.08em;margin-bottom:14px">+ Adicionar Ataque</button>
+          <!-- Habilidades / Poderes -->
+          <div class="field"><label>Habilidades / Poderes Especiais</label><textarea id="nf-habs" placeholder="Liste as habilidades especiais, uma por linha..." style="min-height:70px"></textarea></div>
+          <!-- Origem & Trilha -->
+          <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;font-family:'Oswald',sans-serif;margin-bottom:6px;margin-top:4px">Origem &amp; Trilha (opcional)</div>
+          <div class="two-col" style="margin-bottom:14px">
+            <div class="field"><label>Origem</label><input id="nf-origem" placeholder="Ex: Militante, Acadêmico..."></div>
+            <div class="field"><label>Trilha Paranormal</label><input id="nf-trilha" placeholder="Ex: Atirador, Médium..."></div>
+          </div>
+          <!-- Inventário -->
+          <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;font-family:'Oswald',sans-serif;margin-bottom:6px">Inventário</div>
+          <div id="nf-inv-lista" style="display:flex;flex-direction:column;gap:5px;margin-bottom:7px"></div>
+          <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+            <input id="nf-inv-inp" placeholder="Nome do item" style="flex:2;min-width:100px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:5px 8px;outline:none">
+            <input id="nf-inv-qtd" type="number" value="1" min="1" placeholder="Qtd" style="width:52px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:5px 8px;outline:none">
+            <button onclick="nfAddInv()" style="padding:5px 10px;background:transparent;border:1px solid var(--crimson);color:var(--crimson-mid);font-family:'Oswald',sans-serif;font-size:11px;cursor:pointer">+ Add</button>
+          </div>
+          <!-- Rituais -->
+          <div style="font-size:10px;letter-spacing:.12em;color:var(--crimson);text-transform:uppercase;font-family:'Oswald',sans-serif;margin-bottom:6px">Rituais Conhecidos</div>
+          <div id="nf-rit-lista" style="display:flex;flex-direction:column;gap:5px;margin-bottom:7px"></div>
+          <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+            <input id="nf-rit-inp" placeholder="Nome do ritual" style="flex:2;min-width:100px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:5px 8px;outline:none">
+            <input id="nf-rit-elem" placeholder="Elemento" style="width:90px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:5px 8px;outline:none">
+            <input id="nf-rit-circ" placeholder="Círculo" style="width:70px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:5px 8px;outline:none">
+            <button onclick="nfAddRit()" style="padding:5px 10px;background:transparent;border:1px solid var(--crimson);color:var(--crimson-mid);font-family:'Oswald',sans-serif;font-size:11px;cursor:pointer">+ Add</button>
+          </div>
+          <!-- Descrição -->
+          <div class="field"><label>Descrição / Notas do Mestre</label><textarea id="nf-desc" placeholder="Descrição, segredos, motivações, anotações..." style="min-height:80px"></textarea></div>
+          <div style="display:flex;gap:8px;margin-top:4px;flex-wrap:wrap">
+            <button onclick="npcFichaSave()" style="flex:1;padding:8px;background:transparent;border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;cursor:pointer">⛧ Salvar Ficha</button>
+            <button onclick="npcFichaCancel()" style="padding:8px 16px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:11px;cursor:pointer">Cancelar</button>
+          </div>
+        </div>
+        <!-- Modal de visualização -->
+        <div id="npc-ficha-view" style="display:none;background:rgba(6,0,4,0.8);border:1px solid rgba(138,106,0,0.25);padding:16px;margin-top:8px">
+          <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px">
+            <div>
+              <div style="font-family:'Cinzel',serif;font-size:16px;color:var(--gold-light)" id="nfv-nome"></div>
+              <div style="font-size:10px;color:var(--white-dust);font-family:'Oswald',sans-serif;letter-spacing:.1em;margin-top:2px" id="nfv-tipo"></div>
+            </div>
+            <div style="display:flex;gap:6px">
+              <button onclick="npcFichaEdit()" style="padding:4px 10px;background:transparent;border:1px solid var(--gold);color:var(--gold-light);font-family:'Oswald',sans-serif;font-size:10px;cursor:pointer;letter-spacing:.08em">✏ Editar</button>
+              <button onclick="document.getElementById('npc-ficha-view').style.display='none'" style="background:transparent;border:none;color:var(--white-dust);cursor:pointer;font-size:18px;line-height:1">×</button>
+            </div>
+          </div>
+          <div id="nfv-body"></div>
+        </div>
+      </div>
+
+      <!-- FICHAS RECEBIDAS -->
+      <div class="panel" id="fichas-recebidas-panel" style="border-color:rgba(138,106,0,0.3)">
+        <div class="panel-title" style="color:var(--gold-light)">⛧ Fichas Recebidas dos Agentes</div>
+        <div id="fichas-recebidas-lista" style="font-size:13px;color:var(--white-dust);font-family:'Courier Prime',monospace">Nenhuma ficha enviada ainda.</div>
+      </div>
+
+      <!-- ANOTAÇÕES DE MISSÃO DOS AGENTES -->
+      <div class="panel" style="border-color:rgba(138,106,0,0.3)">
+        <div class="panel-title" style="color:var(--gold-light)">⛧ Anotações de Missão dos Agentes</div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center">
+          <select id="missao-sel-player" onchange="renderMissaoPlayer()" style="background:rgba(20,8,0,.8);border:1px solid rgba(138,106,0,0.3);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none;min-width:180px">
+            <option value="">— Selecione um agente —</option>
+          </select>
+          <button class="btn-add" onclick="renderMissaoPlayer()" style="border-color:var(--gold);color:var(--gold-light)">↻ Atualizar</button>
+        </div>
+        <div id="missao-player-view" style="min-height:60px"></div>
+      </div>
+
+      <div class="panel" style="border-color:rgba(138,106,0,0.3)">
+        <div class="panel-title" style="color:var(--gold-light)">⛧ Histórico de Rolagens — Todos os Agentes</div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;align-items:center">
+          <select id="roll-filter-player" style="background:rgba(20,8,0,.8);border:1px solid rgba(138,106,0,0.3);color:var(--white-bone);padding:6px 10px;font-size:12px;outline:none" onchange="renderAllRolls()">
+            <option value="">Todos os agentes</option>
+          </select>
+          <button class="btn-add" onclick="renderAllRolls()" style="border-color:var(--gold);color:var(--gold-light)">↻ Atualizar</button>
+          <button class="btn-add" onclick="resetAllRolls()" style="border-color:var(--blood);color:#cc4444">Limpar tudo</button>
+          <span id="roll-summary" style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;margin-left:4px"></span>
+        </div>
+        <div id="all-rolls-log" style="max-height:280px;overflow-y:auto"></div>
+      </div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-add" onclick="broadcastMessage()" style="border-color:var(--gold);color:var(--gold-light)">Enviar mensagem para todos</button>
+          <button class="btn-add" onclick="resetAllRolls()" style="border-color:var(--gold);color:var(--gold-light)">Limpar histórico de rolagens</button>
+        </div>
+        <div id="mestre-inbox" style="margin-top:14px;max-height:200px;overflow-y:auto"></div>
+    </div><!-- /tab-mestre -->
+
+    <!-- ══════════════════════════ ABA MESA ONLINE ══════════════════════════ -->
+    <div id="tab-multi" class="tab-content" style="padding:0;overflow:hidden;height:calc(100vh - 52px)">
+
+      <!-- STATUS BAR -->
+      <div id="mo-statusbar" style="display:flex;align-items:center;gap:12px;padding:6px 16px;background:rgba(4,0,3,0.98);border-bottom:1px solid rgba(58,0,0,.6);flex-shrink:0;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:.1em">
+        <span id="mo-fb-dot" style="width:7px;height:7px;border-radius:50%;background:#444;flex-shrink:0"></span>
+        <span id="mo-fb-label" style="color:var(--white-dust);text-transform:uppercase">Verificando Firebase...</span>
+        <span style="color:rgba(255,255,255,.15)">|</span>
+        <span id="mo-user-label" style="color:var(--gold-light)"></span>
+        <span style="margin-left:auto;display:flex;gap:8px">
+          <button onclick="openFirebaseSettings()" style="padding:3px 10px;background:transparent;border:1px solid rgba(138,106,0,0.4);color:var(--gold-light);font-family:'Oswald',sans-serif;font-size:9px;letter-spacing:.1em;cursor:pointer;text-transform:uppercase">⚙ Firebase</button>
+        </span>
+      </div>
+
+      <!-- GRID PRINCIPAL -->
+      <div class="mo-grid">
+
+        <!-- ══ COLUNA 1: CHAT + ROLAGENS ══ -->
+        <div class="mo-col">
+
+          <!-- CHAT -->
+          <div class="mo-card" style="flex:1.4;min-height:0">
+            <div class="mo-card-hd">
+              <span>💬 Chat da Mesa</span>
+              <button onclick="clearChat()" id="chat-clear-btn" class="mo-btn-sm" style="display:none">🗑 Limpar</button>
+            </div>
+            <div id="chat-messages" class="mo-scroll" style="flex:1;padding:10px 12px;display:flex;flex-direction:column;gap:5px"></div>
+            <div style="padding:8px 10px;border-top:1px solid rgba(58,0,0,.4);display:flex;gap:6px;flex-shrink:0;background:rgba(4,0,3,.95)">
+              <textarea id="chat-inp" class="chat-inp" placeholder="Mensagem... (Enter para enviar)" onkeydown="chatEnter(event)" rows="1" style="flex:1"></textarea>
+              <button onclick="sendChat()" class="chat-send">Enviar</button>
+            </div>
+          </div>
+
+          <!-- ROLAGENS PÚBLICAS -->
+          <div class="mo-card" style="flex:1;min-height:0">
+            <div class="mo-card-hd">
+              <span>🎲 Rolagens ao Vivo</span>
+              <button onclick="clearPublicRolls()" id="rolls-clear-btn" class="mo-btn-sm" style="display:none">🗑</button>
+            </div>
+            <div id="public-rolls-list" class="mo-scroll" style="flex:1;padding:8px 12px;display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+
+        </div><!-- /col1 -->
+
+        <!-- ══ COLUNA 2: INICIATIVA + VOTAÇÃO ══ -->
+        <div class="mo-col">
+
+          <!-- INICIATIVA -->
+          <div class="mo-card" style="flex:1.6;min-height:0">
+            <div class="mo-card-hd">
+              <div>
+                <div>⚔ Iniciativa</div>
+                <div id="init-current-turn" style="font-size:10px;color:var(--gold-light);font-family:'Cinzel',serif;margin-top:2px;min-height:12px"></div>
+              </div>
+              <span id="init-round" style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;flex-shrink:0"></span>
+            </div>
+            <div id="init-add-row" class="init-add-row">
+              <input id="init-nome" placeholder="Nome" style="flex:2;min-width:70px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:5px 8px;outline:none">
+              <input id="init-roll" type="number" placeholder="Init" style="width:52px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:5px 7px;outline:none">
+              <button onclick="initAddCombatant()" class="init-btn">+ Add</button>
+              <button onclick="initAddAllPlayers()" class="init-btn" title="Adicionar todos">+ Todos</button>
+            </div>
+            <div id="initiative-tracker" class="mo-scroll" style="flex:1"></div>
+            <div id="init-controls" class="init-controls">
+              <button onclick="initStart()" class="init-btn green">▶ Iniciar</button>
+              <button onclick="initPrev()" class="init-btn">◀</button>
+              <button onclick="initNext()" class="init-btn gold">Próximo ▶</button>
+              <button onclick="initStop()" class="init-btn">⏸</button>
+              <button onclick="initClear()" class="init-btn red">🗑</button>
+            </div>
+          </div>
+
+          <!-- PEDIDO DE ROLAGEM -->
+          <div id="req-roll-panel" class="mo-card" style="flex-shrink:0">
+            <div class="mo-card-hd"><span>📢 Pedir Rolagem</span></div>
+            <div style="padding:10px 12px;display:flex;flex-direction:column;gap:7px">
+              <select id="req-roll-target" class="mo-input" style="width:100%">
+                <option value="">— Selecionar jogador —</option>
+              </select>
+              <div style="display:flex;gap:7px">
+                <select id="req-roll-dado" class="mo-input" style="flex:1">
+                  <option>1d4</option><option>1d6</option><option>1d8</option>
+                  <option selected>1d20</option><option>2d6</option><option>2d20</option><option>1d100</option>
+                </select>
+                <input id="req-roll-motivo" class="mo-input" placeholder="Motivo (ex: Percepção)" style="flex:2">
+              </div>
+              <button onclick="mestreRequestRoll()" class="mo-btn-gold" style="width:100%">⛧ Pedir Rolagem</button>
+            </div>
+          </div>
+
+          <!-- VOTAÇÃO -->
+          <div class="mo-card" style="flex-shrink:0">
+            <div class="mo-card-hd">
+              <span>🗳 Votação</span>
+              <button id="start-vote-btn" onclick="startVote()" class="mo-btn-sm" style="display:none">+ Nova</button>
+            </div>
+            <div id="vote-panel" style="padding:10px 12px">
+              <div style="color:var(--white-dust);font-size:12px">Nenhuma votação ativa.</div>
+            </div>
+          </div>
+
+        </div><!-- /col2 -->
+
+        <!-- ══ COLUNA 3: PARTY + PISTAS + COMMS ══ -->
+        <div class="mo-col">
+
+          <!-- PARTY STATUS -->
+          <div class="mo-card" style="flex:1;min-height:0">
+            <div class="mo-card-hd"><span>❤ Status da Party</span></div>
+            <div id="party-status-list" class="mo-scroll" style="flex:1;padding:8px 12px">
+              <div style="color:var(--white-dust);font-size:12px">Nenhum agente online.</div>
+            </div>
+          </div>
+
+          <!-- PISTAS -->
+          <div class="mo-card" style="flex:1;min-height:0">
+            <div class="mo-card-hd">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span>🔍 Pistas</span>
+                <span id="clue-badge" style="display:none;background:#c49a00;color:#000;font-size:9px;font-family:monospace;border-radius:8px;padding:1px 6px"></span>
+              </div>
+            </div>
+            <div id="clue-reveal-row" style="display:none;padding:8px 12px;border-bottom:1px solid rgba(58,0,0,.3);flex-shrink:0">
+              <div style="display:flex;gap:5px;margin-bottom:5px">
+                <select id="clue-reveal-tipo" class="mo-input" style="flex-shrink:0"></select>
+                <input id="clue-reveal-inp" class="mo-input" placeholder="Texto da pista..." style="flex:1">
+              </div>
+              <div style="display:flex;gap:5px">
+                <button onclick="revealClue()" class="mo-btn-gold" style="flex:1">⛧ Revelar para Todos</button>
+                <button onclick="if(window.fbClearClues)window.fbClearClues()" class="mo-btn-sm">🗑</button>
+              </div>
+            </div>
+            <div id="revealed-clues-list" class="mo-scroll" style="flex:1;padding:8px 12px">
+              <div style="color:var(--white-dust);font-size:12px">Nenhuma pista revelada.</div>
+            </div>
+          </div>
+
+          <!-- COMMS JOGADOR -->
+          <div id="player-comms" style="padding:10px 12px;flex-shrink:0;border-top:1px solid rgba(58,0,0,.3);background:rgba(6,0,5,.95)">
+            <div class="mo-section-title">✉ Comunicação Privada</div>
+            <div style="display:flex;gap:6px;margin-bottom:7px">
+              <input id="whisper-inp" class="mo-input" placeholder="Mensagem privada para o Mestre..." style="flex:1" onkeydown="if(event.key==='Enter')sendWhisper()">
+              <button onclick="sendWhisper()" class="mo-btn-purple">Enviar</button>
+            </div>
+            <div style="display:flex;gap:6px">
+              <input id="ping-msg" class="mo-input" placeholder="Motivo do ping (opcional)" style="flex:1" onkeydown="if(event.key==='Enter')pingMestre()">
+              <button onclick="pingMestre()" class="mo-btn-gold" style="white-space:nowrap">🔔 Chamar Mestre</button>
+            </div>
+          </div>
+
+          <!-- COMMS MESTRE -->
+          <div id="mestre-comms" style="display:none;flex:1;overflow:hidden;flex-direction:column;min-height:0">
+            <div style="display:flex;border-bottom:1px solid rgba(58,0,0,.3);flex-shrink:0">
+              <button onclick="showCommsTab('pings')" id="comms-tab-pings" class="mo-comms-tab mo-comms-tab-active">🔔 Pings<span id="ping-badge" style="background:#c49a00;color:#000;font-size:9px;font-family:monospace;border-radius:8px;padding:1px 5px;margin-left:4px"></span></button>
+              <button onclick="showCommsTab('whispers')" id="comms-tab-whispers" class="mo-comms-tab">✉ Whispers</button>
+            </div>
+            <div id="comms-pings" class="mo-scroll" style="flex:1;padding:8px 12px">
+              <div id="pings-list"><div style="color:var(--white-dust);font-size:12px">Nenhum ping.</div></div>
+            </div>
+            <div id="comms-whispers" style="display:none;flex:1;overflow-y:auto;padding:8px 12px">
+              <div id="whispers-list"><div style="color:var(--white-dust);font-size:12px">Nenhuma mensagem.</div></div>
+              <button onclick="if(window.fbClearWhispers)window.fbClearWhispers()" class="mo-btn-sm" style="margin-top:8px;width:100%">🗑 Limpar</button>
+            </div>
+          </div>
+
+        </div><!-- /col3 -->
+
+        <!-- ══ COLUNA 4: CONTROLES + BAÚ + DIÁRIO ══ -->
+        <div class="mo-col" style="overflow-y:auto">
+
+          <!-- AMEAÇA -->
+          <div class="mo-card" style="flex-shrink:0">
+            <div class="mo-card-hd">
+              <span>⛧ Ameaça</span>
+              <span id="ameaca-valor" style="font-family:'Cinzel Decorative',serif;font-size:16px;color:#cc2222">0</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <div style="height:6px;background:rgba(255,255,255,.06);border-radius:3px;overflow:hidden;margin-bottom:5px">
+                <div id="ameaca-bar" style="height:100%;width:0%;background:#22cc66;transition:all .5s;border-radius:3px"></div>
+              </div>
+              <div id="ameaca-label" style="font-size:10px;letter-spacing:.1em;font-family:'Oswald',sans-serif;color:#22cc66;text-transform:uppercase;margin-bottom:8px">Calma Aparente</div>
+              <div id="ameaca-controles" style="display:none;gap:5px;flex-wrap:wrap">
+                <button onclick="ajustarAmeaca(-10)" class="mo-btn-green" style="flex:1">−10</button>
+                <button onclick="ajustarAmeaca(-5)" class="mo-btn-green" style="flex:1">−5</button>
+                <button onclick="ajustarAmeaca(5)" class="mo-btn-red" style="flex:1">+5</button>
+                <button onclick="ajustarAmeaca(10)" class="mo-btn-red" style="flex:1">+10</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- NOTAS DO MESTRE -->
+          <div class="mo-card" style="flex-shrink:0">
+            <div class="mo-card-hd"><span>📋 Notas do Mestre</span></div>
+            <div style="padding:8px 12px">
+              <div id="notas-mestre-inp-row" style="display:none">
+                <textarea id="notas-mestre-inp" oninput="onNotasMestreInput()" placeholder="Anotações visíveis a todos..." rows="3"
+                  style="width:100%;background:rgba(20,0,15,.8);border:1px solid rgba(138,106,0,0.4);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:7px 9px;outline:none;resize:vertical;box-sizing:border-box;line-height:1.5"></textarea>
+                <div style="font-size:10px;color:var(--white-dust);margin-top:3px">Salvo automaticamente</div>
+              </div>
+              <div id="notas-mestre-display-row">
+                <div id="notas-mestre-display" style="font-family:'IM Fell English',serif;font-style:italic;font-size:12px;color:var(--white-ash);line-height:1.6;min-height:36px;padding:4px 0">
+                  <div style="color:var(--white-dust);font-style:italic">Sem notas do Mestre.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TIMER -->
+          <div class="mo-card" style="flex-shrink:0">
+            <div class="mo-card-hd">
+              <span style="color:#cc2222">⏱ Timer de Pressão</span>
+              <span id="timer-display" style="font-family:'Cinzel Decorative',serif;font-size:18px;color:#fff">—</span>
+            </div>
+            <div style="padding:0 12px 10px">
+              <div style="height:5px;background:rgba(255,255,255,.06);border-radius:2px;overflow:hidden;margin-bottom:6px">
+                <div id="timer-bar" style="height:100%;width:0%;background:#22cc66;transition:width .4s"></div>
+              </div>
+              <div id="timer-label" style="font-size:10px;color:var(--white-dust);margin-bottom:6px"></div>
+              <div id="timer-controles" style="display:none">
+                <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+                  <input id="timer-label-inp" class="mo-input" placeholder="Rótulo..." style="flex:1;min-width:80px"/>
+                  <input id="timer-sec" type="number" class="mo-input" placeholder="Seg" value="60" min="5" style="width:70px"/>
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button onclick="iniciarTimer()" class="mo-btn-red" style="flex:1">▶ Iniciar</button>
+                  <button onclick="pararTimer()" class="mo-btn-sm">■ Parar</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- CENA + CLIMA + TRILHA (compacto) -->
+          <div class="mo-card" style="flex-shrink:0">
+            <div class="mo-card-hd"><span style="color:#5b9cf6">🎬 Cena / Clima / Trilha</span></div>
+            <div style="padding:8px 12px;display:flex;flex-direction:column;gap:8px">
+              <div>
+                <div style="font-size:9px;color:#5b9cf6;letter-spacing:.1em;font-family:'Oswald',sans-serif;text-transform:uppercase;margin-bottom:4px">Cena Ativa</div>
+                <div id="cena-ativa-display" style="font-family:'Cinzel',serif;font-size:12px;color:#5b9cf6;padding:5px 8px;border:1px solid rgba(91,156,246,0.25);text-align:center;letter-spacing:.08em;margin-bottom:5px">—</div>
+                <div id="cena-controles" style="display:none;flex-wrap:wrap;gap:4px"></div>
+              </div>
+              <div>
+                <div style="font-size:9px;color:#5b9cf6;letter-spacing:.1em;font-family:'Oswald',sans-serif;text-transform:uppercase;margin-bottom:4px">Clima / Ambiente <span id="clima-player" style="display:none"></span></div>
+                <div id="clima-display" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.08em;color:#888;margin-bottom:5px">—</div>
+                <div id="clima-controles" style="display:none;flex-wrap:wrap;gap:4px"></div>
+              </div>
+              <div>
+                <div style="font-size:9px;color:#1fc8a0;letter-spacing:.1em;font-family:'Oswald',sans-serif;text-transform:uppercase;margin-bottom:4px">Trilha Sonora <span id="musica-player" style="display:none"></span></div>
+                <div id="musica-display" style="font-family:'Oswald',sans-serif;font-size:12px;letter-spacing:.08em;color:#888;margin-bottom:5px">—</div>
+                <div id="musica-controles" style="display:none;flex-wrap:wrap;gap:4px"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOCO / SPOTLIGHT -->
+          <div class="mo-card" style="flex-shrink:0">
+            <div class="mo-card-hd"><span style="color:#c49a00">⛧ Foco / Spotlight</span></div>
+            <div style="padding:8px 12px">
+              <div id="foco-display" style="font-family:'Cinzel',serif;font-size:13px;color:#c49a00;padding:7px 0;margin-bottom:8px">—</div>
+              <div id="foco-controles" style="display:none;flex-wrap:wrap;gap:5px"></div>
+            </div>
+          </div>
+
+          <!-- BAÚ DO GRUPO -->
+          <div class="mo-card" style="flex:1;min-height:200px">
+            <div class="mo-card-hd">
+              <span>📦 Baú do Grupo</span>
+              <button id="bau-clear-btn" onclick="if(window.fbClearBau&&confirm('Esvaziar o Baú?'))window.fbClearBau()" class="mo-btn-sm" style="display:none">🗑</button>
+            </div>
+            <div style="padding:8px 12px;border-bottom:1px solid rgba(58,0,0,.3);flex-shrink:0;display:flex;flex-direction:column;gap:5px">
+              <div style="display:flex;gap:5px">
+                <select id="bau-tipo" class="mo-input" style="flex-shrink:0">
+                  <option value="item">📦 Item</option>
+                  <option value="arma">⚔ Arma</option>
+                  <option value="reliquia">💎 Relíquia</option>
+                  <option value="consumivel">🧪 Consumível</option>
+                  <option value="documento">📄 Documento</option>
+                </select>
+                <input id="bau-nome" class="mo-input" placeholder="Nome do item..." style="flex:1" onkeydown="if(event.key==='Enter')addBauItem()">
+              </div>
+              <div style="display:flex;gap:5px">
+                <input id="bau-desc" class="mo-input" placeholder="Descrição (opcional)..." style="flex:1">
+                <button onclick="addBauItem()" class="mo-btn-gold">+ Add</button>
+              </div>
+            </div>
+            <div id="bau-list" style="flex:1;overflow-y:auto;padding:8px 12px;min-height:80px">
+              <div style="color:var(--white-dust);font-size:12px">Baú vazio.</div>
+            </div>
+          </div>
+
+          <!-- DIÁRIO -->
+          <div class="mo-card" style="flex:1;min-height:200px">
+            <div class="mo-card-hd">
+              <span>📝 Diário da Sessão</span>
+              <button id="diario-clear-btn" onclick="if(window.fbClearDiario&&confirm('Apagar todo o Diário?'))window.fbClearDiario()" class="mo-btn-sm" style="display:none">🗑</button>
+            </div>
+            <div style="padding:8px 12px;border-bottom:1px solid rgba(58,0,0,.3);flex-shrink:0">
+              <div style="display:flex;gap:5px">
+                <select id="diario-tipo" class="mo-input" style="flex-shrink:0">
+                  <option value="fato">📝 Fato</option>
+                  <option value="npc">👤 NPC</option>
+                  <option value="combate">⚔ Combate</option>
+                  <option value="descoberta">🔍 Descoberta</option>
+                  <option value="humor">💀 Momento</option>
+                </select>
+                <input id="diario-inp" class="mo-input" placeholder="O que aconteceu..." style="flex:1" onkeydown="if(event.key==='Enter')addDiarioEntry()">
+                <button onclick="addDiarioEntry()" class="mo-btn-gold">+ Reg</button>
+              </div>
+            </div>
+            <div id="diario-list" style="flex:1;overflow-y:auto;padding:8px 12px;min-height:80px">
+              <div style="color:var(--white-dust);font-size:12px">Diário vazio.</div>
+            </div>
+          </div>
+
+          <!-- ROLAGENS SECRETAS -->
+          <div id="secret-rolls-panel" class="mo-card" style="display:none;flex-shrink:0">
+            <div class="mo-card-hd">
+              <span style="color:#bb88ff">🎲 Rolagens Secretas</span>
+              <span id="secret-roll-badge" style="display:none;background:#bb88ff;color:#000;border-radius:50%;padding:0 5px;font-size:10px;margin-left:6px"></span>
+            </div>
+            <div style="padding:8px 12px">
+              <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+                <input id="secret-roll-expr" class="mo-input" placeholder="Ex: 1d20+5" value="1d20" style="flex:1;min-width:80px"/>
+                <input id="secret-roll-desc" class="mo-input" placeholder="Desc. (opcional)" style="flex:1;min-width:80px"/>
+                <button onclick="rollSecret()" class="mo-btn-purple">Rolar</button>
+              </div>
+              <div id="secret-rolls-list" style="max-height:160px;overflow-y:auto">
+                <div style="color:var(--white-dust);font-size:12px">Nenhuma rolagem secreta.</div>
+              </div>
+              <button onclick="if(window.fbClearSecretRolls)window.fbClearSecretRolls()" class="mo-btn-sm" style="margin-top:6px;width:100%">Limpar Rolagens Secretas</button>
+            </div>
+          </div>
+
+          <!-- STATUS TOKEN -->
+          <div id="token-status-panel" class="mo-card" style="display:none;flex-shrink:0">
+            <div class="mo-card-hd"><span style="color:#cc4400">☠ Status do Token</span></div>
+          </div>
+
+        </div><!-- /col4 -->
+
+      </div><!-- /mo-grid -->
+
+      <!-- OVERLAY FOCO -->
+      <div id="foco-overlay" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9000;background:rgba(8,0,6,.92);border:1px solid rgba(196,154,0,0.4);padding:8px 22px;font-family:'Cinzel',serif;font-size:13px;color:#c49a00;letter-spacing:.1em;pointer-events:none;box-shadow:0 0 20px rgba(196,154,0,0.2)"></div>
+
+      <!-- CENA NA TOPBAR -->
+      <div id="cena-ativa-player" style="display:none;position:fixed;top:42px;left:50%;transform:translateX(-50%);z-index:8000;background:rgba(8,0,6,.9);border:1px solid rgba(91,156,246,0.3);padding:4px 16px;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;pointer-events:none"></div>
+
+    </div><!-- /tab-multi -->
+
+
+    <div id="tab-elementos" class="tab-content">
+      <div class="panel">
+        <div class="panel-title">⚗ Elementos do Outro Lado</div>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;color:var(--white-ash);font-size:13px;margin-bottom:18px;line-height:1.7">"Os elementos não são magia — são a linguagem com que o Outro Lado fala ao mundo. Cada agente que sobrevive o suficiente começa a ouvi-los."</p>
+        <div class="four-col" id="elementos-grid" style="grid-template-columns:repeat(2,1fr);gap:14px"></div>
+      </div>
+      <div class="panel" id="el-detail-panel" style="display:none">
+        <div class="panel-title" id="el-detail-title"></div>
+        <div id="el-detail-body"></div>
+      </div>
+    </div>
+
+    <div id="tab-criaturas" class="tab-content">
+      <!-- Sub-abas de Criaturas / Relíquias -->
+      <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--blood-deep)">
+        <button id="subtab-btn-criaturas" onclick="showSubTab('criaturas')" style="padding:9px 20px;background:rgba(139,0,0,0.15);border:none;border-bottom:2px solid var(--crimson);color:var(--crimson-mid);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .2s">☠ Bestiário</button>
+        <button id="subtab-btn-reliquias" onclick="showSubTab('reliquias')" style="padding:9px 20px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--white-dust);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:all .2s">💎 Relíquias</button>
+      </div>
+
+      <!-- SUB-ABA: Bestiário -->
+      <div id="subtab-criaturas">
+        <div class="panel">
+          <div class="panel-title">☠ Bestiário — Ameaças Paranormais</div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+            <button class="btn-add" onclick="filtrarCriaturas('todas')" id="fil-todas" style="background:rgba(139,0,0,0.15)">Todas</button>
+            <button class="btn-add" onclick="filtrarCriaturas('basica')" id="fil-basica">Básicas</button>
+            <button class="btn-add" onclick="filtrarCriaturas('outro-lado')" id="fil-outro-lado">Outro Lado</button>
+            <div style="margin-left:auto;display:flex;gap:6px;align-items:center">
+              <button class="btn-add" onclick="toggleOrdemCriaturas()" id="btn-ordem" title="Inverter ordem" style="font-size:11px">⬆ Ameaça</button>
+              <select id="sort-criaturas" onchange="ordenarCriaturas()" style="background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:4px 8px;font-size:11px;outline:none;cursor:pointer">
+                <option value="ameaca">Ameaça</option>
+                <option value="nome">Nome</option>
+                <option value="pv">PV</option>
+                <option value="def">DEF</option>
+              </select>
+            </div>
+          </div>
+          <div id="criaturas-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px"></div>
+        </div>
+        <div class="panel" id="cr-detail-panel" style="display:none">
+          <button onclick="document.getElementById('cr-detail-panel').style.display='none'" style="background:transparent;border:none;color:var(--white-dust);cursor:pointer;font-size:12px;letter-spacing:.1em;font-family:'Oswald',sans-serif;margin-bottom:12px">← Voltar</button>
+          <div id="cr-detail-body"></div>
+        </div>
+      </div>
+
+      <!-- SUB-ABA: Relíquias -->
+      <div id="subtab-reliquias" style="display:none">
+        <div class="panel">
+          <div class="panel-title">💎 Relíquias da Calamidade — Portadores</div>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;color:var(--white-ash);font-size:13px;margin-bottom:18px;line-height:1.7">"Os portadores não escolhem as Relíquias — as Relíquias os escolhem. E quando o fazem, a realidade nunca mais é a mesma."</p>
+          <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+            <button class="btn-add" onclick="filtrarReliquias('todas')" id="rfil-todas" style="background:rgba(139,0,0,0.15)">Todas</button>
+            <button class="btn-add" onclick="filtrarReliquias('sangue')" id="rfil-sangue"><span class="sym-el sym-sangue" title="Sangue"></span> Sangue</button>
+            <button class="btn-add" onclick="filtrarReliquias('energia')" id="rfil-energia"><span class="sym-el sym-energia" title="Energia"></span> Energia</button>
+            <button class="btn-add" onclick="filtrarReliquias('conhecimento')" id="rfil-conhecimento"><span class="sym-el sym-conhecimento" title="Conhecimento"></span> Conhecimento</button>
+            <button class="btn-add" onclick="filtrarReliquias('morte')" id="rfil-morte"><span class="sym-el sym-morte" title="Morte"></span> Morte</button>
+            <div style="margin-left:auto;font-size:10px;color:var(--white-dust);font-family:'Courier Prime',monospace;letter-spacing:.06em;align-self:center">⛧ Calamidade — Wiki Oficial</div>
+          </div>
+          <div id="reliquias-grid" style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px"></div>
+        </div>
+        <div class="panel" id="rel-detail-panel" style="display:none">
+          <button onclick="document.getElementById('rel-detail-panel').style.display='none'" style="background:transparent;border:none;color:var(--white-dust);cursor:pointer;font-size:12px;letter-spacing:.1em;font-family:'Oswald',sans-serif;margin-bottom:12px">← Voltar</button>
+          <div id="rel-detail-body"></div>
+        </div>
+      </div>
+    </div><!-- /tab-criaturas -->
+ 
+  </div><!-- /app-body -->
+</div><!-- /screen-app -->
+ 
+<div id="broadcast-incoming" class="broadcast-incoming">
+  <div style="font-size:10px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;font-family:'Oswald',sans-serif">⛧ Mensagem do Mestre</div>
+  <div id="broadcast-text"></div>
+  <button onclick="document.getElementById('broadcast-incoming').classList.remove('show')" style="margin-top:10px;background:transparent;border:1px solid rgba(138,106,0,0.4);color:var(--gold-light);padding:4px 14px;font-family:'Cinzel',serif;font-size:11px;cursor:pointer;letter-spacing:.1em">Dispensar</button>
+</div>
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+ 
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+ 
+ 
+<!-- MODAL MESTRE LOGIN -->
+<div id="modal-mestre" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:500;align-items:center;justify-content:center">
+  <div style="background:rgba(8,0,6,0.98);border:1px solid #8a6a00;padding:2rem 2.5rem;max-width:360px;width:90%;position:relative">
+    <div style="font-family:'Cinzel',serif;font-size:13px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:1.4rem;padding-bottom:.8rem;border-bottom:1px solid #3a3000">⛧ Acesso Restrito — Mestre</div>
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Codinome</label>
+      <input id="m-user" type="text" placeholder="codinome do mestre" autocomplete="off"
+        style="width:100%;background:rgba(30,20,0,0.7);border:1px solid #5a4a00;color:#e8e0e0;font-family:'Courier Prime',monospace;font-size:14px;padding:10px 14px;outline:none"
+        onkeydown="if(event.key==='Enter')document.getElementById('m-pass').focus()">
+    </div>
+    <div style="margin-bottom:1.2rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#c49a00;text-transform:uppercase;margin-bottom:.5rem;font-family:'Oswald',sans-serif">Senha</label>
+      <input id="m-pass" type="password" placeholder="••••••••" autocomplete="off"
+        style="width:100%;background:rgba(30,20,0,0.7);border:1px solid #5a4a00;color:#e8e0e0;font-family:'Courier Prime',monospace;font-size:14px;padding:10px 14px;outline:none"
+        onkeydown="if(event.key==='Enter')doMestreLogin()">
+    </div>
+    <div id="m-err" style="color:#cc4444;font-size:12px;font-family:'Courier Prime',monospace;min-height:16px;margin-bottom:.8rem"></div>
+    <button onclick="doMestreLogin()" style="width:100%;padding:11px;background:transparent;border:1px solid #8a6a00;color:#c49a00;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;text-transform:uppercase;cursor:pointer;transition:all .2s" onmouseover="this.style.background='rgba(138,106,0,0.15)'" onmouseout="this.style.background='transparent'">⛧ Entrar ⛧</button>
+    <button onclick="closeMestreModal()" style="position:absolute;top:10px;right:14px;background:transparent;border:none;color:#6a6060;font-size:20px;cursor:pointer;line-height:1">×</button>
+  </div>
+</div>
+ 
+
+ 
+<!-- BANNER DE PEDIDO DE ROLAGEM (aparece para o jogador quando Mestre pede) -->
+<div id="roll-request-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(8,0,6,.98);border:2px solid var(--gold);padding:16px 22px;min-width:320px;max-width:500px;align-items:center;gap:14px;box-shadow:0 0 30px rgba(138,106,0,.4);flex-wrap:wrap">
+  <div style="flex:1;min-width:160px">
+    <div style="font-family:'Cinzel',serif;font-size:11px;color:var(--gold-light);letter-spacing:.08em;margin-bottom:4px">⛧ O MESTRE PEDE UMA ROLAGEM</div>
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <span id="rrb-dado" style="font-family:'Cinzel Decorative',serif;font-size:24px;color:var(--white-dim)">1d20</span>
+      <span id="rrb-motivo" style="font-size:12px;color:var(--white-dust);font-family:'Courier Prime',monospace"></span>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button onclick="rollRequestDice()" style="padding:9px 16px;background:rgba(138,106,0,.15);border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;cursor:pointer;text-transform:uppercase">🎲 Rolar Agora</button>
+    <button onclick="dismissRollRequest()" style="padding:9px 12px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:10px;cursor:pointer">Fechar</button>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
