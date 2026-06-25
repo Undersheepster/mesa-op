@@ -1,421 +1,566 @@
+// Constantes de ícones — usadas no painel do Mestre
+const ICONS={skull:'☠',eye:'◈',flame:'🔥',bolt:'⚡',moon:'🌙',star:'★',shield:'⛊',ghost:'👻',blood:'◆',rune:'⛧'};
+
+
 // ══════════════════════════════════════════════
-//  FIREBASE — REST API + SSE
+//  SUPABASE — REST API + Realtime
 // ══════════════════════════════════════════════
 
-function _fbCfg(){
-  try { return JSON.parse(localStorage.getItem('op_firebase_config') || 'null'); } catch(e){ return null; }
+function _sbCfg(){
+  try { return JSON.parse(localStorage.getItem('op_supabase_config') || 'null'); } catch(e){ return null; }
 }
-function _fbBase(){
-  const c = _fbCfg();
-  return c && c.databaseURL ? c.databaseURL.replace(/\/$/, '') : null;
+function _sbBase(){
+  const c = _sbCfg();
+  return c && c.url ? c.url.replace(/\/$/, '') : null;
+}
+function _sbKey(){
+  const c = _sbCfg();
+  return c ? c.anonKey : null;
+}
+function _sbHeaders(){
+  return {
+    'Content-Type': 'application/json',
+    'apikey': _sbKey() || '',
+    'Authorization': 'Bearer ' + (_sbKey() || ''),
+    'Prefer': 'return=representation'
+  };
 }
 
-// PUT simples — sem AbortController (confiável)
-async function _fbPut(path, data){
-  const base = _fbBase(); if(!base) return null;
+// Supabase usa uma tabela: mesa_state(path text PK, data jsonb, updated_at timestamptz)
+// PUT equivale a upsert
+async function _sbPut(path, data){
+  const base = _sbBase(); if(!base) return null;
   try{
-    const r = await fetch(base + '/' + path + '.json', {
-      method: 'PUT',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify(data)
+    const r = await fetch(base + '/rest/v1/mesa_state', {
+      method: 'POST',
+      headers: { ..._sbHeaders(), 'Prefer': 'resolution=merge-duplicates,return=representation' },
+      body: JSON.stringify({ path, data, updated_at: new Date().toISOString() })
     });
     return r.ok ? r.json() : null;
   }catch(e){ return null; }
 }
 
-async function _fbDelete(path){
-  const base = _fbBase(); if(!base) return;
-  try{ await fetch(base + '/' + path + '.json', { method: 'DELETE' }); }catch(e){}
+async function _sbDelete(path){
+  const base = _sbBase(); if(!base) return;
+  // Deletes all rows where path = exact or path starts with path/
+  try{
+    await fetch(base + '/rest/v1/mesa_state?or=(path.eq.' + encodeURIComponent(path) + ',path.like.' + encodeURIComponent(path + '/%') + ')', {
+      method: 'DELETE',
+      headers: _sbHeaders()
+    });
+  }catch(e){}
 }
 
-async function _fbGet(path){
-  const base = _fbBase(); if(!base) return null;
+async function _sbGet(path){
+  const base = _sbBase(); if(!base) return null;
   try {
-    const r = await fetch(base + '/' + path + '.json');
+    // Get exact path first
+    const r = await fetch(base + '/rest/v1/mesa_state?path=eq.' + encodeURIComponent(path), {
+      headers: { ..._sbHeaders(), 'Prefer': '' }
+    });
     if(!r.ok) return null;
-    return await r.json();
+    const rows = await r.json();
+    if(rows && rows.length > 0) return rows[0].data;
+
+    // If no exact match, try to get children (path like "path/%")
+    const r2 = await fetch(base + '/rest/v1/mesa_state?path=like.' + encodeURIComponent(path + '/%'), {
+      headers: { ..._sbHeaders(), 'Prefer': '' }
+    });
+    if(!r2.ok) return null;
+    const children = await r2.json();
+    if(!children || !children.length) return null;
+    // Reconstruct nested object from flat paths
+    const obj = {};
+    children.forEach(row => {
+      const rel = row.path.slice(path.length + 1); // remove "path/"
+      const parts = rel.split('/');
+      let cur = obj;
+      for(let i = 0; i < parts.length - 1; i++){
+        if(!cur[parts[i]] || typeof cur[parts[i]] !== 'object') cur[parts[i]] = {};
+        cur = cur[parts[i]];
+      }
+      cur[parts[parts.length-1]] = row.data;
+    });
+    return Object.keys(obj).length ? obj : null;
   } catch(e){ return null; }
 }
 
-// SSE — push real do Firebase
-const _sseConnections = {};
-function _fbSSE(path, cb){
-  const base = _fbBase(); if(!base) return;
-  if(_sseConnections[path]){ try{ _sseConnections[path].close(); }catch(e){} }
-  const es = new EventSource(base + '/' + path + '.json');
-  _sseConnections[path] = es;
-  let _localState = null; // mantém estado completo do nó
-  es.addEventListener('put', e => {
+// ── Realtime via Supabase Broadcast/Presence (substitui SSE do Firebase) ──
+// Usamos polling inteligente como fallback universal + Supabase Realtime quando disponível
+const _sbRealtimeChannels = {};
+const _sbPollingTimers = {};
+const _sbLastData = {};
+
+function _sbWatch(path, cb){
+  const base = _sbBase(); if(!base) return () => {};
+  const key = path;
+
+  // Para qualquer escuta anterior no mesmo path
+  if(_sbRealtimeChannels[key]){
+    try{ _sbRealtimeChannels[key].unsubscribe(); }catch(e){}
+    delete _sbRealtimeChannels[key];
+  }
+  if(_sbPollingTimers[key]){
+    clearInterval(_sbPollingTimers[key]);
+    delete _sbPollingTimers[key];
+  }
+
+  // Fetch inicial imediato
+  const fetchAndNotify = async () => {
+    const data = await _sbGet(path);
+    const sig = JSON.stringify(data);
+    if(sig !== _sbLastData[key]){
+      _sbLastData[key] = sig;
+      cb(data);
+    }
+  };
+  fetchAndNotify();
+
+  // Tenta usar Supabase Realtime se o cliente JS estiver disponível
+  if(window._supabaseClient){
     try{
-      const msg = JSON.parse(e.data);
-      if(msg.path === '/'){
-        _localState = msg.data; // replace total
-      } else {
-        // update parcial por path (ex: "/ts")
-        if(!_localState) _localState = {};
-        const parts = msg.path.replace(/^\//,'').split('/');
-        let obj = _localState;
-        for(let i=0;i<parts.length-1;i++){
-          if(!obj[parts[i]]) obj[parts[i]]={};
-          obj = obj[parts[i]];
-        }
-        obj[parts[parts.length-1]] = msg.data;
-      }
-      cb(_localState);
-    }catch(err){}
-  });
-  es.addEventListener('patch', e => {
-    try{
-      const msg = JSON.parse(e.data);
-      if(!_localState) _localState = {};
-      // patch: merge no path indicado
-      Object.assign(_localState, msg.data || {});
-      cb(_localState);
-    }catch(err){}
-  });
-  es.onerror = () => {
-    try{ es.close(); }catch(e){}
-    delete _sseConnections[path];
-    setTimeout(()=>_fbSSE(path, cb), 3000);
+      const chan = window._supabaseClient
+        .channel('mesa_state_' + path.replace(/\//g,'_'))
+        .on('postgres_changes', {
+          event: '*', schema: 'public', table: 'mesa_state',
+          filter: 'path=like.' + path + '*'
+        }, () => { fetchAndNotify(); })
+        .subscribe();
+      _sbRealtimeChannels[key] = chan;
+    }catch(e){
+      // Realtime não disponível — usa polling
+    }
+  }
+
+  // Polling de fallback (4s) — sempre ativo para garantir sync
+  _sbPollingTimers[key] = setInterval(fetchAndNotify, 4000);
+
+  // Retorna função para fechar
+  return () => {
+    if(_sbRealtimeChannels[key]){ try{_sbRealtimeChannels[key].unsubscribe();}catch(e){} delete _sbRealtimeChannels[key]; }
+    if(_sbPollingTimers[key]){ clearInterval(_sbPollingTimers[key]); delete _sbPollingTimers[key]; }
   };
 }
 
-// POLL
+// POLL explícito (compatibilidade)
 const _polls = {};
-function _fbPoll(path, cb, ms){
+function _sbPoll(path, cb, ms){
   if(_polls[path]) clearInterval(_polls[path]);
-  const run = async () => { cb(await _fbGet(path)); };
+  const run = async () => { cb(await _sbGet(path)); };
   run();
   _polls[path] = setInterval(run, ms || 4000);
 }
 
 // ── PRESENÇA ──
 window.fbSetPresence = async function(user, isMestre){
-  const base = _fbBase(); if(!base) return;
-  await _fbPut('presence/' + user, { user, isMestre: !!isMestre, since: Date.now(), online: true });
-  window.addEventListener('beforeunload', () => {
-    const b = _fbBase();
-    if(b) navigator.sendBeacon(b + '/presence/' + user + '.json',
-      new Blob([JSON.stringify(null)], {type:'application/json'}));
-  });
+  const base = _sbBase(); if(!base) return;
+  const since = Date.now();
+  await _sbPut('presence/' + user, { user, isMestre: !!isMestre, since, online: true });
+
+  // Ao sair: grava lastSeen (async) e remove presença (beacon)
+  const _handleExit = () => {
+    const b = _sbBase(); const k = _sbKey();
+    if(!b || !k) return;
+    const sessionDuration = Date.now() - since;
+    const lastSeenData = { user, isMestre: !!isMestre, lastSeen: Date.now(), sessionDuration };
+    // Grava lastSeen via fetch (keepalive para funcionar em beforeunload)
+    fetch(b + '/rest/v1/mesa_state', {
+      method: 'POST',
+      keepalive: true,
+      headers: { ..._sbHeaders(), 'Prefer': 'resolution=merge-duplicates' },
+      body: JSON.stringify({ path: 'last_seen/' + user, data: lastSeenData, updated_at: new Date().toISOString() })
+    }).catch(()=>{});
+    // Remove presença via beacon
+    navigator.sendBeacon(b + '/rest/v1/mesa_state?or=(path.eq.' + encodeURIComponent('presence/' + user) + ')',
+      new Blob([JSON.stringify([])], {type:'application/json'}));
+  };
+  window.addEventListener('beforeunload', _handleExit);
 };
-window.fbRemovePresence = async function(user){ await _fbDelete('presence/' + user); };
-window.fbWatchPresence = function(cb){ _fbSSE('presence', d => cb(d || {})); };
+
+window.fbRemovePresence = async function(user, since){
+  // Grava lastSeen antes de remover
+  const sessionDuration = since ? (Date.now() - since) : 0;
+  await _sbPut('last_seen/' + user, { user, isMestre: !!isMestre, lastSeen: Date.now(), sessionDuration });
+  await _sbDelete('presence/' + user);
+};
+
+window.fbWatchPresence = function(cb){
+  _sbWatch('presence', d => cb(d || {}));
+};
+
+window.fbWatchLastSeen = function(cb){
+  _sbWatch('last_seen', d => cb(d || {}));
+};
+
 window.fbWatchConnection = function(cb){
   const check = async () => {
-    const base = _fbBase(); if(!base){ cb(false); return; }
-    try { cb((await fetch(base+'/presence.json?shallow=true',{cache:'no-store'})).ok); }
-    catch(e){ cb(false); }
+    const base = _sbBase(); const key = _sbKey();
+    if(!base || !key){ cb({ok:false, code:0, reason:'not_configured'}); return; }
+    try {
+      const r = await fetch(base + '/rest/v1/mesa_state?path=eq.presence&limit=1', {
+        headers: { 'apikey': key, 'Authorization': 'Bearer ' + key },
+        cache: 'no-store'
+      });
+      if(r.ok){ cb({ok:true, code:r.status, reason:'ok'}); return; }
+      let reason = 'http_' + r.status;
+      if(r.status === 401 || r.status === 403) reason = 'permission_denied';
+      else if(r.status === 404) reason = 'not_found';
+      let detail = '';
+      try{ detail = (await r.text()).slice(0,160); }catch(e){}
+      cb({ok:false, code:r.status, reason, detail});
+    } catch(e){
+      cb({ok:false, code:0, reason:'network_error', detail:e.message});
+    }
   };
   check(); setInterval(check, 10000);
 };
 
+// Texto e cor amigáveis para cada motivo de falha
+function _fbReasonInfo(status){
+  if(!status) return {text:'Verificando Supabase...', color:'var(--white-dust)', tip:''};
+  if(status.ok) return {text:'Conectado — modo online ativo', color:'#44cc88', tip:''};
+  switch(status.reason){
+    case 'not_configured':
+      return {text:'Supabase não configurado', color:'#cc6644', tip:'Clique em "⚙ Supabase" para configurar.'};
+    case 'permission_denied':
+      return {text:'Bloqueado pelas políticas do Supabase (permissão negada)', color:'#cc4444',
+        tip:'No Supabase Dashboard → Table Editor → mesa_state → RLS, desative Row Level Security ou adicione políticas de acesso.'};
+    case 'not_found':
+      return {text:'Tabela não encontrada (URL ou tabela incorreta?)', color:'#cc4444',
+        tip:'Confira se a tabela mesa_state existe no seu projeto Supabase.'};
+    case 'network_error':
+      return {text:'Sem conexão com o servidor Supabase', color:'#cc6644',
+        tip:'Verifique sua internet ou a URL do projeto. Detalhe: '+(status.detail||'')};
+    default:
+      return {text:'Erro ao conectar (HTTP '+status.code+')', color:'#cc6644', tip:status.detail||''};
+  }
+}
+
 // ── BROADCAST ──
-window.fbBroadcast = async function(msg, from){ await _fbPut('broadcast',{msg,from,ts:Date.now()}); };
+window.fbBroadcast = async function(msg, from){ await _sbPut('broadcast', {msg, from, ts:Date.now()}); };
 window.fbWatchBroadcast = function(cb){
-  let last=0;
-  _fbSSE('broadcast', d=>{ if(d&&d.ts&&d.ts>last){last=d.ts;cb(d);} });
+  let last = 0;
+  _sbWatch('broadcast', d => { if(d && d.ts && d.ts > last){ last = d.ts; cb(d); } });
 };
 
 // ── KICK ──
 window.fbKick = async function(user){
-  // Grava o kick E remove a presença imediatamente
   await Promise.all([
-    _fbPut('kicks/'+user, {ts:Date.now()}),
-    _fbDelete('presence/'+user)
+    _sbPut('kicks/' + user, {ts:Date.now()}),
+    _sbDelete('presence/' + user)
   ]);
 };
 window.fbWatchKick = function(user, cb){
-  // Usa SSE para resposta instantânea ao invés de polling
-  let fired=false;
-  _fbSSE('kicks/'+user, d=>{
-    if(d && d.ts && !fired){ fired=true; cb(); }
+  let fired = false;
+  _sbWatch('kicks/' + user, d => {
+    if(d && d.ts && !fired){ fired = true; cb(); }
   });
 };
 
 // ── GAMEDATA ──
-let _saveDbTimer=null;
+let _saveDbTimer = null;
 window.fbSaveDB = function(dbObj){
   clearTimeout(_saveDbTimer);
-  _saveDbTimer = setTimeout(()=>{
-    _fbPut('gamedata',{
-      users: dbObj.users||{},
-      characters: dbObj.characters||{},
-      rolls: dbObj.rolls||{},
-      mestre: dbObj.mestre||{},
-      mapbg: (dbObj.maps&&dbObj.maps['shared'])||null,
+  _saveDbTimer = setTimeout(() => {
+    _sbPut('gamedata', {
+      users: dbObj.users || {},
+      characters: dbObj.characters || {},
+      rolls: dbObj.rolls || {},
+      mestre: dbObj.mestre || {},
+      mapbg: (dbObj.maps && dbObj.maps['shared']) || null,
       mapbgTs: Date.now()
     });
   }, 1500);
 };
 window.fbWatchDB = function(cb){
-  // SSE (push real) para sync instantâneo entre clientes
-  let last='';
-  _fbSSE('gamedata', d=>{
+  let last = '';
+  _sbWatch('gamedata', d => {
     if(!d) return;
     const s = JSON.stringify(d);
-    if(s !== last){ last=s; cb(d); }
+    if(s !== last){ last = s; cb(d); }
   });
 };
-window.fbLoadDB = async function(){ return await _fbGet('gamedata'); };
+window.fbLoadDB = async function(){ return await _sbGet('gamedata'); };
 
-// ── MAPA: mapstate (tokens+structs) via SSE push ──
-// Durante drag: throttle de 50ms para evitar flood de PUTs
-// Fora de drag: throttle de 80ms
-let _msTimer=null, _msPending=null, _msLastSent=0, _msSending=false;
-let _msDragRaf=null; // rAF handle para throttle durante drag
+// ── MAPA ──
+let _msTimer = null, _msPending = null, _msLastSent = 0;
+let _msDragRaf = null;
 window.fbSaveMap = function(mapKey, mapData){
-  if(mapKey==='bg'){
-    _fbPut('mapbg',{data:mapData.data||'',ts:mapData.ts||Date.now(),sid:mapData.sid||''});
+  if(mapKey === 'bg'){
+    _sbPut('mapbg', {data:mapData.data||'', ts:mapData.ts||Date.now(), sid:mapData.sid||''});
     return;
   }
   const payload = { tokens:mapData.tokens||'[]', structs:mapData.structs||'[]', ts:mapData.ts||Date.now(), sid:mapData.sid||'' };
   const flush = window.fbSaveMap._flush;
   window.fbSaveMap._flush = false;
   clearTimeout(_msTimer);
-
-  // Drag ativo → throttle 50ms via rAF para não travar UI
   if(draggingToken || draggingStruct){
     const now = Date.now();
     if(now - _msLastSent < 50){
       _msPending = payload;
       if(!_msDragRaf){
-        _msDragRaf = requestAnimationFrame(()=>{
+        _msDragRaf = requestAnimationFrame(() => {
           _msDragRaf = null;
           if(!_msPending) return;
           _msLastSent = Date.now();
-          _fbPut('mapstate', _msPending);
+          _sbPut('mapstate', _msPending);
           _msPending = null;
         });
       }
     } else {
       _msLastSent = now;
-      _fbPut('mapstate', payload);
+      _sbPut('mapstate', payload);
     }
     return;
   }
-  // Flush explícito → PUT imediato
   if(flush){
     _msLastSent = Date.now();
-    _fbPut('mapstate', payload);
+    _sbPut('mapstate', payload);
     return;
   }
-  // Fora de drag → throttle 80ms
   _msPending = payload;
   const wait = Math.max(0, 80-(Date.now()-_msLastSent));
-  _msTimer = setTimeout(()=>{
+  _msTimer = setTimeout(() => {
     _msLastSent = Date.now();
-    _fbPut('mapstate', _msPending);
+    _sbPut('mapstate', _msPending);
     _msPending = null;
   }, wait);
 };
 
 window.fbWatchMap = function(cb){
-  let lastTs=0;
+  let lastTs = 0;
   const wrapped = data => {
     if(!data) return;
-    if(!data.ts){ cb(data); return; } // sem ts: passa sempre
-    if(data.ts < lastTs - 5000) lastTs=0; // reconexão: reseta
+    if(!data.ts){ cb(data); return; }
+    if(data.ts < lastTs - 5000) lastTs = 0;
     if(data.ts <= lastTs) return;
-    lastTs=data.ts; cb(data);
+    lastTs = data.ts; cb(data);
   };
-  // Guarda o wrapped para reconexão
   window._fbWatchMapCb = wrapped;
-  _fbSSE('mapstate', wrapped);
+  _sbWatch('mapstate', wrapped);
 };
 window.fbWatchBg = function(cb){
-  let lastTs=0;
+  let lastTs = 0;
   const wrapped = data => {
     if(!data || !data.ts) return;
-    if(data.ts < lastTs - 5000) lastTs=0;
+    if(data.ts < lastTs - 5000) lastTs = 0;
     if(data.ts <= lastTs) return;
-    lastTs=data.ts; cb(data);
+    lastTs = data.ts; cb(data);
   };
-  _fbSSE('mapbg', wrapped);
+  _sbWatch('mapbg', wrapped);
 };
 
 window.fbTestConfig = async function(cfg){
   try {
-    const r = await fetch(cfg.databaseURL.replace(/\/$/,'')+'/presence.json?shallow=true');
-    return r.ok ? {ok:true} : {ok:false,err:'HTTP '+r.status};
-  } catch(e){ return {ok:false,err:e.message}; }
+    const r = await fetch(cfg.url.replace(/\/$/,'') + '/rest/v1/mesa_state?limit=1', {
+      headers: { 'apikey': cfg.anonKey, 'Authorization': 'Bearer ' + cfg.anonKey }
+    });
+    return r.ok ? {ok:true} : {ok:false, err:'HTTP '+r.status};
+  } catch(e){ return {ok:false, err:e.message}; }
 };
 
-// ── CHAT em tempo real ──
-window.fbChatSend = async function(msg){ await _fbPut('chat/'+Date.now()+'_'+Math.random().toString(36).slice(2,5), msg); };
+// ── CHAT ──
+window.fbChatSend = async function(msg){ await _sbPut('chat/' + Date.now() + '_' + Math.random().toString(36).slice(2,5), msg); };
 window.fbWatchChat = function(cb){
-  let _localMsgs={};
-  _fbSSE('chat', data=>{
+  _sbWatch('chat', data => {
     if(!data){ cb([]); return; }
-    _localMsgs = data;
-    const msgs = Object.entries(data).map(([k,v])=>({...v,_key:k}))
-      .sort((a,b)=>(a.ts||0)-(b.ts||0));
+    const msgs = Object.entries(data).map(([k,v]) => ({...v, _key:k}))
+      .sort((a,b) => (a.ts||0)-(b.ts||0));
     cb(msgs);
   });
 };
-window.fbChatClear = async function(){ await _fbDelete('chat'); };
+window.fbChatClear = async function(){ await _sbDelete('chat'); };
 
-// ── ROLAGENS PÚBLICAS em tempo real ──
-window.fbRollPublish = async function(roll){ await _fbPut('rolls_pub/'+Date.now()+'_'+Math.random().toString(36).slice(2,5), roll); };
+// ── ROLAGENS PÚBLICAS ──
+window.fbRollPublish = async function(roll){ await _sbPut('rolls_pub/' + Date.now() + '_' + Math.random().toString(36).slice(2,5), roll); };
 window.fbWatchRolls = function(cb){
-  _fbSSE('rolls_pub', data=>{
+  _sbWatch('rolls_pub', data => {
     if(!data){ cb([]); return; }
-    const rolls = Object.entries(data).map(([k,v])=>({...v,_key:k}))
-      .sort((a,b)=>(a.ts||0)-(b.ts||0)).slice(-80);
+    const rolls = Object.entries(data).map(([k,v]) => ({...v, _key:k}))
+      .sort((a,b) => (a.ts||0)-(b.ts||0)).slice(-80);
     cb(rolls);
   });
 };
-window.fbRollsClear = async function(){ await _fbDelete('rolls_pub'); };
+window.fbRollsClear = async function(){ await _sbDelete('rolls_pub'); };
 
-// ── PEDIDO DE ROLAGEM (Mestre → Jogador) ──
-window.fbRequestRoll = async function(req){ await _fbPut('roll_requests/'+req.target, req); };
+// ── PEDIDO DE ROLAGEM ──
+window.fbRequestRoll = async function(req){ await _sbPut('roll_requests/' + req.target, req); };
 window.fbWatchRollRequest = function(user, cb){
-  let lastTs=0;
-  _fbSSE('roll_requests/'+user, data=>{
-    if(data && data.ts && data.ts>lastTs){ lastTs=data.ts; cb(data); }
+  let lastTs = 0;
+  _sbWatch('roll_requests/' + user, data => {
+    if(data && data.ts && data.ts > lastTs){ lastTs = data.ts; cb(data); }
   });
 };
-window.fbClearRollRequest = async function(user){ await _fbDelete('roll_requests/'+user); };
+window.fbClearRollRequest = async function(user){ await _sbDelete('roll_requests/' + user); };
 
-// ── RASTREADOR DE INICIATIVA ──
-window.fbSaveInitiative = async function(data){ await _fbPut('initiative', data); };
+// ── INICIATIVA ──
+window.fbSaveInitiative = async function(data){ await _sbPut('initiative', data); };
 window.fbWatchInitiative = function(cb){
-  _fbSSE('initiative', data=>{ cb(data||{combatants:[],round:1,currentIdx:0,active:false}); });
+  _sbWatch('initiative', data => { cb(data || {combatants:[],round:1,currentIdx:0,active:false}); });
 };
 
-// ── ATENÇÃO: player pede atenção do mestre ──
+// ── PINGS ──
 window.fbPingMestre = async function(user, msg){
-  await _fbPut('pings/'+user, {user, msg:msg||'Preciso de atenção!', ts:Date.now()});
+  await _sbPut('pings/' + user, {user, msg:msg||'Preciso de atenção!', ts:Date.now()});
 };
-window.fbWatchPings = function(cb){
-  _fbSSE('pings', d=>cb(d||{}));
-};
-window.fbClearPing = async function(user){ await _fbDelete('pings/'+user); };
+window.fbWatchPings = function(cb){ _sbWatch('pings', d => cb(d || {})); };
+window.fbClearPing = async function(user){ await _sbDelete('pings/' + user); };
 
-// ── WHISPER: mensagem privada player → mestre ──
+// ── WHISPER ──
 window.fbWhisper = async function(from, msg){
-  await _fbPut('whispers/'+Date.now()+'_'+Math.random().toString(36).slice(2,5), {from,msg,ts:Date.now(),read:false});
+  await _sbPut('whispers/' + Date.now() + '_' + Math.random().toString(36).slice(2,5), {from, msg, ts:Date.now(), read:false});
 };
 window.fbWatchWhispers = function(cb){
-  _fbSSE('whispers', d=>{
-    if(!d){cb([]);return;}
-    const msgs=Object.entries(d).map(([k,v])=>({...v,_key:k})).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  _sbWatch('whispers', d => {
+    if(!d){ cb([]); return; }
+    const msgs = Object.entries(d).map(([k,v]) => ({...v, _key:k})).sort((a,b) => (a.ts||0)-(b.ts||0));
     cb(msgs);
   });
 };
-window.fbClearWhispers = async function(){ await _fbDelete('whispers'); };
+window.fbClearWhispers = async function(){ await _sbDelete('whispers'); };
 
-// ── PISTAS COMPARTILHADAS: mestre revela pista para todos ──
+// ── PISTAS ──
 window.fbRevealClue = async function(clue){
-  await _fbPut('clues/'+Date.now()+'_'+Math.random().toString(36).slice(2,5), {...clue, ts:Date.now(), revealed:true});
+  await _sbPut('clues/' + Date.now() + '_' + Math.random().toString(36).slice(2,5), {...clue, ts:Date.now(), revealed:true});
 };
 window.fbWatchClues = function(cb){
-  _fbSSE('clues', d=>{
-    if(!d){cb([]);return;}
-    const clues=Object.entries(d).map(([k,v])=>({...v,_key:k})).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  _sbWatch('clues', d => {
+    if(!d){ cb([]); return; }
+    const clues = Object.entries(d).map(([k,v]) => ({...v, _key:k})).sort((a,b) => (a.ts||0)-(b.ts||0));
     cb(clues);
   });
 };
-window.fbClearClues = async function(){ await _fbDelete('clues'); };
+window.fbClearClues = async function(){ await _sbDelete('clues'); };
 
-// ── STATUS DE SAÚDE: todos veem HP/SAN/PE de todos ──
+// ── STATUS DE SAÚDE ──
 window.fbPublishStatus = async function(user, status){
-  await _fbPut('status/'+user, {...status, user, ts:Date.now()});
+  await _sbPut('status/' + user, {...status, user, ts:Date.now()});
 };
-window.fbWatchStatus = function(cb){
-  _fbSSE('status', d=>cb(d||{}));
-};
+window.fbWatchStatus = function(cb){ _sbWatch('status', d => cb(d || {})); };
 
-// ── VOTAÇÃO EM GRUPO ──
+// ── VOTAÇÃO ──
 window.fbStartVote = async function(question, options){
-  await _fbPut('vote', {question, options:options||['Sim','Não'], votes:{}, ts:Date.now(), active:true});
+  await _sbPut('vote', {question, options:options||['Sim','Não'], votes:{}, ts:Date.now(), active:true});
 };
 window.fbCastVote = async function(user, option){
-  await _fbPut('vote/votes/'+user, {option, ts:Date.now()});
+  await _sbPut('vote/votes/' + user, {option, ts:Date.now()});
 };
-window.fbWatchVote = function(cb){
-  _fbSSE('vote', d=>cb(d||null));
-};
-window.fbEndVote = async function(){ await _fbDelete('vote'); };
+window.fbWatchVote = function(cb){ _sbWatch('vote', d => cb(d || null)); };
+window.fbEndVote = async function(){ await _sbDelete('vote'); };
 
-// ── BAÚ DO GRUPO (inventário compartilhado) ──
+// ── BAÚ ──
 window.fbAddBauItem = async function(item){
-  await _fbPut('bau/'+Date.now()+'_'+Math.random().toString(36).slice(2,5), {...item, ts:Date.now()});
+  await _sbPut('bau/' + Date.now() + '_' + Math.random().toString(36).slice(2,5), {...item, ts:Date.now()});
 };
-window.fbRemoveBauItem = async function(key){ await _fbDelete('bau/'+key); };
+window.fbRemoveBauItem = async function(key){ await _sbDelete('bau/' + key); };
 window.fbWatchBau = function(cb){
-  _fbSSE('bau', d=>{
-    if(!d){cb([]);return;}
-    const items=Object.entries(d).map(([k,v])=>({...v,_key:k})).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  _sbWatch('bau', d => {
+    if(!d){ cb([]); return; }
+    const items = Object.entries(d).map(([k,v]) => ({...v, _key:k})).sort((a,b) => (a.ts||0)-(b.ts||0));
     cb(items);
   });
 };
-window.fbClearBau = async function(){ await _fbDelete('bau'); };
+window.fbClearBau = async function(){ await _sbDelete('bau'); };
 
-// ── DIÁRIO DE SESSÃO (anotações coletivas) ──
+// ── DIÁRIO ──
 window.fbAddDiarioEntry = async function(entry){
-  await _fbPut('diario/'+Date.now()+'_'+Math.random().toString(36).slice(2,5), {...entry, ts:Date.now()});
+  await _sbPut('diario/' + Date.now() + '_' + Math.random().toString(36).slice(2,5), {...entry, ts:Date.now()});
 };
-window.fbDeleteDiarioEntry = async function(key){ await _fbDelete('diario/'+key); };
+window.fbDeleteDiarioEntry = async function(key){ await _sbDelete('diario/' + key); };
 window.fbWatchDiario = function(cb){
-  _fbSSE('diario', d=>{
-    if(!d){cb([]);return;}
-    const entries=Object.entries(d).map(([k,v])=>({...v,_key:k})).sort((a,b)=>(a.ts||0)-(b.ts||0));
+  _sbWatch('diario', d => {
+    if(!d){ cb([]); return; }
+    const entries = Object.entries(d).map(([k,v]) => ({...v, _key:k})).sort((a,b) => (a.ts||0)-(b.ts||0));
     cb(entries);
   });
 };
-window.fbClearDiario = async function(){ await _fbDelete('diario'); };
+window.fbClearDiario = async function(){ await _sbDelete('diario'); };
 
-// ── CONTADOR DE AMEAÇA (tensão da cena) ──
-window.fbSetAmeaca = async function(val){ await _fbPut('ameaca', {val, ts:Date.now()}); };
-window.fbWatchAmeaca = function(cb){ _fbSSE('ameaca', d=>cb(d ? (d.val||0) : 0)); };
+// ── AMEAÇA ──
+window.fbSetAmeaca = async function(val){ await _sbPut('ameaca', {val, ts:Date.now()}); };
+window.fbWatchAmeaca = function(cb){ _sbWatch('ameaca', d => cb(d ? (d.val||0) : 0)); };
 
-// ── NOTAS DO MESTRE (compartilhadas em tempo real) ──
-window.fbSetNotasMestre = async function(texto){ await _fbPut('notas_mestre', {texto, ts:Date.now()}); };
-window.fbWatchNotasMestre = function(cb){ _fbSSE('notas_mestre', d=>cb(d ? (d.texto||'') : '')); };
+// ── NOTAS DO MESTRE ──
+window.fbSetNotasMestre = async function(texto){ await _sbPut('notas_mestre', {texto, ts:Date.now()}); };
+window.fbWatchNotasMestre = function(cb){ _sbWatch('notas_mestre', d => cb(d ? (d.texto||'') : '')); };
 
-// ── REAÇÕES NO CHAT (emoji) ──
+// ── REAÇÕES ──
 window.fbAddReacao = async function(msgKey, emoji, user){
-  await _fbPut('chat_reacoes/'+msgKey+'/'+user, {emoji, user, ts:Date.now()});
+  await _sbPut('chat_reacoes/' + msgKey + '/' + user, {emoji, user, ts:Date.now()});
 };
-window.fbRemoveReacao = async function(msgKey, user){ await _fbDelete('chat_reacoes/'+msgKey+'/'+user); };
-window.fbWatchReacoes = function(cb){ _fbSSE('chat_reacoes', d=>cb(d||{})); };
+window.fbRemoveReacao = async function(msgKey, user){ await _sbDelete('chat_reacoes/' + msgKey + '/' + user); };
+window.fbWatchReacoes = function(cb){ _sbWatch('chat_reacoes', d => cb(d || {})); };
 
-// ── CENA ATIVA (Mestre troca, todos recebem) ──
-window.fbSetCena = async function(cena){ await _fbPut('cena_ativa', {cena, ts:Date.now()}); };
-window.fbWatchCena = function(cb){ _fbSSE('cena_ativa', d=>cb(d ? (d.cena||null) : null)); };
+// ── CENA ATIVA ──
+window.fbSetCena = async function(cena){ await _sbPut('cena_ativa', {cena, ts:Date.now()}); };
+window.fbWatchCena = function(cb){ _sbWatch('cena_ativa', d => cb(d ? (d.cena||null) : null)); };
 
-// ── TIMER DE PRESSÃO (contagem regressiva visível para todos) ──
-window.fbSetTimer = async function(data){ await _fbPut('timer', data); };
-window.fbClearTimer = async function(){ await _fbDelete('timer'); };
-window.fbWatchTimer = function(cb){ _fbSSE('timer', d=>cb(d||null)); };
+// ── TIMER ──
+window.fbSetTimer = async function(data){ await _sbPut('timer', data); };
+window.fbClearTimer = async function(){ await _sbDelete('timer'); };
+window.fbWatchTimer = function(cb){ _sbWatch('timer', d => cb(d || null)); };
 
-// ── FOCO / SPOTLIGHT (Mestre destaca um jogador) ──
-window.fbSetFoco = async function(user){ await _fbPut('foco', {user, ts:Date.now()}); };
-window.fbClearFoco = async function(){ await _fbDelete('foco'); };
-window.fbWatchFoco = function(cb){ _fbSSE('foco', d=>cb(d ? (d.user||null) : null)); };
+// ── FOCO ──
+window.fbSetFoco = async function(user){ await _sbPut('foco', {user, ts:Date.now()}); };
+window.fbClearFoco = async function(){ await _sbDelete('foco'); };
+window.fbWatchFoco = function(cb){ _sbWatch('foco', d => cb(d ? (d.user||null) : null)); };
 
-// ── ROLAGEM SECRETA (resultado só o Mestre vê) ──
-window.fbSecretRoll = async function(roll){ await _fbPut('secret_rolls/'+Date.now()+'_'+Math.random().toString(36).slice(2,5), roll); };
-window.fbClearSecretRolls = async function(){ await _fbDelete('secret_rolls'); };
-window.fbWatchSecretRolls = function(cb){ _fbSSE('secret_rolls', d=>{ const arr=d?Object.entries(d).map(([k,v])=>({...v,_key:k})).sort((a,b)=>(a.ts||0)-(b.ts||0)):[];cb(arr); }); };
+// ── ROLAGEM SECRETA ──
+window.fbSecretRoll = async function(roll){ await _sbPut('secret_rolls/' + Date.now() + '_' + Math.random().toString(36).slice(2,5), roll); };
+window.fbClearSecretRolls = async function(){ await _sbDelete('secret_rolls'); };
+window.fbWatchSecretRolls = function(cb){
+  _sbWatch('secret_rolls', d => {
+    const arr = d ? Object.entries(d).map(([k,v]) => ({...v,_key:k})).sort((a,b) => (a.ts||0)-(b.ts||0)) : [];
+    cb(arr);
+  });
+};
 
-// ── CLIMA / AMBIENTE DA CENA ──
-window.fbSetClima = async function(clima){ await _fbPut('clima', {clima, ts:Date.now()}); };
-window.fbWatchClima = function(cb){ _fbSSE('clima', d=>cb(d ? (d.clima||null) : null)); };
+// ── CLIMA ──
+window.fbSetClima = async function(clima){ await _sbPut('clima', {clima, ts:Date.now()}); };
+window.fbWatchClima = function(cb){ _sbWatch('clima', d => cb(d ? (d.clima||null) : null)); };
 
-// ── TRILHA SONORA COMPARTILHADA (Mestre indica, todos veem) ──
-window.fbSetMusica = async function(track){ await _fbPut('musica', {track, ts:Date.now()}); };
-window.fbClearMusica = async function(){ await _fbDelete('musica'); };
-window.fbWatchMusica = function(cb){ _fbSSE('musica', d=>cb(d ? (d.track||null) : null)); };
+// ── TRILHA SONORA ──
+window.fbSetMusica = async function(data){ await _sbPut('musica', {...data, ts:Date.now()}); };
+window.fbClearMusica = async function(){ await _sbDelete('musica'); };
+window.fbWatchMusica = function(cb){ _sbWatch('musica', d => cb(d || null)); };
 
-// ── STATUS DE TOKEN (condições visíveis no mapa) ──
-window.fbSetTokenStatus = async function(tokenId, status){ await _fbPut('token_status/'+tokenId, {status, ts:Date.now()}); };
-window.fbClearTokenStatus = async function(tokenId){ await _fbDelete('token_status/'+tokenId); };
-window.fbWatchTokenStatus = function(cb){ _fbSSE('token_status', d=>cb(d||{})); };
+// ── AMBIENTAÇÃO ──
+window.fbSetAmbientacao = async function(data){ await _sbPut('ambientacao', {...data, ts:Date.now()}); };
+window.fbClearAmbientacao = async function(){ await _sbDelete('ambientacao'); };
+window.fbWatchAmbientacao = function(cb){ _sbWatch('ambientacao', d => cb(d || null)); };
+
+// ── STATUS DE TOKEN ──
+window.fbSetTokenStatus = async function(tokenId, status){ await _sbPut('token_status/' + tokenId, {status, ts:Date.now()}); };
+window.fbClearTokenStatus = async function(tokenId){ await _sbDelete('token_status/' + tokenId); };
+window.fbWatchTokenStatus = function(cb){ _sbWatch('token_status', d => cb(d || {})); };
 
 window._fbReady = true;
 window.dispatchEvent(new CustomEvent('fb-module-ready'));
+
+// ── PSIQUÊ — Mapa Mental de Relacionamentos ──
+window.fbSavePsique = async function(user, data){
+  await _sbPut('psique/' + user, { user, data, ts: Date.now() });
+};
+window.fbLoadPsique = async function(user){
+  const d = await _sbGet('psique/' + user);
+  return d ? d.data : null;
+};
+window.fbLoadAllPsique = async function(){
+  try{
+    const base = _sbBase(); if(!base) return {};
+    const r = await fetch(base + '/rest/v1/mesa_state?path=like.psique%2F%25', {
+      headers: { ..._sbHeaders(), 'Prefer': '' }
+    });
+    if(!r.ok) return {};
+    const rows = await r.json();
+    const result = {};
+    rows.forEach(row => {
+      const user = row.path.replace('psique/', '');
+      result[user] = row.data?.data || null;
+    });
+    return result;
+  }catch(e){ return {}; }
+};
 
 // ══════════════════════════════════════════════
 
@@ -452,11 +597,11 @@ document.addEventListener('DOMContentLoaded', _populateStaticSelects);
 let isMestre = false;
 let _fbWatching = false; // evita loop de sync
 
-/* ── Firebase Setup Screen ── */
+/* ── Supabase Setup Screen ── */
 function checkFirebaseSetup(){
-  const cfg = localStorage.getItem('op_firebase_config');
+  const cfg = localStorage.getItem('op_supabase_config');
   let hasCfg = false;
-  try { const c = JSON.parse(cfg); hasCfg = c && c.apiKey && c.apiKey !== 'AIzaSyPLACEHOLDER'; } catch(e){}
+  try { const c = JSON.parse(cfg); hasCfg = c && c.url && c.anonKey; } catch(e){}
   if(!hasCfg){
     // Mostra tela de configuração
     document.getElementById('screen-firebase').style.display = 'flex';
@@ -465,24 +610,15 @@ function checkFirebaseSetup(){
 }
 
 function saveFirebaseConfig(){
-  const apiKey = document.getElementById('cfg-apiKey').value.trim();
-  const databaseURL = document.getElementById('cfg-dbUrl').value.trim();
-  const projectId = document.getElementById('cfg-projectId').value.trim();
-  const appId = document.getElementById('cfg-appId').value.trim();
-  const messagingSenderId = document.getElementById('cfg-senderId').value.trim();
+  const url = document.getElementById('cfg-apiKey').value.trim();
+  const anonKey = document.getElementById('cfg-dbUrl').value.trim();
   const errEl = document.getElementById('cfg-err');
-  if(!apiKey || !databaseURL || !projectId){
-    errEl.textContent = 'Preencha API Key, Database URL e Project ID.'; return;
+  if(!url || !anonKey){
+    errEl.textContent = 'Preencha a URL do projeto e a Anon Key.'; return;
   }
   errEl.textContent = 'Testando conexão...';
-  const cfg = {
-    apiKey, databaseURL, projectId,
-    authDomain: projectId + '.firebaseapp.com',
-    storageBucket: projectId + '.appspot.com',
-    messagingSenderId: messagingSenderId || '000000000000',
-    appId: appId || '1:000000000000:web:000000000000000000'
-  };
-  localStorage.setItem('op_firebase_config', JSON.stringify(cfg));
+  const cfg = { url, anonKey };
+  localStorage.setItem('op_supabase_config', JSON.stringify(cfg));
   errEl.style.color = '#22cc66';
   errEl.textContent = '⛧ Configuração salva! Recarregando...';
   setTimeout(()=>location.reload(), 1200);
@@ -498,45 +634,71 @@ async function testFirebaseNow(){
   diagEl.style.display = 'block';
   diagEl.textContent = '⏳ Testando...\n';
 
+  const getCfgVal = key => {
+    try{ return JSON.parse(localStorage.getItem('op_supabase_config')||'{}')[key] || ''; }catch(e){ return ''; }
+  };
   const cfg = {
-    apiKey:    document.getElementById('cfg-apiKey').value.trim()    || (()=>{try{return JSON.parse(localStorage.getItem('op_firebase_config')||'{}').apiKey}catch(e){return ''}})(),
-    databaseURL: document.getElementById('cfg-dbUrl').value.trim()   || (()=>{try{return JSON.parse(localStorage.getItem('op_firebase_config')||'{}').databaseURL}catch(e){return ''}})(),
-    projectId: document.getElementById('cfg-projectId').value.trim() || (()=>{try{return JSON.parse(localStorage.getItem('op_firebase_config')||'{}').projectId}catch(e){return ''}})(),
+    url:     document.getElementById('cfg-apiKey').value.trim() || getCfgVal('url'),
+    anonKey: document.getElementById('cfg-dbUrl').value.trim()  || getCfgVal('anonKey'),
   };
 
   const log = msg => { diagEl.textContent += msg + '\n'; };
 
-  if(!cfg.apiKey)      { log('❌ API Key vazia'); return; }
-  if(!cfg.databaseURL) { log('❌ Database URL vazia'); return; }
-  if(!cfg.projectId)   { log('❌ Project ID vazio'); return; }
+  if(!cfg.url)     { log('❌ URL do projeto vazia'); return; }
+  if(!cfg.anonKey) { log('❌ Anon Key vazia'); return; }
 
   log('✓ Campos preenchidos');
-  log('📡 API Key: ' + cfg.apiKey.substring(0,12) + '...');
-  log('📡 Database: ' + cfg.databaseURL);
+  log('📡 URL: ' + cfg.url);
+  log('📡 Anon Key: ' + cfg.anonKey.substring(0,16) + '...');
 
-  // Tenta conectar via fetch direto ao REST API do Firebase
-  // (não precisa do SDK — funciona para testar se o banco está acessível)
   try {
-    log('🔌 Testando acesso ao banco...');
-    const url = cfg.databaseURL.replace(/\/$/, '') + '/presence.json?shallow=true&timeout=5s';
-    const resp = await fetch(url);
+    log('🔌 Testando acesso à tabela mesa_state...');
+    const resp = await fetch(cfg.url.replace(/\/$/,'') + '/rest/v1/mesa_state?limit=1', {
+      headers: { 'apikey': cfg.anonKey, 'Authorization': 'Bearer ' + cfg.anonKey }
+    });
     if(resp.ok){
-      const data = await resp.json();
-      log('✅ Banco acessível! Dados de presença: ' + JSON.stringify(data));
+      log('✅ Conexão OK! Tabela acessível.');
+
+      // Verifica o bucket de áudio
       log('');
-      log('👥 Se aparece null = ninguém online ainda (normal)');
-      log('👥 Se aparece nomes = esses usuários estão online');
+      log('🎵 Verificando bucket de áudio...');
+      try{
+        const bResp = await fetch(cfg.url.replace(/\/$/,'') + '/storage/v1/bucket/' + _SB_AUDIO_BUCKET, {
+          headers: { 'apikey': cfg.anonKey, 'Authorization': 'Bearer ' + cfg.anonKey }
+        });
+        if(bResp.ok){
+          log('✅ Bucket "audio" encontrado! Upload de músicas disponível.');
+        } else if(bResp.status === 404){
+          log('⚠️  Bucket "audio" não encontrado.');
+          log('   Vá em Supabase Dashboard → Storage → New bucket');
+          log('   Nome: audio');
+          log('   Marque "Public bucket" para acesso sem autenticação.');
+        } else {
+          log('⚠️  Bucket "audio": erro ' + bResp.status + '. Verifique as políticas de Storage.');
+        }
+      }catch(be){ log('⚠️  Não foi possível verificar o bucket: ' + be.message); }
+
+      log('');
+      log('👥 Pronto para jogar online!');
       diagEl.style.color = '#22cc88';
     } else {
       const txt = await resp.text();
       log('❌ Erro HTTP ' + resp.status + ': ' + txt);
-      if(resp.status === 401 || txt.includes('Permission denied')){
+      if(resp.status === 401 || resp.status === 403){
         log('');
-        log('⚠️  REGRAS DO FIREBASE BLOQUEANDO!');
-        log('   Vá em Firebase Console → Realtime Database');
-        log('   → Regras → e cole isso:');
-        log('   { "rules": { ".read": true, ".write": true } }');
-        log('   (modo de teste — válido por 30 dias)');
+        log('⚠️  ACESSO BLOQUEADO!');
+        log('   Vá em Supabase Dashboard → Table Editor → mesa_state');
+        log('   → Authentication → desative Row Level Security');
+        log('   ou adicione políticas de acesso público.');
+      } else if(resp.status === 404){
+        log('');
+        log('⚠️  Tabela mesa_state não encontrada!');
+        log('   Crie a tabela no Supabase SQL Editor:');
+        log('   CREATE TABLE mesa_state (');
+        log('     path text PRIMARY KEY,');
+        log('     data jsonb,');
+        log('     updated_at timestamptz DEFAULT now()');
+        log('   );');
       }
       diagEl.style.color = '#cc6644';
     }
@@ -544,22 +706,22 @@ async function testFirebaseNow(){
     log('❌ Falha na conexão: ' + e.message);
     log('');
     log('Possíveis causas:');
-    log('• Database URL incorreta');
-    log('• Projeto Firebase não existe mais');
+    log('• URL do projeto incorreta');
+    log('• Projeto Supabase não existe mais');
     log('• Bloqueio de rede/firewall');
     diagEl.style.color = '#cc6644';
   }
 }
 
 function openFirebaseSettings(){
-  const cfg = localStorage.getItem('op_firebase_config');
+  const cfg = localStorage.getItem('op_supabase_config');
   try {
     const c = JSON.parse(cfg||'{}');
-    document.getElementById('cfg-apiKey').value = c.apiKey||'';
-    document.getElementById('cfg-dbUrl').value = c.databaseURL||'';
-    document.getElementById('cfg-projectId').value = c.projectId||'';
-    document.getElementById('cfg-appId').value = c.appId||'';
-    document.getElementById('cfg-senderId').value = c.messagingSenderId||'';
+    document.getElementById('cfg-apiKey').value = c.url||'';
+    document.getElementById('cfg-dbUrl').value = c.anonKey||'';
+    document.getElementById('cfg-projectId').value = '';
+    document.getElementById('cfg-appId').value = '';
+    document.getElementById('cfg-senderId').value = '';
   } catch(e){}
   document.getElementById('cfg-err').textContent='';
   document.getElementById('screen-firebase').style.display = 'flex';
@@ -567,11 +729,11 @@ function openFirebaseSettings(){
   document.getElementById('screen-app').classList.remove('active');
 }
 
-/* ── Load: localStorage imediato, Firebase em background (nunca bloqueia) ── */
+/* ── Load: localStorage imediato, Supabase em background (nunca bloqueia) ── */
 function loadDB(){
   try{const d=localStorage.getItem(DB_KEY);if(d)db=JSON.parse(d);}catch(e){db={};}
   _ensureDB();
-  // Firebase sincroniza em background — não bloqueia a tela de login
+  // Supabase sincroniza em background — não bloqueia a tela de login
   _syncFromFirebase();
 }
 
@@ -604,8 +766,8 @@ function _syncFromFirebase(){
       Object.assign(db.rolls, remote.rolls||{});
       if(remote.mestre) db.mestre = Object.assign({notes:'',playerNotes:{},messages:[],fichasRecebidas:{}}, remote.mestre);
       localStorage.setItem(DB_KEY, JSON.stringify(db));
-      console.log('[DB] Sincronizado com Firebase');
-    }).catch(e => console.warn('[DB] Firebase indisponível:', e));
+      console.log('[DB] Sincronizado com Supabase');
+    }).catch(e => console.warn('[DB] Supabase indisponível:', e));
   };
   if(window._fbReady){ doSync(); }
   else { window.addEventListener('fb-module-ready', doSync, { once: true }); }
@@ -621,6 +783,7 @@ function _ensureDB(){
 
 /* ── Inicia escuta em tempo real de mudanças remotas ── */
 let _isSaving=false;
+let _savingTimer=null;
 
 function saveDB(){
   _ensureDB();
@@ -628,7 +791,8 @@ function saveDB(){
   localStorage.setItem(DB_KEY, JSON.stringify(db));
   if(window.fbSaveDB) window.fbSaveDB(db);
   // Limpa flag após tempo suficiente para o Firebase processar
-  setTimeout(()=>{ _isSaving=false; }, 3000);
+  clearTimeout(_savingTimer);
+  _savingTimer = setTimeout(()=>{ _isSaving=false; }, 1500);
 }
 function startRemoteSync(){
   if(_fbWatching) return;
@@ -692,6 +856,67 @@ function saveChar(){
   db.characters[currentUser]=Object.assign(userChar(currentUser),getFormChar());
   saveDB();
   _publishMyStatus();
+}
+
+function descartarFicha(){
+  if(!currentUser)return;
+  const c=userChar(currentUser);
+  const nomeAtual=c.nome||currentUser;
+
+  // Modal de confirmação
+  const existing=document.getElementById('_descarte_modal');
+  if(existing)existing.remove();
+
+  const modal=document.createElement('div');
+  modal.id='_descarte_modal';
+  modal.style.cssText='position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;padding:20px;box-sizing:border-box';
+  modal.innerHTML=`
+    <div style="background:#0d0008;border:1px solid #8b0000;max-width:440px;width:100%;padding:28px 24px;box-sizing:border-box;font-family:'Cinzel',serif">
+      <div style="font-size:15px;letter-spacing:.18em;color:#cc2222;text-transform:uppercase;margin-bottom:8px">⚠ Descartar Ficha</div>
+      <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:13px;color:var(--white-ash);line-height:1.7;margin-bottom:18px">
+        Você está prestes a apagar toda a ficha de <b style="color:var(--gold-light)">${nomeAtual}</b> — atributos, inventário, rituais, habilidades e progresso.<br><br>
+        Uma nova ficha em branco será criada no lugar.<br>
+        <span style="color:#cc4444">Esta ação não pode ser desfeita.</span>
+      </div>
+      <div style="font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.1em;color:var(--white-dust);text-transform:uppercase;margin-bottom:8px">Digite o nome do agente para confirmar:</div>
+      <input id="_descarte_confirm_inp" placeholder="${nomeAtual}" style="width:100%;box-sizing:border-box;background:rgba(20,0,10,0.8);border:1px solid rgba(139,0,0,0.5);color:var(--white-bone);padding:9px 12px;font-family:'Courier Prime',monospace;font-size:13px;outline:none;margin-bottom:16px" oninput="document.getElementById('_descarte_btn_ok').style.opacity=this.value.trim()===document.getElementById('_descarte_nome_ref').textContent?'1':'0.4'">
+      <span id="_descarte_nome_ref" style="display:none">${nomeAtual}</span>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button onclick="document.getElementById('_descarte_modal').remove()" style="padding:8px 18px;background:transparent;border:1px solid rgba(100,100,100,0.4);color:var(--white-dust);font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer">Cancelar</button>
+        <button id="_descarte_btn_ok" onclick="_confirmarDescarte()" style="padding:8px 18px;background:rgba(139,0,0,0.2);border:1px solid #8b0000;color:#ff5555;font-family:'Oswald',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;opacity:0.4;transition:opacity .2s">🗑 Confirmar Descarte</button>
+      </div>
+    </div>`;
+  document.body.appendChild(modal);
+  setTimeout(()=>document.getElementById('_descarte_confirm_inp')?.focus(),50);
+}
+
+function _confirmarDescarte(){
+  const inp=document.getElementById('_descarte_confirm_inp');
+  const ref=document.getElementById('_descarte_nome_ref');
+  if(!inp||!ref)return;
+  if(inp.value.trim()!==ref.textContent){toast('Nome incorreto. Descarte cancelado.','#cc4444');return;}
+
+  // Apaga a ficha e cria uma nova em branco, preservando token e login
+  const novaFicha=defaultChar();
+  // Preserva token e dados de auth que não devem sumir
+  const tokenAtual=(db.characters[currentUser]||{}).token;
+  if(tokenAtual)novaFicha.token=tokenAtual;
+
+  // Apaga transcendência, rituais, habilidades, inventário — tudo
+  db.characters[currentUser]=novaFicha;
+  // Apaga liberação de transcendência
+  if(db.mestre&&db.mestre.transLiberada)db.mestre.transLiberada[currentUser]=false;
+  saveDB();
+
+  // Remove modal e repopula a ficha
+  const modal=document.getElementById('_descarte_modal');
+  if(modal)modal.remove();
+
+  populateAll();
+  if(typeof renderTranscendenciaPanel==='function')renderTranscendenciaPanel();
+  if(typeof renderRituaisTab==='function')renderRituaisTab();
+  if(typeof renderTrilhaHabs==='function')renderTrilhaHabs();
+  toast('Ficha descartada. Esse é o seu novo começo.','#8b0000');
 }
  
 function defaultChar(){
@@ -798,8 +1023,10 @@ function loginAs(user,roleFlag,skipDB){
   showTab('ficha',document.querySelector('.tab-btn'));
   // Mostra/oculta UI específica por role
   _applyRoleUI();
+  // Registra o momento em que entrou online
+  window._myPresenceSince = Date.now();
   // Mostra o próprio usuário imediatamente no painel (antes do Firebase responder)
-  renderOnlineList({ [user]: { user, isMestre: !!roleFlag, since: Date.now(), online: true } });
+  renderOnlineList({ [user]: { user, isMestre: !!roleFlag, since: window._myPresenceSince, online: true } }, {});
   // Mostra o indicador de online na topbar
   const ind = document.getElementById('online-indicator');
   if(ind) ind.style.display = '';
@@ -807,11 +1034,14 @@ function loginAs(user,roleFlag,skipDB){
   startRemoteSync();
   // Publica status inicial (HP/SAN)
   setTimeout(_publishMyStatus, 1500);
+  // Carrega psiquê do player em background
+  if(!isMestre) setTimeout(() => _psiqueLoad(), 2000);
   toast('Bem-vindo, '+user+(isMestre?' — Mestre da mesa.':'.'));
 }
  
 function doLogout(){
-  if(currentUser && window.fbRemovePresence) window.fbRemovePresence(currentUser);
+  if(currentUser && window.fbRemovePresence) window.fbRemovePresence(currentUser, window._myPresenceSince);
+  window._myPresenceSince = null;
   saveChar();currentUser=null;isMestre=false;
   document.getElementById('screen-app').classList.remove('active');
   document.getElementById('screen-login').classList.add('active');
@@ -1064,12 +1294,31 @@ function populateAll(){
   document.getElementById('s-san').textContent=c.san;document.getElementById('s-sanmax').textContent=c.sanMax;
   document.getElementById('s-esf').textContent=c.esf;document.getElementById('s-esfmax').textContent=c.esfMax;
   renderAttrs();renderPericias();renderConds();renderHabs();renderInv();renderRit();renderPistas();renderNotas();renderLog();loadTrilhaSelects();renderClasseDesc();renderOrigemDesc();
-  buildTokenControls();
   if(isMestre){sv('mestre-notes',db.mestre.notes||'');populateMestre();}
+  // Recalcula stats automáticos após carregar personagem
+  setTimeout(()=>{
+    const c=userChar(currentUser);
+    const btn=document.getElementById('btn-manual-stats');
+    const badge=document.getElementById('calc-badge');
+    if(c._manualStats){
+      if(btn){btn.textContent='MANUAL';btn.style.borderColor='rgba(196,154,0,0.6)';btn.style.color='var(--gold-light)';}
+      if(badge){badge.innerHTML='<span style="color:#c49a00">✎ Manual</span>';badge.style.display='block';}
+    } else {
+      recalcMaxStats(true);
+    }
+  },50);
 }
  
 let saveTimer=null;
-function autoSave(){clearTimeout(saveTimer);saveTimer=setTimeout(()=>{saveChar();flashSave('save-ficha');flashSave('save-missao');},800);}
+function autoSave(){
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>{
+    saveChar();
+    recalcMaxStats(true); // recalcula silenciosamente após salvar
+    flashSave('save-ficha');
+    flashSave('save-missao');
+  },800);
+}
  
 function flashSave(id){const e=document.getElementById(id);if(e){e.textContent='⛧ Salvo.';setTimeout(()=>e.textContent='',2000);}}
  
@@ -1081,10 +1330,18 @@ function showTab(t,btn){
   document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
   if(btn)btn.classList.add('active');
-  if(t==='mapa'){setTimeout(()=>{ initMap(); if(isMestre){ const np=document.getElementById('npc-panel'); if(np) np.style.display=''; _initNpcPanel(); } },60);}
-  if(t==='token'){setTimeout(()=>{buildTokenControls();drawToken();},60);}
+
+  // Psiquê: pausa trilha/amb e inicia áudio da mente; saindo, restaura
+  const leavingPsique = document.querySelector('#tab-psique.active') === null && _psiqueAudioActive;
+  if(t === 'psique'){
+    _psiqueAudioEnter();
+  } else {
+    _psiqueAudioLeave();
+  }
+
   if(t==='mestre'&&isMestre){populateMestre();}
   if(t==='multi'){ _initMultiTab(); }
+  if(t==='psique'){ renderPsiqueTab(); }
   if(t==='elementos') renderElementos();
   if(t==='itens') renderItens();
   if(t==='criaturas'){
@@ -1101,7 +1358,7 @@ function adjStat(stat,d){
   const c=userChar(currentUser);
   c[stat]=Math.max(0,Math.min(c[stat+'Max'],c[stat]+d));
   document.getElementById('s-'+stat).textContent=c[stat];
-  saveDB();drawToken();_publishMyStatus();
+  saveDB();_publishMyStatus();
 }
 function adjMax(stat,d){
   const c=userChar(currentUser);
@@ -1130,7 +1387,275 @@ function renderAttrs(){
     el.appendChild(row);
   });
 }
-function adjAttr(a,d){const c=userChar(currentUser);c.attrs[a]=Math.max(1,Math.min(5,(c.attrs[a]||1)+d));renderAttrs();saveDB();}
+function adjAttr(a,d){
+  const c=userChar(currentUser);
+  c.attrs[a]=Math.max(1,Math.min(5,(c.attrs[a]||1)+d));
+  renderAttrs();
+  recalcMaxStats();
+  saveDB();
+}
+
+/* ══════════════════════════════════════════════
+   CÁLCULO AUTOMÁTICO DE PV / SAN / PE
+   Fórmulas do livro Ordem Paranormal v1.3:
+
+   NEX degraus: 5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99
+   Cada degrau acima do 1º (NEX 5%) adiciona bônus progressivo.
+
+   COMBATENTE  : PV = 20 + VIG + (4+VIG) * degrau
+                 SAN= 12 + 3*degrau
+                 PE = 2 + PRE + (2+PRE)*degrau
+   ESPECIALISTA: PV = 16 + VIG + (3+VIG)*degrau
+                 SAN= 16 + 4*degrau
+                 PE = 3 + PRE + (3+PRE)*degrau
+   OCULTISTA   : PV = 12 + VIG + (2+VIG)*degrau
+                 SAN= 20 + 5*degrau
+                 PE = 4 + PRE + (4+PRE)*degrau
+
+   Origens adicionam bônus fixos de PV/SAN/PE.
+   Trilhas de Ocultista (Conduíte, Flagelador, etc.) modificam PE base.
+══════════════════════════════════════════════ */
+
+const NEX_DEGRAUS=[5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,99];
+
+function nexDegrau(nex){
+  // Retorna índice do degrau atual (0-based, começa em NEX 5%)
+  const n=parseInt(nex)||5;
+  let idx=0;
+  for(let i=0;i<NEX_DEGRAUS.length;i++){if(n>=NEX_DEGRAUS[i])idx=i;}
+  return idx; // 0 = NEX 5%, 19 = NEX 99%
+}
+
+// Bônus de origem em PV/SAN/PE
+const ORIGEM_BONUS={
+  'Acadêmico':        {pv:0, san:4, pe:0},
+  'Agente de Saúde':  {pv:4, san:0, pe:0},
+  'Amnésico':         {pv:0, san:0, pe:2},
+  'Artista':          {pv:0, san:2, pe:2},
+  'Atleta':           {pv:4, san:0, pe:0},
+  'Chef':             {pv:2, san:2, pe:0},
+  'Criminoso':        {pv:0, san:0, pe:4},
+  'Cultista Arrependido':{pv:0,san:0,pe:4},
+  'Desgarrado':       {pv:2, san:2, pe:0},
+  'Engenheiro':       {pv:0, san:0, pe:4},
+  'Executivo':        {pv:0, san:4, pe:0},
+  'Investigador':     {pv:0, san:4, pe:0},
+  'Lutador':          {pv:4, san:0, pe:0},
+  'Magnata':          {pv:0, san:4, pe:0},
+  'Mercenário':       {pv:4, san:0, pe:0},
+  'Militar':          {pv:4, san:0, pe:0},
+  'Operário':         {pv:4, san:0, pe:0},
+  'Policial':         {pv:2, san:2, pe:0},
+  'Religioso':        {pv:0, san:4, pe:0},
+  'Servidor Público': {pv:0, san:2, pe:2},
+  'Teórico da Conspiração':{pv:0,san:4,pe:0},
+  'TI':               {pv:0, san:0, pe:4},
+  'Trabalhador Rural':{pv:4, san:0, pe:0},
+  'Trambiqueiro':     {pv:0, san:0, pe:4},
+  'Universitário':    {pv:0, san:4, pe:0},
+  'Vítima':           {pv:0, san:4, pe:0},
+  // Legado (index.html antigo)
+  'Abastado':         {pv:0, san:4, pe:0},
+  'Artista':          {pv:0, san:2, pe:2},
+  'Detetive':         {pv:0, san:4, pe:0},
+  'Exorcista':        {pv:0, san:0, pe:4},
+  'Inventor':         {pv:0, san:0, pe:4},
+  'Soldado':          {pv:4, san:0, pe:0},
+};
+
+// Trilhas que alteram PE extra no cálculo
+const TRILHA_PE_BONUS={
+  'Conduíte':           2, // Ocultista: canal amplificado
+  'Flagelador':        -2, // Gasta PV em vez de PE
+  'Graduado':           0,
+  'Intuitivo':          2,
+  'Lâmina Paranormal': -2,
+};
+
+function calcMaxStats(c){
+  const vig = (c.attrs&&c.attrs['Vigor'])||1;
+  const pre = (c.attrs&&c.attrs['Presença'])||1;
+  const classe = c.classe||'Combatente';
+  const nex = parseInt(c.nex)||5;
+  const deg = nexDegrau(nex);
+  const orig = c.origem||'';
+  const trilha = c.trilha||'';
+
+  let pvBase, pvNex, sanBase, sanNex, peBase, peNex;
+
+  if(classe==='Combatente'){
+    pvBase  = 20 + vig;
+    pvNex   = (4 + vig) * deg;
+    sanBase = 12;
+    sanNex  = 3 * deg;
+    peBase  = 2 + pre;
+    peNex   = (2 + pre) * deg;
+  } else if(classe==='Especialista'){
+    pvBase  = 16 + vig;
+    pvNex   = (3 + vig) * deg;
+    sanBase = 16;
+    sanNex  = 4 * deg;
+    peBase  = 3 + pre;
+    peNex   = (3 + pre) * deg;
+  } else { // Ocultista e qualquer outro
+    pvBase  = 12 + vig;
+    pvNex   = (2 + vig) * deg;
+    sanBase = 20;
+    sanNex  = 5 * deg;
+    peBase  = 4 + pre;
+    peNex   = (4 + pre) * deg;
+  }
+
+  const ob = ORIGEM_BONUS[orig]||{pv:0,san:0,pe:0};
+  const trilhaExtra = TRILHA_PE_BONUS[trilha]||0;
+
+  return {
+    pvMax : pvBase + pvNex + ob.pv,
+    sanMax: sanBase + sanNex + ob.san,
+    esfMax: peBase + peNex + ob.pe + trilhaExtra,
+  };
+}
+
+function recalcMaxStats(silent){
+  if(!currentUser) return;
+  const c=userChar(currentUser);
+  const calc = calcMaxStats(c);
+
+  // Guarda flag de se era manual antes
+  if(c._manualStats) return; // modo manual: não recalcula
+
+  const oldPvMax  = c.pvMax;
+  const oldSanMax = c.sanMax;
+  const oldEsfMax = c.esfMax;
+
+  c.pvMax  = calc.pvMax;
+  c.sanMax = calc.sanMax;
+  c.esfMax = calc.esfMax;
+
+  // Ajusta valores atuais proporcionalmente se máximo mudou
+  if(oldPvMax  && calc.pvMax  !== oldPvMax)  c.pv  = Math.min(c.pv,  c.pvMax);
+  if(oldSanMax && calc.sanMax !== oldSanMax) c.san = Math.min(c.san, c.sanMax);
+  if(oldEsfMax && calc.esfMax !== oldEsfMax) c.esf = Math.min(c.esf, c.esfMax);
+
+  // Atualiza UI
+  const setEl=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setEl('s-pv',    c.pv);
+  setEl('s-pvmax', c.pvMax);
+  setEl('s-san',   c.san);
+  setEl('s-sanmax',c.sanMax);
+  setEl('s-esf',   c.esf);
+  setEl('s-esfmax',c.esfMax);
+
+  // Atualiza badge de cálculo automático
+  const badge = document.getElementById('calc-badge');
+  if(badge){
+    badge.innerHTML=`<span style="color:#22aa66">⚙ Auto</span> PV:${c.pvMax} SAN:${c.sanMax} PE:${c.esfMax}`;
+    badge.style.display='block';
+  }
+  if(!silent) saveDB();
+}
+
+function toggleManualStats(){
+  if(!currentUser) return;
+  const c=userChar(currentUser);
+  c._manualStats = !c._manualStats;
+  const btn=document.getElementById('btn-manual-stats');
+  const badge=document.getElementById('calc-badge');
+  if(c._manualStats){
+    if(btn){btn.textContent='MANUAL';btn.style.borderColor='rgba(196,154,0,0.6)';btn.style.color='var(--gold-light)';}
+    if(badge){badge.innerHTML='<span style="color:#c49a00">✎ Manual</span>';badge.style.display='block';}
+    toast('Modo manual: PV/SAN/PE não serão recalculados automaticamente.','#c49a00');
+  } else {
+    if(btn){btn.textContent='AUTO';btn.style.borderColor='rgba(139,0,0,0.4)';btn.style.color='var(--white-dust)';}
+    recalcMaxStats();
+    toast('Modo automático: PV/SAN/PE calculados pelas regras.','#22aa66');
+  }
+  saveDB();
+}
+/* ══════════════════════════════════════════════
+   USAR RITUAL — aplica custo de PE imediatamente
+══════════════════════════════════════════════ */
+
+function usarRitual(nomeRitual, custoExtra){
+  if(!currentUser) return;
+  const c = userChar(currentUser);
+  const r = RITUAIS_DB.find(x=>x.nome===nomeRitual);
+  if(!r){ toast('Ritual não encontrado.'); return; }
+
+  let peGasto = (r.pe||0) + (parseInt(custoExtra)||0);
+  let pvGasto = 0;
+
+  // Rituais que drenam PV do conjurador (ex: Aberração Sanguínea, Consumir Manancial)
+  const custaPV = r.efeito && (
+    r.efeito.toLowerCase().includes('perde') && r.efeito.toLowerCase().includes('pv') ||
+    r.efeito.toLowerCase().includes('pv ao conjurador') ||
+    r.efeito.toLowerCase().includes('perda de pv') ||
+    r.efeito.toLowerCase().includes('drena sua própria força')
+  );
+
+  // Rituais de cura que recuperam PV
+  const curaAlvo = r.efeito && (
+    r.efeito.toLowerCase().includes('recupera') && r.efeito.toLowerCase().includes('pv') ||
+    r.efeito.toLowerCase().includes('cura') && r.efeito.toLowerCase().includes('pv')
+  );
+
+  // Habilidade "Poder do Flagelo" (Trilha Flagelador): gasta PV em vez de PE
+  const isFlagel = (c.trilha||'').toLowerCase().includes('flagelador');
+
+  if(isFlagel && peGasto>0){
+    // 2 PV por 1 PE
+    pvGasto = peGasto * 2;
+    peGasto = 0;
+  }
+
+  // Verifica se tem PE suficiente
+  if(peGasto > 0 && c.esf < peGasto){
+    toast(`⚠ PE insuficiente! Precisa ${peGasto} PE, tem ${c.esf}.`, '#cc4422');
+    return;
+  }
+  if(pvGasto > 0 && c.pv <= pvGasto){
+    toast(`⚠ PV insuficiente para o custo do ritual!`, '#cc4422');
+    return;
+  }
+
+  // Aplica gastos
+  if(peGasto>0){ c.esf = Math.max(0, c.esf - peGasto); }
+  if(pvGasto>0){ c.pv  = Math.max(0, c.pv  - pvGasto); }
+
+  // Rituais que curam PV do próprio agente (efeito pessoal de cura)
+  // Nota: cura de aliados não é aplicada automaticamente (exige alvo)
+  if(curaAlvo && r.alvo && r.alvo.toLowerCase().includes('você')){
+    // Executa o dado de cura
+    const matchPV = r.efeito.match(/(\d+)d(\d+)(?:\+(\d+))?\s*(?:pv|pontos de vida)/i);
+    if(matchPV){
+      const nd=parseInt(matchPV[1]),ds=parseInt(matchPV[2]),bon=parseInt(matchPV[3])||0;
+      let total=bon;
+      for(let i=0;i<nd;i++) total+=Math.ceil(Math.random()*ds);
+      c.pv=Math.min(c.pvMax, c.pv+total);
+      toast(`✦ ${r.nome} — curou ${total} PV! PE gasto: ${r.pe}.`, '#22aa66');
+    }
+  }
+
+  // Log no dado log se existir
+  const h=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+  if(!db.rolls) db.rolls=[];
+  db.rolls.unshift({user:currentUser,type:'ritual',detail:`${r.nome} (-${isFlagel?pvGasto+'PV':peGasto+'PE'})`,ts:Date.now()});
+  if(db.rolls.length>80) db.rolls.length=80;
+
+  // Atualiza UI
+  const setEl=(id,v)=>{const e=document.getElementById(id);if(e)e.textContent=v;};
+  setEl('s-pv',  c.pv);
+  setEl('s-esf', c.esf);
+  renderLog();
+  saveDB();
+  _publishMyStatus();
+
+  if(!curaAlvo||!(r.alvo&&r.alvo.toLowerCase().includes('você'))){
+    const pvTxt = pvGasto>0?` / -${pvGasto} PV`:'';
+    const peTxt = peGasto>0?`-${peGasto} PE`:'';
+    toast(`⛧ ${r.nome} — ${peTxt}${pvTxt} aplicado!`, '#c49a00');
+  }
+}
  
 /* ══════════════════════════════════════════════
    PERÍCIAS
@@ -1654,7 +2179,7 @@ function loadTrilhaSelects(){
 /* ══════════════════════════════════════════════
    RITUAIS
 ══════════════════════════════════════════════ */
-const ELEM_COR = {Sangue:'#cc1111',Morte:'#555566',Energia:'#9933cc',Conhecimento:'#c8a000',Medo:'#1155aa',Fé:'#ddaa66'};
+const ELEM_COR = {Sangue:'#cc1111',Morte:'#555566',Energia:'#9933cc',Conhecimento:'#c8a000',Medo:'#1155aa'};
 const ELEM_ICO = {
   Sangue:'<span class="sym-el sym-sangue sym-elem-icon" title="Sangue"></span>',
   Morte:'<span class="sym-el sym-morte sym-elem-icon" title="Morte"></span>',
@@ -1801,13 +2326,7 @@ const RITUAIS_DB = [
   {nome:'Dilúvio de Sangue',elem:'Sangue',circ:4,exec:'Completa',alcance:'Longo',alvo:'Área 15m de raio',dur:'Cena',resist:'Fortitude parcial',pe:10,efeito:'Manifesta um dilúvio de sangue paranormal. Seres na área sofrem 6d10 de dano de Sangue e ficam Vulneráveis por toda a cena. Resistência: metade do dano, sem condição.',disc:'—',verd:'(+10 PE, afinidade) O dano é maximizado; seres que falham ficam Imobilizados em coágulos de sangue.'},
   {nome:'Apocalipse da Entropia',elem:'Morte',circ:4,exec:'Completa (1 min)',alcance:'Extremo',alvo:'Área 30m de raio',dur:'Cena',resist:'Fortitude parcial',pe:10,efeito:'Acelera a entropia em uma área massiva. Todas as estruturas não-paranormais entram em colapso gradual. Seres na área sofrem 5d8 de dano de Morte por rodada.',disc:'—',verd:'(+10 PE, afinidade) O dano é dobrado; estruturas paranormais também são afetadas.'},
   // ══ RITOS DE FÉ (Arsenal dos Agentes) ══
-  {nome:'Bênção da Fé',elem:'Fé',circ:1,exec:'Interlúdio',alcance:'Toque',alvo:'1 item/pessoa',dur:'Cena',resist:'—',pe:0,efeito:'Pessoa: 3 PV temporários +1/5 acima DT. Item: RD contra 1º dano. Religião DT 15.'},
-  {nome:'Espíritos Guardiões',elem:'Fé',circ:1,exec:'Interlúdio',alcance:'Curto',alvo:'1 ser',dur:'Cena',resist:'—',pe:0,efeito:'Alvo recebe RD 2 +1/10 acima DT. Religião DT 20.'},
-  {nome:'Compartilhar a Palavra',elem:'Fé',circ:1,exec:'Interlúdio',alcance:'Curto',alvo:'aliados',dur:'Cena',resist:'—',pe:0,efeito:'Aliados recebem SAN temporária do seu Dedicar a Fé. Religião DT 25.'},
-  {nome:'Transformar Água Benta',elem:'Fé',circ:1,exec:'Interlúdio',alcance:'Toque',alvo:'água',dur:'Permanente',resist:'—',pe:0,efeito:'1,5m³ vira água benta. Catalisador: +2d6 vs criaturas. Religião DT 15.'},
-  {nome:'Rejeição Divina',elem:'Fé',circ:2,exec:'Interlúdio',alcance:'3 km',alvo:'1 ser',dur:'Cena',resist:'—',pe:0,efeito:'-2 em Resistência do alvo. +1/5 acima DT. Religião DT 30.'},
-  {nome:'Rito Climático',elem:'Fé',circ:2,exec:'Interlúdio',alcance:'150m',alvo:'área',dur:'Cena',resist:'—',pe:0,efeito:'Muda o clima. Área dobra a cada 5 acima DT. Religião DT 35.'},
-  {nome:'Rito de Iniciação',elem:'Fé',circ:3,exec:'Interlúdio',alcance:'Toque',alvo:'1 voluntário',dur:'Permanente',resist:'—',pe:0,efeito:'Origem vira Abençoado. Religião DT 30.'},
+
   // ══ BIBLIOTECA RITUALÍSTICA v0.7.3 — 1° CÍRCULO ══
   // Sangue 1
   {nome:'Ascensão de Espinhos',elem:'Sangue',circ:1,exec:'Padrão',alcance:'Toque',alvo:'Linha 9m',dur:'Instantânea',resist:'Reflexos anula',pe:2,efeito:'Onda de vinhas com espinhos. 2d6 perfuração + enredado.'},
@@ -1937,20 +2456,20 @@ function renderRituaisTab(){
     return true;
   });
   const countEl=document.getElementById('ritual-count');
-  if(countEl){const aprendidos=filtrado.filter(r=>c.rituaisAprendidos[r.nome]).length;countEl.textContent=`${filtrado.length} ritual${filtrado.length!==1?'s':''} exibido${filtrado.length!==1?'s':''} · ${aprendidos} aprendido${aprendidos!==1?'s':''}`;}
+  if(countEl){const aprendidos=filtrado.filter(r=>c.rituaisAprendidos[r.nome]).length;countEl.textContent=`${filtrado.length} ritual${filtrado.length!==1?'s':''} exibido${filtrado.length!==1?'s':''} · ${aprendidos} desbloqueado${aprendidos!==1?'s':''}`;}
   if(!filtrado.length){grid.innerHTML='<div style="color:var(--white-dust);font-size:13px;padding:10px">Nenhum ritual encontrado.</div>';return;}
   filtrado.forEach(r=>{
     const apr=c.rituaisAprendidos[r.nome]||false;
     const cor=ELEM_COR[r.elem]||'var(--crimson)';
     const card=document.createElement('div');
-    card.style.cssText=`background:rgba(10,0,8,0.9);border:1px solid ${apr?cor:'rgba(58,0,0,0.4)'};padding:14px;position:relative;overflow:hidden;transition:border-color .2s;`;
+    card.style.cssText=`background:rgba(10,0,8,0.9);border:1px solid ${apr?cor:'rgba(58,0,0,0.4)'};padding:14px;position:relative;overflow:hidden;transition:border-color .2s;opacity:${apr?1:0.72};`;
     const elemKey = r.elem.toLowerCase();
     const wm = `<span class="sym-el ${elemKey==='sangue'?'sym-sangue':elemKey==='morte'?'sym-morte':elemKey==='energia'?'sym-energia':elemKey==='conhecimento'?'sym-conhecimento':'sym-medo'}" style="position:absolute;top:30px;right:8px;width:120px;height:120px;opacity:0.3;pointer-events:none;background-size:contain"></span>`;
     card.innerHTML=`${wm}
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px;cursor:pointer" onclick="toggleRitual('${r.nome.replace(/'/g,"\\'")}')">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:8px">
         <div>
           <span style="font-family:'Cinzel',serif;font-size:12px;color:${apr?cor:'var(--white-bone)'};">${r.nome}</span>
-          ${apr?`<span style="font-size:9px;font-family:'Oswald',sans-serif;color:${cor};margin-left:6px;letter-spacing:.08em">✓ APRENDIDO</span>`:''}
+          ${apr?`<span style="font-size:9px;font-family:'Oswald',sans-serif;color:${cor};margin-left:6px;letter-spacing:.08em">✓ DESBLOQUEADO</span>`:`<span style="font-size:9px;font-family:'Oswald',sans-serif;color:var(--white-dust);margin-left:6px;letter-spacing:.08em">🔒 BLOQUEADO</span>`}
         </div>
         <div style="display:flex;gap:4px;align-items:center;flex-shrink:0">
           <span style="font-family:'Cinzel',serif;font-size:18px;letter-spacing:.12em;color:${cor};text-transform:uppercase;white-space:nowrap">${r.elem}</span>
@@ -1968,17 +2487,15 @@ function renderRituaisTab(){
       <div style="font-size:12px;color:var(--white-ash);line-height:1.6;margin-bottom:6px">${r.efeito}</div>
       ${r.disc&&r.disc!=='—'?`<div style="font-size:11px;color:#aabbcc;line-height:1.5;margin-top:4px;padding-top:4px;border-top:1px solid rgba(34,136,204,0.2)"><span style="color:#55aadd;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:.08em">DISCENTE</span> ${r.disc}</div>`:''}
       ${r.verd&&r.verd!=='—'?`<div style="font-size:11px;color:#ccbbaa;line-height:1.5;margin-top:4px;padding-top:4px;border-top:1px solid rgba(138,106,0,0.2)"><span style="color:var(--gold-light);font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:.08em">VERDADEIRO</span> ${r.verd}</div>`:''}
+      ${apr?`<div style="margin-top:10px;display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <button onclick="event.stopPropagation();usarRitual('${r.nome.replace(/'/g,"\\'")}',0)" style="padding:5px 14px;background:rgba(139,0,0,0.2);border:1px solid ${cor};color:${cor};font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;cursor:pointer;text-transform:uppercase" title="Gasta ${r.pe} PE automaticamente">⛧ Usar (${r.pe} PE)</button>
+        <span style="font-size:10px;color:var(--white-dust);font-family:'Courier Prime',monospace">PE extra:</span>
+        <input id="extra-pe-${r.nome.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'')}" type="number" min="0" value="0" style="width:44px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:3px 6px;outline:none" onclick="event.stopPropagation()">
+        <button onclick="event.stopPropagation();usarRitual('${r.nome.replace(/'/g,"\\'")}',document.getElementById('extra-pe-${r.nome.replace(/\s/g,'_').replace(/[^a-zA-Z0-9_]/g,'')}').value)" style="padding:5px 10px;background:transparent;border:1px solid rgba(138,106,0,0.4);color:var(--gold-light);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.08em;cursor:pointer" title="Usar com PE extra (Discente/Verdadeiro)">+Extra</button>
+      </div>`:`<div style="margin-top:10px;font-size:10px;color:var(--white-dust);font-family:'Courier Prime',monospace;font-style:italic">🔒 Desbloqueie este ritual através da Transcendência ou peça ao Mestre.</div>`}
     `;
     grid.appendChild(card);
   });
-}
-
-function toggleRitual(nome){
-  const c=userChar(currentUser);
-  if(!c.rituaisAprendidos) c.rituaisAprendidos={};
-  c.rituaisAprendidos[nome]=!c.rituaisAprendidos[nome];
-  if(!c.rituaisAprendidos[nome]) delete c.rituaisAprendidos[nome];
-  renderRituaisTab();saveDB();
 }
 
 
@@ -2122,1124 +2639,6 @@ function renderLog(){
 }
 function resetAllRolls(){if(confirm('Limpar histórico de rolagens de todos?')){db.rolls={};saveDB();renderLog();toast('Histórico limpo.');}}
  
-/* ══════════════════════════════════════════════
-   TOKEN
-══════════════════════════════════════════════ */
-const RINGS=['#8b0000','#cc0000','#1fc8a0','#5b9cf6','#c49a00','#bb88ff','#d45486','#e8e0e0','#ff6600','#00ccaa'];
-const BGS=['#0f000c','#050005','#0a1a0a','#0a0a1a','#1a0a00','#050010','#1a0010','#000000'];
-const ICONS={skull:'☠',eye:'◈',flame:'🔥',bolt:'⚡',moon:'🌙',star:'★',shield:'⛊',ghost:'👻',blood:'◆',rune:'⛧'};
-let tokImgData=null;
- 
-function buildTokenControls(){
-  const c=userChar(currentUser);
-  const tok=c.token||{};
-  const rs=document.getElementById('ring-swatches');
-  if(rs&&!rs.dataset.built){
-    rs.dataset.built='1';rs.innerHTML='';
-    RINGS.forEach(col=>{
-      const d=document.createElement('div');d.className='swatch';d.style.background=col;d.title=col;
-      d.onclick=()=>{c.token.ring=col;rs.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active'));d.classList.add('active');drawToken();saveDB();};
-      rs.appendChild(d);
-    });
-  }
-  const bs=document.getElementById('bg-swatches');
-  if(bs&&!bs.dataset.built){
-    bs.dataset.built='1';bs.innerHTML='';
-    BGS.forEach(col=>{
-      const d=document.createElement('div');d.className='swatch';d.style.cssText=`background:${col};border:1px solid rgba(255,255,255,0.15)`;d.title=col;
-      d.onclick=()=>{c.token.bg=col;bs.querySelectorAll('.swatch').forEach(x=>x.classList.remove('active'));d.classList.add('active');drawToken();saveDB();};
-      bs.appendChild(d);
-    });
-  }
-  const io=document.getElementById('icon-opts');
-  if(io&&!io.dataset.built){
-    io.dataset.built='1';io.innerHTML='';
-    Object.entries(ICONS).forEach(([k,em])=>{
-      const d=document.createElement('div');d.className='icon-opt';d.textContent=em;d.title=k;
-      d.onclick=()=>{c.token.icon=k;io.querySelectorAll('.icon-opt').forEach(x=>x.classList.remove('active'));d.classList.add('active');drawToken();saveDB();};
-      io.appendChild(d);
-    });
-  }
-  sv('tok-label',tok.label||'');sv('tok-cond',tok.cond||'');
-  if(document.getElementById('tok-hp'))document.getElementById('tok-hp').checked=tok.showHp||false;
-  if(document.getElementById('tok-ring-size'))document.getElementById('tok-ring-size').value=tok.ringSize||5;
-  if(document.getElementById('tok-text-color'))document.getElementById('tok-text-color').value=tok.textColor||'#e8e0e0';
-  if(tok.imgData&&!tokImgData){
-    const img=new Image();img.onload=()=>{tokImgData=img;drawToken();};img.src=tok.imgData;
-  }
-  _loadStateImages();
-  markActiveSwatches();
-}
- 
-function markActiveSwatches(){
-  const c=userChar(currentUser);const tok=c.token||{};
-  document.querySelectorAll('#ring-swatches .swatch').forEach(s=>{s.classList.toggle('active',s.style.background===tok.ring||s.title===tok.ring);});
-  document.querySelectorAll('#bg-swatches .swatch').forEach(s=>{s.classList.toggle('active',s.title===tok.bg);});
-  document.querySelectorAll('#icon-opts .icon-opt').forEach(s=>{s.classList.toggle('active',s.title===tok.icon);});
-}
- 
-function drawToken(){
-  const canvas=document.getElementById('token-canvas');if(!canvas)return;
-  const ctx=canvas.getContext('2d');
-  const W=220,H=220,cx=110,cy=110,R=100;
-  const c=userChar(currentUser);const tok=c.token||{};
-  const ring=tok.ring||'#8b0000';
-  const bg=tok.bg||'#0f000c';
-  const ringSize=parseInt(document.getElementById('tok-ring-size')?.value||tok.ringSize||5);
-  const textCol=document.getElementById('tok-text-color')?.value||tok.textColor||'#e8e0e0';
-  const label=document.getElementById('tok-label')?.value||tok.label||'';
-  const cond=document.getElementById('tok-cond')?.value||tok.cond||'';
-  const showHp=document.getElementById('tok-hp')?.checked||tok.showHp||false;
-  ctx.clearRect(0,0,W,H);
-  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R-ringSize/2,0,Math.PI*2);ctx.clip();
-  ctx.fillStyle=bg;ctx.fillRect(0,0,W,H);
-  // Usa imagem do estado atual, ou imagem principal
-  const activeStateImg=stateImages[currentTokenState]||tokImgData;
-  if(activeStateImg){ctx.drawImage(activeStateImg,0,0,W,H);}
-  else{
-    ctx.fillStyle=ring+'33';ctx.beginPath();ctx.arc(cx,cy,55,0,Math.PI*2);ctx.fill();
-    ctx.font='62px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=ring;
-    ctx.fillText(ICONS[tok.icon||'skull']||'☠',cx,cy);
-  }
-  ctx.restore();
-  ctx.beginPath();ctx.arc(cx,cy,R-ringSize/2,0,Math.PI*2);
-  ctx.strokeStyle=ring;ctx.lineWidth=ringSize;ctx.stroke();
-  if(label){
-    const lblY=H-18;
-    ctx.fillStyle='rgba(0,0,0,0.72)';ctx.beginPath();ctx.rect(0,lblY-14,W,28);ctx.fill();
-    ctx.fillStyle=textCol;ctx.font='bold 13px "Cinzel",serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(label,cx,lblY);
-  }
-  if(cond){
-    ctx.fillStyle='rgba(139,0,0,0.82)';ctx.beginPath();ctx.rect(0,0,W,22);ctx.fill();
-    ctx.fillStyle='#fff';ctx.font='bold 11px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(cond.toUpperCase(),cx,11);
-  }
-  if(showHp){
-    const pv=c.pv||0;const pvMax=c.pvMax||1;const pct=pv/pvMax;
-    ctx.fillStyle='rgba(0,0,0,.55)';ctx.fillRect(18,H-14,W-36,8);
-    ctx.fillStyle=pct>0.5?'#22aa55':pct>0.25?'#cc8822':'#cc2222';
-    ctx.fillRect(18,H-14,(W-36)*pct,8);
-  }
-  const name=c.nome||currentUser||'Agente';
-  document.getElementById('tok-name-display').textContent=name;
-  tok.ring=ring;tok.bg=bg;tok.ringSize=ringSize;tok.textColor=textCol;
-  tok.label=label;tok.cond=cond;tok.showHp=showHp;tok.icon=tok.icon||'skull';
-  c.token=tok;
-}
- 
-function loadTokImg(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const img=new Image();
-    img.onload=()=>{tokImgData=img;const c=userChar(currentUser);c.token.imgData=ev.target.result;drawToken();saveDB();};
-    img.src=ev.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-function clearTokImg(){tokImgData=null;const c=userChar(currentUser);c.token.imgData=null;drawToken();saveDB();}
-function exportToken(){
-  drawToken();const canvas=document.getElementById('token-canvas');
-  const a=document.createElement('a');a.download='token_'+(userChar(currentUser).nome||currentUser)+'.png';a.href=canvas.toDataURL();a.click();
-}
-function exportTokenJSON(){
-  const c=userChar(currentUser);const tok=c.token||{};
-  const data=JSON.stringify({version:1,token:tok,nome:c.nome,classe:c.classe},null,2);
-  const blob=new Blob([data],{type:'application/json'});
-  const a=document.createElement('a');a.download='token_'+(c.nome||currentUser)+'.json';a.href=URL.createObjectURL(blob);a.click();
-  toast('Token exportado como JSON.');
-}
-function importTokenJSON(e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    try{
-      const data=JSON.parse(ev.target.result);
-      if(!data.token)throw new Error('JSON inválido');
-      const c=userChar(currentUser);c.token=data.token;
-      tokImgData=null;
-      stateImages={comum:null,arma:null,lanterna:null,morrendo:null};
-      document.getElementById('ring-swatches').removeAttribute('data-built');
-      document.getElementById('bg-swatches').removeAttribute('data-built');
-      document.getElementById('icon-opts').removeAttribute('data-built');
-      buildTokenControls();drawToken();saveDB();
-      toast('Token importado com sucesso!');
-    }catch(err){toast('Erro ao importar token JSON.');}
-  };
-  reader.readAsText(file);
-  e.target.value='';
-}
- 
-/* ══════════════════════════════════════════════
-   MAP
-══════════════════════════════════════════════ */
-let mapCtx,mapTool='wall',mapDrawing=false,mapLX=0,mapLY=0;
-let mapHistory=[],mapTokens=[];
-let mapStartX=0,mapStartY=0;
-let mapBgImage=null; // stored background separate from tokens
- 
-// Token interaction state
-let selectedToken=null; // index into mapTokens
-let draggingToken=false;
-let rotatingToken=false;
-let rotateStartAngle=0;
-let rotateMouseStart=0;
- 
-const GRID_SIZE=40;
- 
-// Aplica bg remoto no canvas.
-// Se o mapa ainda não foi aberto, guarda em _pendingRemoteBg para initMap usar.
-// Se já aberto, aplica imediatamente.
-function applyRemoteBg(dataUrl){
-  if(!dataUrl) return;
-  // Guarda sempre — initMap usa isso como prioridade máxima
-  window._pendingRemoteBg = dataUrl;
-  // Se canvas já existe, aplica imediatamente também
-  const bg = _getBgCanvas();
-  if(!bg) return; // initMap ainda não rodou — vai pegar via _pendingRemoteBg
-  const img = new Image();
-  img.onload = () => {
-    const bg2 = _getBgCanvas();
-    if(!bg2) return;
-    const ctx2 = bg2.getContext('2d');
-    ctx2.clearRect(0,0,bg2.width,bg2.height);
-    ctx2.drawImage(img,0,0,bg2.width,bg2.height);
-    mapPushHistory();
-    fullRedraw();
-  };
-  img.src = dataUrl;
-}
-
-function initMap(){
-  const canvas=document.getElementById('map-canvas');
-  if(!canvas)return;
-  if(canvas._init)return;
-  canvas._init=true;
-  const wrap=document.getElementById('map-canvas-wrap');
-  canvas.width=wrap.offsetWidth||900;
-  canvas.height=Math.round(canvas.width*0.6);
-  mapCtx=canvas.getContext('2d');
-  // Reseta o bgCanvas para as novas dimensoes
-  _bgCanvas=null;
-  mapHistory=[];
-  mapTokens=[];
-  // Carrega mapa compartilhado
-  // Prioridade: bg pendente do Firebase > shared local > mapa base (só Mestre)
-  const bgToLoad = window._pendingRemoteBg || db.maps['shared'] || (isMestre ? db.maps[currentUser] : null);
-  window._pendingRemoteBg = null;
-  if(bgToLoad){
-    const img=new Image();
-    img.onload=()=>{
-      const bg=_getBgCanvas();
-      bg.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
-      mapPushHistory();
-      loadMapTokens();
-      loadStructures();
-      fullRedraw();
-    };
-    img.src=bgToLoad;
-  }else{
-    if(isMestre) drawBaseMap();
-    mapPushHistory();
-    loadMapTokens();
-    loadStructures();
-    fullRedraw();
-  }
-  // Se recebeu tokens/structs via SSE antes do mapa abrir, aplica agora
-  if(window._pendingRemoteTokens){
-    mapTokens = window._pendingRemoteTokens;
-    window._pendingRemoteTokens = null;
-  }
-  if(window._pendingRemoteStructs){
-    mapStructures = window._pendingRemoteStructs;
-    window._pendingRemoteStructs = null;
-  }
-
-  canvas.addEventListener('mousedown',mapDown);
-  canvas.addEventListener('mousemove',mapMove);
-  // rem: hover check removido (usar Q para ciclar estados)
-  canvas.addEventListener('mouseup',mapUp);
-  canvas.addEventListener('mouseleave',mapUp);
-  canvas.addEventListener('wheel',mapWheel,{passive:false});
-  canvas.addEventListener('contextmenu',mapRightClick);
-  canvas.addEventListener('touchstart',e=>{e.preventDefault();mapDown(e.touches[0]);},{passive:false});
-  canvas.addEventListener('touchmove',e=>{e.preventDefault();mapMove(e.touches[0]);},{passive:false});
-  canvas.addEventListener('touchend',e=>{mapUp();},{passive:false});
-}
- 
-function mapPosRaw(e){
-  const canvas=document.getElementById('map-canvas');
-  const r=canvas.getBoundingClientRect();
-  const sx=canvas.width/r.width,sy=canvas.height/r.height;
-  return{x:(e.clientX-r.left)*sx, y:(e.clientY-r.top)*sy};
-}
- 
-function mapPos(e){
-  const p=mapPosRaw(e);
-  if(document.getElementById('map-snap')?.checked){
-    return{x:Math.round(p.x/GRID_SIZE)*GRID_SIZE, y:Math.round(p.y/GRID_SIZE)*GRID_SIZE};
-  }
-  return p;
-}
- 
-function mapDown(e){
-  const p=mapPos(e);
- 
-  // Place furniture preset -> agora cria objeto clicavel
-  if(placingPreset){
-    mapStructures.push({preset:placingPreset,x:p.x,y:p.y,angle:0});
-    placingPreset=null;
-    selectedStruct=mapStructures.length-1;
-    document.getElementById('map-canvas').style.cursor='crosshair';
-    fullRedraw();saveStructures();return;
-  }
- 
-  // Erase: verifica token e estrutura
-  if(mapTool==='erase'){
-    const hitTok=mapTokens.findIndex(t=>Math.hypot(t.x-p.x,t.y-p.y)<=t.r+6);
-    if(hitTok>=0){
-      if(!isMestre){toast('⛧ Apenas o Mestre pode remover tokens.');return;}
-      mapTokens.splice(hitTok,1);if(selectedToken===hitTok)selectedToken=null;else if(selectedToken>hitTok)selectedToken--;fullRedraw();renderMapTokList();saveMapData({skipBg:true});return;
-    }
-    const hitStr=hitTestStruct(p.x,p.y);
-    if(hitStr>=0){
-      if(!isMestre){toast('⛧ Apenas o Mestre pode remover objetos.');return;}
-      mapStructures.splice(hitStr,1);if(selectedStruct===hitStr)selectedStruct=null;else if(selectedStruct>hitStr)selectedStruct--;fullRedraw();saveStructures();return;
-    }
-    if(!isMestre){return;}
-    selectedToken=null;selectedStruct=null;
-    mapDrawing=true;mapStartX=p.x;mapStartY=p.y;mapLX=p.x;mapLY=p.y;mapPushHistory();return;
-  }
- 
-  // Check token hit first (usa posicao raw para hit test preciso)
-  const pRaw=mapPosRaw(e);
-  const hitIdx=mapTokens.findIndex(t=>Math.hypot(t.x-pRaw.x,t.y-pRaw.y)<=t.r+6);
-  if(hitIdx>=0){
-    const hitTok=mapTokens[hitIdx];
-    // Players so podem arrastar seu proprio token (owner)
-    if(!isMestre && !(hitTok.isPlayer && hitTok.owner===currentUser)){
-      toast('⛧ Você só pode mover seu próprio token.');
-      selectedToken=hitIdx;renderMapTokList();fullRedraw();return;
-    }
-    selectedToken=hitIdx;selectedStruct=null;
-    draggingToken=true;
-    hitTok._dragOX=pRaw.x-hitTok.x; hitTok._dragOY=pRaw.y-hitTok.y;
-    hitTok._lastX=undefined; hitTok._lastY=undefined;
-    renderMapTokList();fullRedraw();return;
-  }
- 
-  // Check structure hit
-  const hitStr=hitTestStruct(pRaw.x,pRaw.y);
-  if(hitStr>=0){
-    selectedStruct=hitStr;selectedToken=null;
-    if(isMestre){
-      draggingStruct=true;
-      const s=mapStructures[hitStr];
-      s._dragOX=pRaw.x-s.x; s._dragOY=pRaw.y-s.y;
-    }
-    renderMapTokList();fullRedraw();return;
-  }
- 
-  // Deselect tudo com select tool
-  if(mapTool==='select'){selectedToken=null;selectedStruct=null;renderMapTokList();fullRedraw();return;}
- 
-  selectedToken=null;selectedStruct=null;
-  mapDrawing=true;mapStartX=p.x;mapStartY=p.y;mapLX=p.x;mapLY=p.y;
- 
-  if(mapTool==='text'){
-    if(!isMestre){toast('⛧ Apenas o Mestre pode adicionar texto.');return;}
-    const txt=prompt('Texto para o mapa:');
-    if(txt){
-      const bgCtx2=getBgCtx();
-      if(bgCtx2){
-        bgCtx2.fillStyle=document.getElementById('map-color').value;
-        bgCtx2.font='13px "Cinzel",serif';bgCtx2.textAlign='left';bgCtx2.textBaseline='middle';
-        bgCtx2.fillText(txt,p.x,p.y);
-      }
-    }
-    mapDrawing=false;mapPushHistory();saveMapData();return;
-  }
-  if(mapTool==='token-place'){
-    if(!isMestre){toast('⛧ Apenas o Mestre pode colocar tokens avulsos. Use ⭐ Meu Token.');return;}
-    const name=prompt('Nome do token (ex: PJ1, Inimigo):','');
-    const col=document.getElementById('map-color').value;
-    const c=userChar(currentUser);
-    const isPlayer=!!(name&&(name.toLowerCase()===currentUser||(c.nome&&name.toLowerCase().includes(c.nome.toLowerCase()))));
-    mapTokens.push({x:p.x,y:p.y,name:name||'?',col,r:GRID_SIZE/2-4,isPlayer,state:'comum',angle:0});
-    mapDrawing=false;fullRedraw();renderMapTokList();saveMapData({skipBg:true});return;
-  }
-  if(!isMestre){return;}
-  mapPushHistory();
-}
- 
-function mapMove(e){
-  const p=mapPos(e);
-  const pRaw=mapPosRaw(e);   // sempre livre, para drag
-  const canvas=document.getElementById('map-canvas');
- 
-  // Dragging a selected token — movimento LIVRE (sem snap)
-  if(draggingToken && selectedToken!==null && mapTokens[selectedToken]){
-    const t=mapTokens[selectedToken];
-    const nx=pRaw.x-(t._dragOX||0), ny=pRaw.y-(t._dragOY||0);
-    if(t._lastX!==undefined) t.angle=Math.atan2(ny-t._lastY, nx-t._lastX);
-    t._lastX=t.x; t._lastY=t.y;
-    t.x=nx; t.y=ny;
-    fullRedrawSync();
-    fbPublishMap(); // publica direto, sem throttle, para movimento instantâneo
-    canvas.style.cursor='grabbing';return;
-  }
- 
-  // Dragging a selected structure — movimento LIVRE (sem snap)
-  if(draggingStruct && selectedStruct!==null && mapStructures[selectedStruct]){
-    const s=mapStructures[selectedStruct];
-    const nx=pRaw.x-(s._dragOX||0), ny=pRaw.y-(s._dragOY||0);
-    s.x=nx; s.y=ny;
-    fullRedrawSync();
-    const dx=nx-(s._pubX||nx), dy=ny-(s._pubY||ny);
-    if(Math.hypot(dx,dy)>=2){ s._pubX=nx; s._pubY=ny; fbPublishMap(); }
-    canvas.style.cursor='grabbing';return;
-  }
- 
-  // Hover cursor change
-  if(!mapDrawing){
-    const hitTok=mapTokens.findIndex(t=>Math.hypot(t.x-p.x,t.y-p.y)<=t.r+6);
-    if(hitTok>=0 && mapTool!=='erase'){canvas.style.cursor='grab';return;}
-    const hitStr=hitTestStruct(p.x,p.y);
-    if(hitStr>=0 && mapTool!=='erase'){canvas.style.cursor='grab';return;}
-    if(placingPreset){canvas.style.cursor='copy';return;}
-    canvas.style.cursor='crosshair';
-  }
- 
-  if(!mapDrawing)return;
-  const sz=parseInt(document.getElementById('map-sz').value)||4;
-  const col=document.getElementById('map-color').value;
-  const op=parseInt(document.getElementById('map-op').value)/100;
-  // Todos os traços vão para o bgCanvas — tokens nunca são desenhados nele
-  const bgCtx=getBgCtx();
-  if(!bgCtx)return;
- 
-  if(mapTool==='pencil'||mapTool==='wall'){
-    bgCtx.globalAlpha=op;
-    bgCtx.beginPath();bgCtx.moveTo(mapLX,mapLY);bgCtx.lineTo(p.x,p.y);
-    bgCtx.strokeStyle=col;bgCtx.lineWidth=sz;bgCtx.lineCap='round';bgCtx.lineJoin='round';bgCtx.stroke();
-    bgCtx.globalAlpha=1;
-    fullRedrawSync();
-  }else if(mapTool==='erase'){
-    bgCtx.clearRect(p.x-sz*2,p.y-sz*2,sz*4,sz*4);
-    fullRedrawSync();
-  }else if(mapTool==='rect'){
-    // Preview: restaura bgCanvas do ultimo snapshot, desenha shape temporario, compoe
-    const last=mapHistory[mapHistory.length-1];
-    if(last){
-      const img=new Image();
-      img.onload=()=>{
-        bgCtx.clearRect(0,0,_bgCanvas.width,_bgCanvas.height);
-        bgCtx.drawImage(img,0,0);
-        bgCtx.globalAlpha=op;
-        bgCtx.fillStyle=col+'44';bgCtx.strokeStyle=col;bgCtx.lineWidth=sz*0.5;
-        bgCtx.fillRect(mapStartX,mapStartY,p.x-mapStartX,p.y-mapStartY);
-        bgCtx.strokeRect(mapStartX,mapStartY,p.x-mapStartX,p.y-mapStartY);
-        bgCtx.globalAlpha=1;
-        fullRedrawSync();
-      };
-      img.src=last;
-    }
-  }else if(mapTool==='circle'){
-    const last=mapHistory[mapHistory.length-1];
-    if(last){
-      const img=new Image();
-      img.onload=()=>{
-        bgCtx.clearRect(0,0,_bgCanvas.width,_bgCanvas.height);
-        bgCtx.drawImage(img,0,0);
-        bgCtx.globalAlpha=op;
-        const rx=Math.abs(p.x-mapStartX)/2,ry=Math.abs(p.y-mapStartY)/2;
-        const ex=(mapStartX+p.x)/2,ey=(mapStartY+p.y)/2;
-        bgCtx.beginPath();bgCtx.ellipse(ex,ey,rx||1,ry||1,0,0,Math.PI*2);
-        bgCtx.fillStyle=col+'33';bgCtx.fill();
-        bgCtx.strokeStyle=col;bgCtx.lineWidth=sz*0.5;bgCtx.stroke();
-        bgCtx.globalAlpha=1;
-        fullRedrawSync();
-      };
-      img.src=last;
-    }
-  }else if(mapTool==='line'){
-    const last=mapHistory[mapHistory.length-1];
-    if(last){
-      const img=new Image();
-      img.onload=()=>{
-        bgCtx.clearRect(0,0,_bgCanvas.width,_bgCanvas.height);
-        bgCtx.drawImage(img,0,0);
-        bgCtx.globalAlpha=op;
-        bgCtx.beginPath();bgCtx.moveTo(mapStartX,mapStartY);bgCtx.lineTo(p.x,p.y);
-        bgCtx.strokeStyle=col;bgCtx.lineWidth=sz;bgCtx.lineCap='round';bgCtx.stroke();
-        bgCtx.globalAlpha=1;
-        fullRedrawSync();
-      };
-      img.src=last;
-    }
-  }
-  mapLX=p.x;mapLY=p.y;
-}
- 
-function mapUp(){
-  if(draggingToken){
-    draggingToken=false;
-    if(selectedToken!==null && mapTokens[selectedToken]){
-      const t=mapTokens[selectedToken];
-      delete t._lastX;delete t._lastY;delete t._dragOX;delete t._dragOY;delete t._pubX;delete t._pubY;delete t._rafPub;
-    }
-    fullRedraw();
-    // Força publicação imediata da posição final (sem throttle) para todos verem
-    if(window.fbSaveMap){
-      try{
-        window.fbSaveMap._flush = true;
-        window.fbSaveMap('main',{
-          tokens: JSON.stringify(mapTokens),
-          structs: JSON.stringify(mapStructures),
-          ts: Date.now(),
-          sid: _mySessionId
-        });
-      }catch(e){}
-    }
-    saveMapData({skipBg:true});
-    document.getElementById('map-canvas').style.cursor='crosshair';return;
-  }
-  if(draggingStruct){
-    draggingStruct=false;
-    if(selectedStruct!==null && mapStructures[selectedStruct]){
-      const s=mapStructures[selectedStruct];
-      delete s._dragOX;delete s._dragOY;delete s._pubX;delete s._pubY;
-    }
-    fullRedraw();saveStructures();
-    document.getElementById('map-canvas').style.cursor='crosshair';return;
-  }
-  if(mapDrawing){mapDrawing=false;mapPushHistory();saveMapData();_publishBgNow();}
-}
- 
-// Scroll wheel = rotate selected token or structure
-function mapWheel(e){
-  e.preventDefault();
-  const delta=e.deltaY>0?0.15:-0.15;
-  if(selectedToken!==null && mapTokens[selectedToken]){
-    mapTokens[selectedToken].angle=(mapTokens[selectedToken].angle||0)+delta;
-    fullRedraw();saveMapData({skipBg:true});return;
-  }
-  if(selectedStruct!==null && mapStructures[selectedStruct]){
-    mapStructures[selectedStruct].angle=(mapStructures[selectedStruct].angle||0)+delta;
-    fullRedraw();saveStructures();
-  }
-}
- 
-// Right click = delete token or structure under cursor
-function mapRightClick(e){
-  e.preventDefault();
-  const p=mapPos(e);
-  const hitIdx=mapTokens.findIndex(t=>Math.hypot(t.x-p.x,t.y-p.y)<=t.r+6);
-  if(hitIdx>=0){
-    if(!isMestre){toast('⛧ Apenas o Mestre pode remover tokens.');return;}
-    if(confirm('Remover token "'+mapTokens[hitIdx].name+'"?')){
-      mapTokens.splice(hitIdx,1);
-      if(selectedToken===hitIdx)selectedToken=null;
-      else if(selectedToken>hitIdx)selectedToken--;
-      fullRedraw();renderMapTokList();saveMapData({skipBg:true});
-    }
-    return;
-  }
-  const hitStr=hitTestStruct(p.x,p.y);
-  if(hitStr>=0){
-    if(!isMestre){toast('⛧ Apenas o Mestre pode remover objetos do mapa.');return;}
-    const f=FURNITURE[mapStructures[hitStr].preset];
-    if(confirm('Remover estrutura "'+(f&&f.label||mapStructures[hitStr].preset)+'"?')){
-      mapStructures.splice(hitStr,1);
-      if(selectedStruct===hitStr)selectedStruct=null;
-      else if(selectedStruct>hitStr)selectedStruct--;
-      fullRedraw();saveStructures();
-    }
-  }
-}
- 
-// ══════════════════════════════════════════════
-//  RENDER ENGINE — fundo separado dos tokens
-//  bgCanvas: offscreen, recebe apenas traços/edições
-//  Render: sempre limpa o main canvas e compõe
-//  bgCanvas + estruturas + tokens em uma passada
-// ══════════════════════════════════════════════
-let _bgCanvas = null;   // offscreen — só traços/edições
-let _rafPending = false;
- 
-function _getBgCanvas(){
-  const mc = document.getElementById('map-canvas');
-  if(!mc) return null;
-  if(!_bgCanvas){
-    _bgCanvas = document.createElement('canvas');
-    _bgCanvas.width = mc.width;
-    _bgCanvas.height = mc.height;
-  }
-  return _bgCanvas;
-}
- 
-// Chame sempre que o tamanho do main canvas mudar
-function _syncBgSize(){
-  const mc = document.getElementById('map-canvas');
-  if(!mc || !_bgCanvas) return;
-  if(_bgCanvas.width !== mc.width || _bgCanvas.height !== mc.height){
-    const tmp = document.createElement('canvas');
-    tmp.width = mc.width; tmp.height = mc.height;
-    tmp.getContext('2d').drawImage(_bgCanvas, 0, 0);
-    _bgCanvas.width = mc.width; _bgCanvas.height = mc.height;
-    _bgCanvas.getContext('2d').drawImage(tmp, 0, 0);
-  }
-}
- 
-// Devolve o contexto 2d do bgCanvas (para desenhar traços)
-function getBgCtx(){
-  const bg = _getBgCanvas();
-  return bg ? bg.getContext('2d') : null;
-}
- 
-// ── Histórico: snapshots do bgCanvas ──
-function mapPushHistory(){
-  const bg = _getBgCanvas();
-  if(!bg) return;
-  mapHistory.push(bg.toDataURL());
-  if(mapHistory.length > 30) mapHistory.shift();
-}
- 
-// ── Compõe e exibe: bg + grid + estruturas + tokens ──
-function _compose(){
-  if(!mapCtx) return;
-  const mc = document.getElementById('map-canvas');
-  if(!mc) return;
-  const bg = _getBgCanvas();
-  mapCtx.clearRect(0, 0, mc.width, mc.height);
-  if(bg) mapCtx.drawImage(bg, 0, 0);
-  drawMapGrid();
-  drawAllStructures();
-  _drawTokens(mc);
-}
- 
-// Versão com rAF (chamadas normais — não durante drag)
-function fullRedraw(){
-  if(_rafPending) return;
-  _rafPending = true;
-  requestAnimationFrame(()=>{
-    _rafPending = false;
-    _compose();
-  });
-}
- 
-// Versão síncrona imediata — usada somente durante drag para evitar lag
-function fullRedrawSync(){
-  _compose();
-}
- 
-// ── Undo: restaura bg a partir do histórico ──
-function mapUndo(){
-  if(mapHistory.length <= 1) return;
-  mapHistory.pop();
-  const last = mapHistory[mapHistory.length - 1];
-  if(!last){ fullRedraw(); return; }
-  const img = new Image();
-  img.onload = ()=>{
-    const bg = _getBgCanvas();
-    if(!bg) return;
-    const bgCtx = bg.getContext('2d');
-    bgCtx.clearRect(0, 0, bg.width, bg.height);
-    bgCtx.drawImage(img, 0, 0);
-    fullRedraw();
-  };
-  img.src = last;
-}
- 
-// ══════════════════════════════════════════════════════════════
-//  SINCRONIZAÇÃO DO MAPA — ARQUITETURA SIMPLIFICADA
-//
-//  Firebase só trafega JSON pequeno (tokens + structs).
-//  bgCanvas (desenhos) é salvo no Firebase DB separadamente e
-//  carregado UMA VEZ quando o mapa é aberto.
-//  Durante drag/draw: só tokens+structs em tempo real (< 1KB).
-// ══════════════════════════════════════════════════════════════
-
-// ID único desta sessão — anti-eco robusto
-const _mySessionId = Math.random().toString(36).slice(2);
-window._mySessionId = _mySessionId;
-
-// Publica tokens + structs (throttle feito dentro do fbSaveMap)
-function fbPublishMap(){
-  if(!window.fbSaveMap) return;
-  try{
-    window.fbSaveMap('main',{
-      tokens: JSON.stringify(mapTokens),
-      structs: JSON.stringify(mapStructures),
-      ts: Date.now(),
-      sid: _mySessionId
-    });
-  }catch(e){}
-}
-
-// Salva local + publica
-let _bgPublishTimer = null;
-let _bgPublishPending = false;
-
-function _publishBgNow(){
-  clearTimeout(_bgPublishTimer);
-  _bgPublishPending = false;
-  if(!window.fbSaveMap) return;
-  const bg = _getBgCanvas();
-  const bgData = bg ? bg.toDataURL() : '';
-  if(!bgData) return;
-  const ts = Date.now();
-  window.fbSaveMap('bg', { data: bgData, ts, sid: _mySessionId });
-}
-
-function _scheduleBgPublish(){
-  if(_bgPublishPending) return; // já agendado
-  _bgPublishPending = true;
-  clearTimeout(_bgPublishTimer);
-  _bgPublishTimer = setTimeout(_publishBgNow, 800); // throttle: publica 800ms após o último traço
-}
-
-// Cache da bg para evitar toDataURL() repetido (operação cara)
-let _bgDataURLCache = '';
-function saveMapData(options){
-  try{
-    const bg=_getBgCanvas();
-    if(!db.maps) db.maps={};
-    // Só serializa bg se mudou (desenho novo) ou na primeira vez
-    if(options && options.skipBg){
-      // mantém cache anterior
-    } else {
-      _bgDataURLCache = bg ? bg.toDataURL() : '';
-    }
-    db.maps['shared']=_bgDataURLCache;
-    db.maps['shared_tokens']=JSON.stringify(mapTokens);
-    saveDB(); // dispara fbSaveDB que inclui mapbg no gamedata (1.5s throttle)
-    fbPublishMap(); // tokens+structs em tempo real via SSE
-    // Só agenda bg se houve mudança no desenho
-    if(!(options && options.skipBg)){
-      _scheduleBgPublish();
-    }
-  }catch(e){}
-}
- 
-// ── Cache de imagens dos tokens: imgUrl → Image() ──
-const _tokImgCache = {};
-function _getTokImg(url){
-  if(!url) return null;
-  if(_tokImgCache[url]) return _tokImgCache[url].complete ? _tokImgCache[url] : null;
-  const img = new Image();
-  img.onload = ()=>{ _tokImgCache[url]=img; fullRedraw(); };
-  img.onerror = ()=>{ delete _tokImgCache[url]; };
-  _tokImgCache[url] = img;
-  img.src = url;
-  return null; // ainda carregando
-}
-
-// ── Desenha todos os tokens sobre o main canvas ──
-function _drawTokens(mc){
-  mapTokens.forEach((t, i)=>{
-    // Usa o estado guardado no token; para o token do usuário atual, pode usar currentTokenState
-    const tokenState = (t.isPlayer && t.owner===currentUser) ? currentTokenState : (t.state||'comum');
-    const tst = TOKEN_STATES[tokenState] || TOKEN_STATES.comum;
-    const ringCol = t.isPlayer ? (tst.ring || t.col) : t.col;
-    const angle = t.angle || 0;
-
-    // Resolve imagem: por estado (player) ou imgUrl genérico
-    let tokImg = null;
-    if(t.isPlayer && t.owner===currentUser){
-      // Usa stateImages se disponível, senão tokImgData
-      tokImg = stateImages[tokenState] || tokImgData || null;
-    } else if(t.imgUrl){
-      tokImg = _getTokImg(t.imgUrl);
-    }
-
-    mapCtx.save();
-    mapCtx.translate(t.x, t.y);
-    // Lantern cone
-    if(tokenState === 'lanterna'){
-      mapCtx.save(); mapCtx.rotate(angle);
-      mapCtx.beginPath(); mapCtx.moveTo(0,0);
-      mapCtx.arc(0, 0, 88, -Math.PI/4.5, Math.PI/4.5);
-      mapCtx.closePath();
-      const g = mapCtx.createRadialGradient(0,0,t.r,0,0,88);
-      g.addColorStop(0,'rgba(220,180,60,0.3)'); g.addColorStop(1,'rgba(196,154,0,0.0)');
-      mapCtx.fillStyle = g; mapCtx.fill(); mapCtx.restore();
-    }
-    // Dying aura
-    if(tokenState === 'morrendo'){
-      mapCtx.beginPath(); mapCtx.arc(0,0,t.r+7,0,Math.PI*2);
-      const g = mapCtx.createRadialGradient(0,0,t.r,0,0,t.r+7);
-      g.addColorStop(0,'rgba(100,0,0,0.5)'); g.addColorStop(1,'rgba(100,0,0,0)');
-      mapCtx.fillStyle = g; mapCtx.fill();
-    }
-    // Selection ring
-    if(i === selectedToken){
-      mapCtx.beginPath(); mapCtx.arc(0,0,t.r+9,0,Math.PI*2);
-      mapCtx.strokeStyle = 'rgba(255,255,200,0.8)'; mapCtx.lineWidth = 1.5;
-      mapCtx.setLineDash([5,3]); mapCtx.stroke(); mapCtx.setLineDash([]);
-    }
-    // Body + direction pointer
-    mapCtx.save(); mapCtx.rotate(angle);
-    mapCtx.beginPath(); mapCtx.arc(0,0,t.r,0,Math.PI*2);
-    if(tokImg){
-      // Clip circular e desenha imagem
-      mapCtx.save();
-      mapCtx.clip();
-      mapCtx.drawImage(tokImg, -t.r, -t.r, t.r*2, t.r*2);
-      mapCtx.restore();
-    } else {
-      mapCtx.fillStyle = ringCol+'bb'; mapCtx.fill();
-    }
-    mapCtx.strokeStyle = i===selectedToken ? '#ffffc8' : ringCol;
-    mapCtx.lineWidth = i===selectedToken ? 2.5 : 2; mapCtx.stroke();
-    // Seta de direção (só sem imagem ou sutil com imagem)
-    if(!tokImg){
-      mapCtx.beginPath();
-      mapCtx.moveTo(t.r+1,0); mapCtx.lineTo(t.r-8,-5); mapCtx.lineTo(t.r-8,5);
-      mapCtx.closePath(); mapCtx.fillStyle='rgba(255,255,255,0.7)'; mapCtx.fill();
-    }
-    mapCtx.restore();
-    // Overlay emoji (estados especiais) — só quando sem imagem personalizada
-    const overlay = tst.overlay;
-    if(overlay && !tokImg){
-      mapCtx.font = `${Math.round(t.r*0.82)}px serif`;
-      mapCtx.textAlign='center'; mapCtx.textBaseline='middle';
-      mapCtx.fillText(overlay, 0, 0);
-    } else if(!tokImg) {
-      mapCtx.fillStyle='#e8e0e0';
-      mapCtx.font = `bold ${t.name.length>3?9:11}px "Cinzel",serif`;
-      mapCtx.textAlign='center'; mapCtx.textBaseline='middle';
-      mapCtx.fillText(t.name.slice(0,4), 0, 0);
-    }
-    // Badge de estado no canto (mesmo com imagem)
-    if(tokenState === 'arma'){
-      mapCtx.beginPath(); mapCtx.arc(t.r-5,-t.r+5,5,0,Math.PI*2);
-      mapCtx.fillStyle='rgba(220,70,0,0.95)'; mapCtx.fill();
-    }
-    if(tokenState === 'morrendo' && tokImg){
-      // Overlay escuro semi-transparente quando tem imagem
-      mapCtx.save();
-      mapCtx.beginPath(); mapCtx.arc(0,0,t.r,0,Math.PI*2);
-      mapCtx.fillStyle='rgba(80,0,0,0.45)'; mapCtx.fill();
-      mapCtx.font=`${Math.round(t.r*0.6)}px serif`; mapCtx.textAlign='center'; mapCtx.textBaseline='middle';
-      mapCtx.fillText('✟',0,0);
-      mapCtx.restore();
-    }
-    mapCtx.restore();
-  });
-  // HUD selected token
-  if(selectedToken!==null && mapTokens[selectedToken]){
-    const t = mapTokens[selectedToken];
-    const ang = Math.round((t.angle||0)*180/Math.PI);
-    const st = TOKEN_STATES[t.isPlayer?currentTokenState:(t.state||'comum')];
-    mapCtx.save();
-    mapCtx.fillStyle='rgba(0,0,0,0.75)';
-    mapCtx.fillRect(6, mc.height-30, 300, 22);
-    mapCtx.fillStyle='#c8c0c0'; mapCtx.font='10px "Courier Prime",monospace';
-    mapCtx.textAlign='left'; mapCtx.textBaseline='middle';
-    mapCtx.fillText('● '+t.name+'  ↻'+ang+'°  ['+(st&&st.label||'—')+']  scroll=girar · arrastar=mover · clique-dir=remover', 12, mc.height-19);
-    mapCtx.restore();
-  }
-  // HUD selected structure
-  if(selectedStruct!==null && mapStructures[selectedStruct]){
-    const s = mapStructures[selectedStruct];
-    const f = FURNITURE[s.preset];
-    const ang = Math.round((s.angle||0)*180/Math.PI);
-    mapCtx.save();
-    mapCtx.fillStyle='rgba(0,0,0,0.75)';
-    mapCtx.fillRect(6, mc.height-30, 320, 22);
-    mapCtx.fillStyle='#c8d4a0'; mapCtx.font='10px "Courier Prime",monospace';
-    mapCtx.textAlign='left'; mapCtx.textBaseline='middle';
-    const hintS = isMestre
-      ? '▣ '+(f&&f.label||s.preset)+'  ↻'+ang+'°  scroll=girar · arrastar=mover · clique-dir=remover · Del=apagar'
-      : '▣ '+(f&&f.label||s.preset)+'  ↻'+ang+'°  [somente Mestre pode mover ou remover]';
-    mapCtx.fillText(hintS, 12, mc.height-19);
-    mapCtx.restore();
-  }
-}
- 
-// ── Alias para compatibilidade ──
-function redrawMapWithTokens(){ _compose(); }
- 
- 
-
-
- 
-function renderMapTokList(){
-  const el=document.getElementById('map-tok-list');el.innerHTML='';
-  if(!mapTokens.length){el.innerHTML='<div style="color:var(--white-dust);font-size:12px">Nenhum token no mapa.</div>';return;}
-  mapTokens.forEach((t,i)=>{
-    const row=document.createElement('div');row.className='map-token-item';
-    const isSel=i===selectedToken;
-    const ang=Math.round((t.angle||0)*180/Math.PI);
-    row.style.cssText=isSel?'background:rgba(139,0,0,0.15);border-left:2px solid #cc0000;padding-left:6px':'';
-    row.innerHTML=`<div class="mini-token" style="border-color:${t.col};color:#e8e0e0;font-size:10px">${t.name.slice(0,2)}</div>
-      <div style="flex:1;min-width:0"><div style="font-size:12px;color:${isSel?'#cc8888':'var(--white-ash)'}">${t.name}${t.isPlayer?' ⭐':''}</div>
-      <div style="font-size:10px;color:var(--white-dust);font-family:monospace">↻${ang}°</div></div>
-      <button title="Selecionar" onclick="selectTok(${i})" style="background:transparent;border:none;color:${isSel?'#cc0000':'var(--white-dust)'};cursor:pointer;font-size:14px">◎</button>
-      <button class="del-btn" onclick="removeTok(${i})" title="Remover">×</button>`;
-    el.appendChild(row);
-  });
-}
-function selectTok(i){selectedToken=i;renderMapTokList();fullRedraw();}
- 
-function removeTok(i){
-  if(!isMestre){toast('⛧ Apenas o Mestre pode remover tokens.');return;}
-  mapTokens.splice(i,1);
-  if(selectedToken===i)selectedToken=null;
-  else if(selectedToken!==null&&selectedToken>i)selectedToken--;
-  renderMapTokList();fullRedraw();saveMapData({skipBg:true});
-}
-function loadMapTokens(){
-  const d=db.maps['shared_tokens']||db.maps[currentUser+'_tokens'];
-  if(d) try{
-    mapTokens=JSON.parse(d);
-    // Rehidrata imagens de todos os tokens que têm imgUrl
-    mapTokens.forEach(t=>{ if(t.imgUrl) _getTokImg(t.imgUrl); });
-  }catch(e){mapTokens=[];}
-  loadStructures();
-}
- 
-function drawMapGrid(){
-  const canvas=document.getElementById('map-canvas');if(!canvas||!mapCtx)return;
-  const show=document.getElementById('map-grid')?.checked;
-  if(!show)return;
-  const W=canvas.width,H=canvas.height;
-  mapCtx.save();mapCtx.globalAlpha=0.08;mapCtx.strokeStyle='#8b0000';mapCtx.lineWidth=1;
-  for(let x=0;x<=W;x+=GRID_SIZE){mapCtx.beginPath();mapCtx.moveTo(x,0);mapCtx.lineTo(x,H);mapCtx.stroke();}
-  for(let y=0;y<=H;y+=GRID_SIZE){mapCtx.beginPath();mapCtx.moveTo(0,y);mapCtx.lineTo(W,y);mapCtx.stroke();}
-  mapCtx.restore();
-}
- 
-function drawBaseMap(){
-  const canvas=document.getElementById('map-canvas');
-  const W=canvas.width,H=canvas.height;
-  const ctx=getBgCtx();
-  if(!ctx)return;
- 
-  // ── Background: dark stone floor ──
-  ctx.fillStyle='#0c0008';ctx.fillRect(0,0,W,H);
-  // Subtle stone texture via noise-like rectangles
-  for(let i=0;i<300;i++){
-    const sx=Math.random()*W,sy=Math.random()*H;
-    const sw=Math.random()*30+10,sh=Math.random()*3+1;
-    ctx.fillStyle=`rgba(${20+Math.random()*15},${5+Math.random()*5},${10+Math.random()*10},${0.04+Math.random()*0.06})`;
-    ctx.fillRect(sx,sy,sw,sh);
-  }
- 
-  drawMapGrid();
- 
-  // ── Helper to draw a room with gradient + label ──
-  function room(x,y,w,h,baseColor,label,danger){
-    const g=ctx.createLinearGradient(x,y,x+w,y+h);
-    g.addColorStop(0,baseColor+'28');g.addColorStop(1,baseColor+'10');
-    ctx.fillStyle=g;ctx.fillRect(x,y,w,h);
-    // Inner border glow
-    ctx.strokeStyle=baseColor+'99';ctx.lineWidth=1.5;ctx.strokeRect(x+1,y+1,w-2,h-2);
-    ctx.strokeStyle=baseColor+'40';ctx.lineWidth=3;ctx.strokeRect(x,y,w,h);
-    // Floor tiles hint
-    ctx.save();ctx.globalAlpha=0.04;ctx.strokeStyle=baseColor;ctx.lineWidth=0.5;
-    for(let tx=x;tx<x+w;tx+=20){ctx.beginPath();ctx.moveTo(tx,y);ctx.lineTo(tx,y+h);ctx.stroke();}
-    for(let ty=y;ty<y+h;ty+=20){ctx.beginPath();ctx.moveTo(x,ty);ctx.lineTo(x+w,ty);ctx.stroke();}
-    ctx.restore();
-    // Label
-    ctx.save();
-    ctx.fillStyle='rgba(0,0,0,0.55)';
-    ctx.fillRect(x+4,y+4,ctx.measureText(label).width+8,16);
-    ctx.fillStyle=baseColor+'dd';ctx.font='bold 10px "Cinzel",serif';
-    ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(label,x+8,y+6);
-    ctx.restore();
-  }
- 
-  // ── Helper: thick wall ──
-  function wall(x1,y1,x2,y2,w=4){
-    ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);
-    ctx.strokeStyle='#2a0000';ctx.lineWidth=w+2;ctx.stroke();
-    ctx.strokeStyle='#5c0000';ctx.lineWidth=w;ctx.stroke();
-    ctx.strokeStyle='rgba(139,0,0,0.2)';ctx.lineWidth=1;ctx.stroke();
-  }
- 
-  // ── Helper: door ──
-  function door(x,y,horiz){
-    const L=30;
-    ctx.clearRect(horiz?x:x-2,horiz?y-2:y,horiz?L:4,horiz?4:L);
-    ctx.save();ctx.strokeStyle='#8b4500';ctx.lineWidth=2;
-    if(horiz){ctx.beginPath();ctx.arc(x,y,L,0,Math.PI/2);ctx.stroke();}
-    else{ctx.beginPath();ctx.arc(x,y,L,-Math.PI/2,0);ctx.stroke();}
-    ctx.restore();
-  }
- 
-  // ── Helper: small furniture rect ──
-  function furn(x,y,w,h,col,lbl){
-    ctx.fillStyle=col+'66';ctx.fillRect(x,y,w,h);
-    ctx.strokeStyle=col+'cc';ctx.lineWidth=1;ctx.strokeRect(x,y,w,h);
-    if(lbl){ctx.fillStyle='rgba(200,190,190,0.5)';ctx.font='8px sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(lbl,x+w/2,y+h/2);}
-  }
- 
-  // ═══ ROOMS ═══
-  // Recepção  (top-left large)
-  room(40,40,200,160,'#8b0000','Recepção');
-  furn(60,60,70,36,'#5a3a20','Mesa Rec.');
-  furn(70,66,14,24,'#4a4a6a','Cad.');
-  furn(100,66,14,24,'#4a4a6a','Cad.');
-  furn(130,66,14,24,'#4a4a6a','Cad.');
-  furn(155,52,24,16,'#3a5a6a','Arq.');
-  furn(185,52,24,16,'#3a5a6a','Arq.');
- 
-  // Corredor horizontal Norte
-  room(240,40,120,60,'#1fc8a0','Corredor N.');
- 
-  // Zona Infectada
-  room(240,160,120,90,'#cc2222','Zona Infectada',true);
-  // blood splatter hints
-  ctx.save();ctx.globalAlpha=0.18;
-  [[260,180],[310,200],[320,175],[270,215]].forEach(([bx,by])=>{
-    ctx.beginPath();ctx.arc(bx,by,5+Math.random()*6,0,Math.PI*2);ctx.fillStyle='#cc0000';ctx.fill();
-  });ctx.restore();
- 
-  // Arquivo (left-bottom)
-  room(40,220,180,130,'#c49a00','Arquivo');
-  for(let sx=0;sx<3;sx++)furn(55+sx*44,235,38,16,'#7a5a30','Estante');
-  furn(55,260,38,16,'#7a5a30','Estante');
-  furn(55,280,38,16,'#7a5a30','Estante');
-  furn(140,260,60,36,'#3a3a5a','Mesa');
- 
-  // Laboratório (center-right large)
-  room(380,40,190,180,'#5b9cf6','Laboratório');
-  furn(400,60,60,30,'#3a5a9a','Bancada');
-  furn(470,60,60,30,'#3a5a9a','Bancada');
-  furn(530,60,30,80,'#2a3a6a','Equip.');
-  furn(400,100,36,24,'#4a6a3a','Micro.');
-  furn(450,100,36,24,'#4a6a3a','Centr.');
-  // lab glow
-  ctx.save();ctx.globalAlpha=0.06;
-  const lg=ctx.createRadialGradient(475,130,0,475,130,80);
-  lg.addColorStop(0,'#5b9cf6');lg.addColorStop(1,'transparent');
-  ctx.fillStyle=lg;ctx.fillRect(380,40,190,180);ctx.restore();
- 
-  // Subsolo Paranormal (wide bottom)
-  room(220,310,360,100,'#bb88ff','Subsolo Paranormal');
-  // pentagram
-  ctx.save();ctx.translate(400,360);ctx.strokeStyle='rgba(187,136,255,0.5)';ctx.lineWidth=1.2;
-  for(let i=0;i<5;i++){const a1=i*Math.PI*4/5-Math.PI/2;const a2=((i+2)%5)*Math.PI*4/5-Math.PI/2;ctx.beginPath();ctx.moveTo(Math.cos(a1)*30,Math.sin(a1)*30);ctx.lineTo(Math.cos(a2)*30,Math.sin(a2)*30);ctx.stroke();}
-  ctx.beginPath();ctx.arc(0,0,30,0,Math.PI*2);ctx.strokeStyle='rgba(187,136,255,0.25)';ctx.stroke();
-  ctx.restore();
-  // paranormal glow
-  ctx.save();ctx.globalAlpha=0.08;
-  const pg=ctx.createRadialGradient(400,360,0,400,360,70);
-  pg.addColorStop(0,'#bb88ff');pg.addColorStop(1,'transparent');
-  ctx.fillStyle=pg;ctx.fillRect(220,310,360,100);ctx.restore();
- 
-  // Saída  (top-right)
-  room(590,40,110,90,'#cc2222','⚠ Saída');
-  // danger stripes
-  ctx.save();ctx.globalAlpha=0.06;ctx.strokeStyle='#cc2222';ctx.lineWidth=6;
-  for(let i=-90;i<110;i+=16){ctx.beginPath();ctx.moveTo(590+i,40);ctx.lineTo(590+i+80,130);ctx.stroke();}
-  ctx.restore();
- 
-  // Acesso (center small)
-  room(380,240,100,70,'#1fc8a0','Acesso');
-  furn(390,252,20,20,'#2a4a3a','Escad.');
- 
-  // Depósito (right)
-  room(490,240,160,130,'#8b0000','Depósito');
-  furn(500,255,30,30,'#5a4020','Caixa');furn(540,255,30,30,'#5a4020','Caixa');
-  furn(580,255,30,30,'#5a4020','Caixa');furn(500,295,30,30,'#5a4020','Caixa');
-  furn(610,260,24,90,'#5a3010','Estante');
- 
-  // ═══ WALLS ═══
-  wall(240,40,240,310);   // center-left vertical
-  wall(380,40,380,240);   // center-right upper
-  wall(490,240,490,370);  // right vertical
-  wall(40,220,240,220);   // left horizontal mid
-  wall(380,220,490,220);  // right horizontal mid
-  wall(220,310,220,410);  // subsolo left
-  wall(580,310,580,410);  // subsolo right
-  wall(220,410,580,410);  // subsolo bottom
-  wall(590,40,590,240);   // saída left
-  wall(700,40,700,130);   // saída right
-  wall(590,130,700,130);  // saída bottom
- 
-  // ═══ DOORS ═══
-  door(240,120,false);  // Recepção→Corredor
-  door(240,260,false);  // Recepção→Arquivo
-  door(380,130,false);  // Corredor→Lab
-  door(380,290,false);  // Acesso→Lab lower
-  door(490,290,false);  // Acesso→Depósito
-  door(310,310,true);   // Zona→Subsolo
- 
-  // ═══ PJ MARKERS (default positions) ═══
-  const pjStarts=[
-    {x:140,y:120,col:'#1fc8a0',lbl:'PJ1'},
-    {x:180,y:120,col:'#5b9cf6',lbl:'PJ2'},
-    {x:140,y:150,col:'#c49a00',lbl:'PJ3'},
-  ];
-  pjStarts.forEach(p=>{
-    ctx.save();
-    ctx.beginPath();ctx.arc(p.x,p.y,16,0,Math.PI*2);
-    ctx.fillStyle=p.col+'44';ctx.fill();
-    ctx.strokeStyle=p.col;ctx.lineWidth=2;ctx.stroke();
-    // direction pointer
-    ctx.fillStyle='rgba(255,255,255,0.6)';ctx.beginPath();
-    ctx.moveTo(p.x+16,p.y);ctx.lineTo(p.x+8,-5+p.y);ctx.lineTo(p.x+8,5+p.y);ctx.closePath();ctx.fill();
-    ctx.fillStyle='#e8e0e0';ctx.font='bold 9px "Cinzel",serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(p.lbl,p.x,p.y);ctx.restore();
-  });
- 
-  // ═══ AMBIENT LIGHT GLOWS ═══
-  ctx.save();ctx.globalAlpha=0.04;
-  // Reception light
-  const rg=ctx.createRadialGradient(140,120,0,140,120,90);
-  rg.addColorStop(0,'#ffdd88');rg.addColorStop(1,'transparent');
-  ctx.fillStyle=rg;ctx.fillRect(40,40,200,160);
-  // Lab cold light
-  const cl=ctx.createRadialGradient(475,130,0,475,130,90);
-  cl.addColorStop(0,'#aaccff');cl.addColorStop(1,'transparent');
-  ctx.fillStyle=cl;ctx.fillRect(380,40,190,180);
-  ctx.restore();
- 
-  // ═══ COMPASS ROSE ═══
-  ctx.save();ctx.translate(W-40,H-40);ctx.globalAlpha=0.25;
-  ctx.strokeStyle='#8b0000';ctx.lineWidth=1;
-  [[0,-14,'N'],[0,14,'S'],[14,0,'L'],[-14,0,'O']].forEach(([dx,dy,lbl])=>{
-    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(dx,dy);ctx.stroke();
-    ctx.fillStyle='#cc4444';ctx.font='8px "Cinzel",serif';ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillText(lbl,dx*1.5,dy*1.5);
-  });
-  ctx.restore();
-}
- 
-function mapClear(){
-  if(!isMestre){toast('⛧ Apenas o Mestre pode limpar o mapa.');return;}
-  if(!confirm('Limpar o mapa completamente?'))return;
-  const bg=_getBgCanvas();
-  if(bg){const bgCtx=bg.getContext('2d');bgCtx.clearRect(0,0,bg.width,bg.height);}
-  mapTokens=[];selectedToken=null;selectedStruct=null;
-  mapStructures=[];mapHistory=[];
-  mapPushHistory();
-  renderMapTokList();
-  fullRedraw();
-  saveMapData();
-  saveStructures();
-  toast('Mapa limpo.');
-}
-function mapReset(){
-  if(!isMestre){toast('⛧ Apenas o Mestre pode restaurar o mapa base.');return;}
-  if(confirm('Restaurar o mapa base?')){
-    const bg=_getBgCanvas();
-    if(bg){const bgCtx=bg.getContext('2d');bgCtx.clearRect(0,0,bg.width,bg.height);}
-    mapTokens=[];selectedToken=null;mapStructures=[];selectedStruct=null;
-    drawBaseMap();mapPushHistory();renderMapTokList();saveMapData();saveStructures();
-    toast('Mapa base restaurado.');
-  }
-}
-function downloadMap(){const a=document.createElement('a');a.download='mapa_op.png';a.href=document.getElementById('map-canvas').toDataURL();a.click();}
-function setTool(t,btn){
-  const mestreTools=['wall','pencil','rect','circle','line','text','erase'];
-  if(!isMestre && mestreTools.includes(t)){toast('⛧ Apenas o Mestre pode usar ferramentas de edição.');return;}
-  mapTool=t;
-  document.querySelectorAll('.tool-btn').forEach(b=>b.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-}
  
 /* ══════════════════════════════════════════════
    MESTRE
@@ -3284,6 +2683,7 @@ function populateMestre(){
         <button onclick="mestreRollFor('${u}')">Rolar para agente ↗</button>
         <button onclick="mestreViewChar('${u}')">Ver ficha completa</button>
         <button onclick="mestreEditVitals('${u}')">Editar vitais</button>
+        ${_mestreTransLiberada(u) ? `<button onclick="mestreRevogarTranscendencia('${u}')" style="border-color:#aa3300;color:#ff6633">⛧ Revogar Transcendência</button>` : `<button onclick="mestreLiberarTranscendencia('${u}')" style="border-color:var(--gold);color:var(--gold-light)">⛧ Liberar Transcendência</button>`}
         <button onclick="mestreDeleteAgent('${u}')" style="border-color:#5a0000;color:#cc4444">🗑 Remover ficha</button>
       </div>`;
     el.appendChild(card);
@@ -3460,6 +2860,248 @@ function mestreDeleteAgent(u){
   populateMestre();
   toast(`Ficha de ${nome} removida.`);
 }
+
+// ── Transcendência: liberar/revogar por player ──
+function _mestreTransLiberada(u) {
+  return !!(db.mestre && db.mestre.transLiberada && db.mestre.transLiberada[u]);
+}
+
+function mestreLiberarTranscendencia(u) {
+  if (!db.mestre) db.mestre = {};
+  if (!db.mestre.transLiberada) db.mestre.transLiberada = {};
+  db.mestre.transLiberada[u] = true;
+  saveDB();
+  populateMestre();
+  const c = db.characters[u] || {};
+  toast(`⛧ Transcendência liberada para ${c.nome || u} — O Rei Carmesim aguarda.`, '#cc1111');
+}
+
+function mestreRevogarTranscendencia(u) {
+  if (!db.mestre || !db.mestre.transLiberada) return;
+  db.mestre.transLiberada[u] = false;
+  saveDB();
+  populateMestre();
+  const c = db.characters[u] || {};
+  toast(`Transcendência revogada de ${c.nome || u}.`, '#555');
+}
+// ── Subabas do Mestre ──
+window.showMestreSubtab = function(id, btn) {
+  document.querySelectorAll('.noir-subtab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.noir-subtab').forEach(b => b.classList.remove('active'));
+  const panel = document.getElementById('msubtab-' + id);
+  if (panel) panel.classList.add('active');
+  if (btn) btn.classList.add('active');
+  if (id === 'transcendencia') { renderMestreSelfTrans(); renderTransControlList(); renderMestreRituaisControl(); }
+};
+
+// ── Transcendência do próprio Mestre ──
+function renderMestreSelfTrans() {
+  const el = document.getElementById('mestre-self-trans-body');
+  if (!el || !isMestre) return;
+
+  const u = currentUser;
+  const c = db.characters[u] || {};
+  const nex = parseInt(c.nex) || 5;
+  const jaTransc = !!(c.transcendencia && c.transcendencia.elemento);
+  const transLiberada = _mestreTransLiberada(u);
+
+  // Função que o mestre usa para liberar a própria trans
+  const btnLiberar = `<button onclick="mestreLiberarPropriaTranscendencia()" style="padding:9px 20px;background:rgba(138,106,0,0.12);border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;cursor:pointer;text-transform:uppercase" onmouseover="this.style.background='rgba(138,106,0,0.25)'" onmouseout="this.style.background='rgba(138,106,0,0.12)'">⛧ Liberar minha Transcendência</button>`;
+  const btnRevogar = `<button onclick="mestreRevogarPropriaTranscendencia()" style="padding:9px 20px;background:rgba(80,0,0,0.18);border:1px solid #aa3300;color:#ff6633;font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;cursor:pointer;text-transform:uppercase" onmouseover="this.style.background='rgba(120,0,0,0.3)'" onmouseout="this.style.background='rgba(80,0,0,0.18)'">⛧ Revogar minha Transcendência</button>`;
+
+  let statusHtml, actionHtml;
+
+  if (transLiberada) {
+    statusHtml = `<div style="font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:4px">◈ Transcendência Disponível</div>
+      <div style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace">ELE estendeu a mão. Vá até sua ficha para transcender.</div>`;
+    actionHtml = btnRevogar;
+  } else if (jaTransc) {
+    const ed = TRANSCENDENCIA_ELEMENTOS[c.transcendencia.elemento];
+    const totalElem = (typeof RITUAIS_DB !== 'undefined') ? RITUAIS_DB.filter(r => r.elem === ed.nome).length : 0;
+    const desbElem = (typeof RITUAIS_DB !== 'undefined') ? RITUAIS_DB.filter(r => r.elem === ed.nome && c.rituaisAprendidos && c.rituaisAprendidos[r.nome]).length : 0;
+    statusHtml = `<div style="font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;color:${ed.cor};text-transform:uppercase;margin-bottom:4px">✦ ${ed.nome.toUpperCase()}</div>
+      <div style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace">${desbElem}/${totalElem} rituais — NEX ${nex}%</div>`;
+    actionHtml = btnLiberar;
+  } else {
+    const elegivel = nex >= 50;
+    statusHtml = `<div style="font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;color:var(--white-dust);text-transform:uppercase;margin-bottom:4px">⛧ Transcendência Bloqueada</div>
+      <div style="font-size:11px;color:${elegivel ? '#8a6a30' : '#5a4030'};font-family:'Courier Prime',monospace">NEX ${nex}%${elegivel ? ' — elegível' : ' — mínimo 50% para transcender'}</div>`;
+    actionHtml = elegivel ? btnLiberar : `<div style="padding:9px 18px;border:1px solid rgba(80,40,40,0.35);color:rgba(160,100,100,0.45);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;text-align:center">NEX insuf.</div>`;
+  }
+
+  el.innerHTML = `
+    <div style="flex:1;min-width:180px">${statusHtml}</div>
+    ${actionHtml}`;
+}
+
+window.mestreLiberarPropriaTranscendencia = function() {
+  if (!isMestre) return;
+  if (!db.mestre) db.mestre = {};
+  if (!db.mestre.transLiberada) db.mestre.transLiberada = {};
+  db.mestre.transLiberada[currentUser] = true;
+  saveDB();
+  renderMestreSelfTrans();
+  renderTransControlList();
+  toast('⛧ Sua Transcendência foi liberada — vá até a aba Rituais para transcender.', '#c49a00');
+};
+
+window.mestreRevogarPropriaTranscendencia = function() {
+  if (!isMestre || !db.mestre || !db.mestre.transLiberada) return;
+  db.mestre.transLiberada[currentUser] = false;
+  saveDB();
+  renderMestreSelfTrans();
+  renderTransControlList();
+  toast('Sua Transcendência foi revogada.', '#555');
+};
+
+// ── Painel de controle de Transcendência ──
+function renderTransControlList() {
+  const el = document.getElementById('trans-control-list');
+  const refEl = document.getElementById('trans-elementos-ref');
+  if (!el) return;
+
+  if (refEl && typeof TRANSCENDENCIA_ELEMENTOS !== 'undefined') {
+    refEl.innerHTML = Object.entries(TRANSCENDENCIA_ELEMENTOS).map(([id, ed]) => `
+      <div class="trans-elem-card" style="border-left-color:${ed.cor}">
+        <div style="flex:1">
+          <div class="trans-elem-name" style="color:${ed.cor}">${ed.nome}</div>
+          <div class="trans-elem-bonus">${ed.bonus_desc || '—'}</div>
+          ${ed.ritual_gratis ? `<div class="trans-elem-ritual">✦ Ritual grátis: ${ed.ritual_gratis}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const users = Object.keys(db.users || {}).filter(u => u !== 'billy');
+  if (!users.length) {
+    el.innerHTML = '<div style="font-family:\'Courier Prime\',monospace;font-size:12px;color:#3a3020">Nenhum agente registrado.</div>';
+    return;
+  }
+
+  el.innerHTML = users.map(u => {
+    const c = db.characters[u] || {};
+    const nex = parseInt(c.nex) || 5;
+    const liberada = _mestreTransLiberada(u);
+    const jaTransc = !!(c.transcendencia && c.transcendencia.elemento);
+    const nexPct = Math.min(100, Math.round(nex / 99 * 100));
+    const elegivel = nex >= 50;
+
+    let statusHtml, actionHtml;
+    if (jaTransc) {
+      const elemNome = c.transcendencia.nome || c.transcendencia.elemento;
+      const totalElem = (typeof RITUAIS_DB!=='undefined') ? RITUAIS_DB.filter(r => r.elem === elemNome).length : 0;
+      const desbElem = (typeof RITUAIS_DB!=='undefined') ? RITUAIS_DB.filter(r => r.elem === elemNome && c.rituaisAprendidos && c.rituaisAprendidos[r.nome]).length : 0;
+      const semRituaisRestantes = totalElem > 0 && desbElem >= totalElem;
+      statusHtml = `<span class="trans-status-badge transcendeu">✦ ${elemNome} — ${desbElem}/${totalElem} rituais</span>${liberada?` <span class="trans-status-badge liberado">◈ Liberado</span>`:''}`;
+      actionHtml = liberada
+        ? `<button class="noir-btn danger" onclick="mestreRevogarTranscendencia('${u}')" style="font-size:9px;padding:5px 10px">Revogar</button>`
+        : `<button class="noir-btn accent" onclick="mestreLiberarTranscendencia('${u}')" style="font-size:9px;padding:5px 10px">${semRituaisRestantes ? '⛧ Nova Transcendência' : 'Liberar novo ritual'}</button>`;
+    } else if (liberada) {
+      statusHtml = `<span class="trans-status-badge liberado">◈ Liberado</span>`;
+      actionHtml = `<button class="noir-btn danger" onclick="mestreRevogarTranscendencia('${u}')" style="font-size:9px;padding:5px 10px">Revogar</button>`;
+    } else {
+      statusHtml = `<span class="trans-status-badge bloqueado">— Bloqueado</span>`;
+      actionHtml = elegivel
+        ? `<button class="noir-btn accent" onclick="mestreLiberarTranscendencia('${u}')" style="font-size:9px;padding:5px 10px">Liberar</button>`
+        : `<span style="font-family:'Courier Prime',monospace;font-size:9px;color:#3a2a10;letter-spacing:.1em">NEX insuf.</span>`;
+    }
+
+    return `
+      <div class="trans-agent-card">
+        <div style="flex:1;min-width:120px">
+          <div class="trans-agent-name">${c.nome || u}</div>
+          <div class="trans-agent-meta">${c.classe || '—'} · NEX ${nex}%</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
+          <div class="trans-nex-bar"><div class="trans-nex-fill" style="width:${nexPct}%;background:${elegivel?'#c49a00':'#4a3a18'}"></div></div>
+          <span style="font-family:'Courier Prime',monospace;font-size:9px;color:${elegivel?'#8a6a30':'#3a2a10'};letter-spacing:.1em">${nex >= 50 ? 'ELEGÍVEL' : 'NEX < 50%'}</span>
+        </div>
+        ${statusHtml}
+        ${actionHtml}
+      </div>
+    `;
+  }).join('');
+}
+
+// ── Desbloqueio manual de Rituais (independente da Transcendência) ──
+function renderMestreRituaisControl() {
+  const sel = document.getElementById('mestre-ritual-sel-player');
+  const list = document.getElementById('mestre-ritual-control-list');
+  if (!sel || !list) return;
+
+  const users = Object.keys(db.users || {}).filter(u => u !== 'billy');
+  const valorAtual = sel.value;
+  sel.innerHTML = '<option value="">— Selecionar agente —</option>' + users.map(u => {
+    const c = db.characters[u] || {};
+    return `<option value="${u}">${c.nome || u}</option>`;
+  }).join('');
+  if (users.includes(valorAtual)) sel.value = valorAtual;
+
+  const u = sel.value;
+  if (!u) {
+    list.innerHTML = '<div style="font-family:\'Courier Prime\',monospace;font-size:12px;color:#3a3020;grid-column:1/-1">Selecione um agente para gerenciar seus rituais.</div>';
+    return;
+  }
+  const c = db.characters[u] || defaultChar();
+  if (!c.rituaisAprendidos) c.rituaisAprendidos = {};
+  const busca = (document.getElementById('mestre-ritual-busca') || {}).value || '';
+  const elemFil = (document.getElementById('mestre-ritual-elem-fil') || {}).value || '';
+  const filtrado = RITUAIS_DB.filter(r => {
+    if (busca && !r.nome.toLowerCase().includes(busca.toLowerCase())) return false;
+    if (elemFil && r.elem !== elemFil) return false;
+    return true;
+  });
+  if (!filtrado.length) {
+    list.innerHTML = '<div style="font-family:\'Courier Prime\',monospace;font-size:12px;color:#3a3020;grid-column:1/-1">Nenhum ritual encontrado.</div>';
+    return;
+  }
+  list.innerHTML = filtrado.map(r => {
+    const desb = !!c.rituaisAprendidos[r.nome];
+    const cor = ELEM_COR[r.elem] || '#8b0000';
+    return `
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;background:rgba(10,0,8,.5);border:1px solid ${desb?cor:'rgba(58,0,0,0.4)'};padding:8px 10px">
+        <div style="min-width:0">
+          <div style="font-family:'Cinzel',serif;font-size:11px;color:${desb?cor:'#9a8a7a'}">${r.nome}</div>
+          <div style="font-size:9px;color:#5a5040;font-family:'Courier Prime',monospace">${r.elem} · ${r.circ===0?'Manif.':r.circ+'º círculo'}</div>
+        </div>
+        <button class="noir-btn ${desb?'danger':'accent'}" style="font-size:9px;padding:4px 8px;flex-shrink:0" onclick="mestreToggleRitual('${u}','${r.nome.replace(/'/g,"\\'")}')">${desb?'🔓 Revogar':'🔒 Liberar'}</button>
+      </div>`;
+  }).join('');
+}
+
+function mestreToggleRitual(u, nome) {
+  const c = db.characters[u] || defaultChar();
+  if (!c.rituaisAprendidos) c.rituaisAprendidos = {};
+  const novoStatus = !c.rituaisAprendidos[nome];
+  if (novoStatus) { c.rituaisAprendidos[nome] = true; } else { delete c.rituaisAprendidos[nome]; }
+  db.characters[u] = c;
+  saveDB();
+  renderMestreRituaisControl();
+  if (typeof renderTransControlList === 'function') renderTransControlList();
+  toast(`Ritual "${nome}" ${novoStatus ? 'liberado' : 'revogado'} para ${c.nome || u}.`, novoStatus ? '#c49a00' : '#555');
+}
+
+// Override liberar/revogar to also refresh the transcendence panel
+window.mestreLiberarTranscendencia = function(u) {
+  if (!db.mestre) db.mestre = {};
+  if (!db.mestre.transLiberada) db.mestre.transLiberada = {};
+  db.mestre.transLiberada[u] = true;
+  saveDB();
+  populateMestre();
+  renderTransControlList();
+  const c = db.characters[u] || {};
+  toast('Transcendência liberada para ' + (c.nome || u), '#c49a00');
+};
+window.mestreRevogarTranscendencia = function(u) {
+  if (!db.mestre || !db.mestre.transLiberada) return;
+  db.mestre.transLiberada[u] = false;
+  saveDB();
+  populateMestre();
+  renderTransControlList();
+  const c = db.characters[u] || {};
+  toast('Transcendência revogada de ' + (c.nome || u), '#555');
+};
+
 function broadcastMessage(){
   const msg=prompt('Mensagem para todos os agentes:');
   if(!msg)return;
@@ -3525,344 +3167,12 @@ function openModal(title,bodyHTML){
 }
 function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
 let toastTimer=null;
-function toast(msg){
-  const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');
-  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.classList.remove('show'),2800);
-}
- 
-/* ══════════════════════════════════════════════
-   TOKEN STATES (Comum / Arma / Lanterna / Morrendo)
-══════════════════════════════════════════════ */
-const TOKEN_STATES={
-  comum:{label:'Comum',desc:'Estado normal do agente.',ring:'#8b0000',icon:'eye',cond:'',overlay:null},
-  arma:{label:'Com Arma',desc:'Agente em combate, empunhando arma.',ring:'#cc4400',icon:'bolt',cond:'ARMADO',overlay:'🔫'},
-  lanterna:{label:'Lanterna',desc:'Agente com lanterna — emite um cone de luz à frente no mapa.',ring:'#c49a00',icon:'moon',cond:'',overlay:'🔦',light:true},
-  morrendo:{label:'Morrendo',desc:'Agente em estado crítico / inconsciente.',ring:'#3a0000',icon:'skull',cond:'MORRENDO',overlay:'✟'},
-};
-let currentTokenState='comum';
-// Imagens por estado: stateImages[state] = Image object (ou null)
-let stateImages={comum:null,arma:null,lanterna:null,morrendo:null};
-
-function openStateImageModal(){
-  const stateLabels=Object.entries(TOKEN_STATES).map(([k,v])=>`
-    <div style="display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--blood-deep)">
-      <div style="min-width:64px;text-align:center">
-        <canvas id="state-prev-${k}" width="64" height="64" style="border-radius:50%;border:3px solid ${v.ring}"></canvas>
-      </div>
-      <div style="flex:1">
-        <div style="font-family:'Cinzel',serif;font-size:12px;color:${v.ring==='#3a0000'?'#cc4444':v.ring};margin-bottom:4px">${v.label}</div>
-        <div style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;margin-bottom:6px">${v.desc}</div>
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
-          <label style="padding:5px 10px;background:transparent;border:1px solid var(--crimson);color:var(--crimson-mid);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;cursor:pointer;text-transform:uppercase">
-            Carregar foto
-            <input type="file" accept="image/*" style="display:none" onchange="loadStateImage('${k}',event)">
-          </label>
-          <button class="btn-add" onclick="clearStateImage('${k}')" style="font-size:10px;padding:5px 10px;border-color:var(--blood-deep);color:var(--white-dust)">Remover foto</button>
-          <button class="btn-add" onclick="copyMainToState('${k}')" style="font-size:10px;padding:5px 10px;border-color:rgba(138,106,0,.5);color:var(--gold-light)">Usar foto principal</button>
-        </div>
-      </div>
-    </div>`).join('');
-  openModal('Fotos por Estado do Token',`
-    <div style="font-size:12px;color:var(--white-ash);font-family:'Courier Prime',monospace;padding:8px 10px;border-left:2px solid var(--crimson);margin-bottom:14px;line-height:1.6">
-      Defina uma imagem diferente para cada estado do personagem no mapa.<br>
-      Se não houver foto no estado, será usada a foto principal do token.
-    </div>
-    ${stateLabels}
-  `);
-  // Renderizar previews depois do modal abrir
-  setTimeout(()=>{
-    Object.keys(TOKEN_STATES).forEach(k=>_drawStatePreview(k));
-  },80);
-}
-
-function _drawStatePreview(state){
-  const cv=document.getElementById('state-prev-'+state);if(!cv)return;
-  const ctx=cv.getContext('2d');const W=64,cx=32,cy=32,R=30;
-  const st=TOKEN_STATES[state];
-  const ring=st.ring;
-  ctx.clearRect(0,0,W,W);
-  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R-2,0,Math.PI*2);ctx.clip();
-  ctx.fillStyle='#0f000c';ctx.fillRect(0,0,W,W);
-  const img=stateImages[state]||(state===currentTokenState?tokImgData:null)||tokImgData;
-  if(img){ctx.drawImage(img,0,0,W,W);}
-  else{
-    ctx.fillStyle=ring+'33';ctx.beginPath();ctx.arc(cx,cy,20,0,Math.PI*2);ctx.fill();
-    ctx.font='22px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=ring;
-    ctx.fillText(ICONS[st.icon||'skull']||'☠',cx,cy);
-  }
-  ctx.restore();
-  ctx.beginPath();ctx.arc(cx,cy,R-2,0,Math.PI*2);ctx.strokeStyle=ring;ctx.lineWidth=4;ctx.stroke();
-}
-
-function loadStateImage(state,e){
-  const file=e.target.files[0];if(!file)return;
-  const reader=new FileReader();
-  reader.onload=ev=>{
-    const img=new Image();
-    img.onload=()=>{
-      stateImages[state]=img;
-      // Salva no token do personagem
-      const c=userChar(currentUser);
-      if(!c.token)c.token={};
-      if(!c.token.stateImgs)c.token.stateImgs={};
-      c.token.stateImgs[state]=ev.target.result;
-      _drawStatePreview(state);
-      drawToken();saveDB();
-      toast('Foto do estado "'+TOKEN_STATES[state].label+'" atualizada.');
-    };
-    img.src=ev.target.result;
-  };
-  reader.readAsDataURL(file);
-  e.target.value='';
-}
-
-function clearStateImage(state){
-  stateImages[state]=null;
-  const c=userChar(currentUser);
-  if(c.token&&c.token.stateImgs)delete c.token.stateImgs[state];
-  _drawStatePreview(state);drawToken();saveDB();
-  toast('Foto do estado "'+TOKEN_STATES[state].label+'" removida.');
-}
-
-function copyMainToState(state){
-  if(!tokImgData){toast('⛧ Nenhuma foto principal carregada.');return;}
-  stateImages[state]=tokImgData;
-  const c=userChar(currentUser);
-  if(!c.token)c.token={};
-  if(!c.token.stateImgs)c.token.stateImgs={};
-  c.token.stateImgs[state]=c.token.imgData||null;
-  if(!c.token.stateImgs[state]){toast('⛧ A foto principal não está salva ainda. Carregue uma imagem primeiro.');return;}
-  _drawStatePreview(state);drawToken();saveDB();
-  toast('Foto principal copiada para estado "'+TOKEN_STATES[state].label+'".');
-}
-
-function _loadStateImages(){
-  const c=userChar(currentUser);
-  const stateImgs=(c.token&&c.token.stateImgs)||{};
-  Object.keys(TOKEN_STATES).forEach(k=>{
-    if(stateImgs[k]){
-      const img=new Image();
-      img.onload=()=>{stateImages[k]=img;if(k===currentTokenState)drawToken();};
-      img.src=stateImgs[k];
-    }else{stateImages[k]=null;}
-  });
-}
- 
-let _stateCooldown=false;
-function setTokenState(state){
-  if(!TOKEN_STATES[state])return;
-  if(_stateCooldown)return; // evita duplo-clique acidental
-  _stateCooldown=true;
-  setTimeout(()=>{ _stateCooldown=false; }, 300);
-  currentTokenState=state;
-  const c=userChar(currentUser);
-  const st=TOKEN_STATES[state];
-  if(!c.token)c.token={};
-  c.token.cond=st.cond;
-  // update state buttons
-  document.querySelectorAll('.state-btn').forEach(b=>b.classList.remove('active-state'));
-  const btn=document.getElementById('state-btn-'+state);
-  if(btn)btn.classList.add('active-state');
-  // description
-  const desc=document.getElementById('state-description');
-  if(desc)desc.textContent='→ '+st.desc;
-  // also update tok-cond selector if visible
-  const sel=document.getElementById('tok-cond');
-  if(sel)sel.value=st.cond||'';
-  drawToken();
-  saveDB();
-  // update map token if exists — também sincroniza estado no token do mapa
-  const myTok=mapTokens.find(t=>t.isPlayer && t.owner===currentUser);
-  if(myTok){
-    myTok.state=state;
-    // Atualiza imagem do token no mapa conforme novo estado
-    const c2=userChar(currentUser);
-    const tok2=c2.token||{};
-    myTok.imgUrl=(tok2.stateImgs&&tok2.stateImgs[state])||tok2.imgData||null;
-    saveMapData({skipBg:true});
-  }
-  redrawMapWithTokens();
-  toast('Estado: '+st.label);
-}
- 
-// Q key: pressionar UMA VEZ cicla o estado (debounce 400ms para não disparar múltiplas vezes)
-
-
-let _qDebounce=false;
-document.addEventListener('keydown',e=>{
-  if((e.key==='q'||e.key==='Q')&&!e.repeat&&!_qDebounce){
-    _qDebounce=true;
-    // qKeyDown removido (era usado pelo mapHoverCheck)
-    cycleTokenState();
-    setTimeout(()=>{ _qDebounce=false; },400);
-  }
-});
- 
-function cycleTokenState(){
-  const states=Object.keys(TOKEN_STATES);
-  const idx=states.indexOf(currentTokenState);
-  const next=states[(idx+1)%states.length];
-  setTokenState(next);
-}
- 
-function placeMyToken(){
-  const c=userChar(currentUser);
-  const tok=c.token||{};
-  const st=TOKEN_STATES[currentTokenState]||TOKEN_STATES.comum;
-  if(!mapCtx){ initMap(); }
-  const canvas=document.getElementById('map-canvas');
-  if(!canvas){ toast('Erro: canvas do mapa não encontrado.'); return; }
-  const cx=canvas.width/2,cy=canvas.height/2;
-  mapTokens=mapTokens.filter(t=>!(t.isPlayer && t.owner===currentUser));
-  // Resolve imgUrl: usa stateImages[state] ou imgData principal
-  const stateImgUrl = (tok.stateImgs&&tok.stateImgs[currentTokenState]) || tok.imgData || null;
-  mapTokens.push({
-    x:cx, y:cy,
-    name:(c.nome||currentUser).slice(0,4),
-    col:tok.ring||'#1fc8a0',
-    r:GRID_SIZE/2-4,
-    isPlayer:true,
-    owner:currentUser,
-    state:currentTokenState,
-    angle:0,
-    imgUrl: stateImgUrl  // ← imagem embutida no token do mapa
-  });
-  if(!document.getElementById('tab-mapa')?.classList.contains('active')){
-    showTab('mapa', document.querySelector('.tab-btn[onclick*="mapa"]'));
-  }
-  redrawMapWithTokens();renderMapTokList();saveMapData({skipBg:true});
-  toast('⭐ Token colocado no mapa — estado: '+st.label);
-}
- 
- 
- 
-let placingPreset=null;
- 
-// ── FURNITURE DEFINITIONS ──
-const FURNITURE={
-  mesa:      {w:80, h:48, fill:'#8b5e2e44',stroke:'#8b5e2e',label:'Mesa',   shape:'rect'},
-  cadeira:   {w:28, h:28, fill:'#6e4a2044',stroke:'#6e4a20',label:'Cad',    shape:'rect'},
-  sofa:      {w:90, h:36, fill:'#4a5a8a44',stroke:'#4a5a8a',label:'Sofa',   shape:'rect'},
-  cama:      {w:70, h:110,fill:'#3a5a6a44',stroke:'#3a5a6a',label:'Cama',   shape:'rect'},
-  armario:   {w:56, h:24, fill:'#5a3a2044',stroke:'#5a3a20',label:'Arm.',   shape:'rect'},
-  estante:   {w:80, h:16, fill:'#7a5a3044',stroke:'#7a5a30',label:'Est.',   shape:'rect'},
-  geladeira: {w:28, h:36, fill:'#4a7a8a44',stroke:'#4a7a8a',label:'Gel.',   shape:'rect'},
-  pia:       {w:36, h:28, fill:'#6a8a9a44',stroke:'#6a8a9a',label:'Pia',    shape:'rect'},
-  porta:     {w:8,  h:40, fill:'#8b000044',stroke:'#8b0000',label:'',       shape:'door'},
-  janela:    {w:8,  h:36, fill:'#5b9cf644',stroke:'#5b9cf6',label:'',       shape:'window'},
-  escada:    {w:60, h:40, fill:'#9a8a6a44',stroke:'#9a8a6a',label:'Esc',    shape:'stair'},
-  caixa:     {w:28, h:28, fill:'#8a6a0044',stroke:'#8a6a00',label:'Cx',     shape:'rect'},
-  barril:    {w:24, h:24, fill:'#5a4a2044',stroke:'#5a4a20',label:'',       shape:'circle'},
-  computador:{w:32, h:24, fill:'#3a5a9a44',stroke:'#3a5a9a',label:'PC',     shape:'rect'},
-  altar:     {w:60, h:44, fill:'#8b000066',stroke:'#cc0000',label:'Altar',  shape:'rect'},
-  pentagrama:{w:60, h:60, fill:'#bb88ff22',stroke:'#bb88ff',label:'',       shape:'penta'},
-  vela:      {w:10, h:10, fill:'#c49a0066',stroke:'#c49a00',label:'',       shape:'circle'},
-  portal:    {w:50, h:50, fill:'#534ab766',stroke:'#7c6fff',label:'Portal', shape:'circle'},
-};
- 
-// ── STRUCTURE OBJECTS (array de objetos clicaveis e arrastaveis) ──
-let mapStructures=[];
-let selectedStruct=null;
-let draggingStruct=false;
- 
-function hitTestStruct(px,py){
-  for(let i=mapStructures.length-1;i>=0;i--){
-    const s=mapStructures[i];
-    const f=FURNITURE[s.preset];if(!f)continue;
-    const dx=px-s.x,dy=py-s.y;
-    if(f.shape==='circle'||f.shape==='penta'){
-      if(Math.hypot(dx,dy)<=f.w/2+8)return i;
-    }else{
-      const hw=f.w/2+6,hh=f.h/2+6;
-      if(dx>=-hw&&dx<=hw&&dy>=-hh&&dy<=hh)return i;
-    }
-  }
-  return -1;
-}
- 
-function placePreset(name){
-  if(!isMestre){toast('⛧ Apenas o Mestre pode adicionar objetos ao mapa.');return;}
-  placingPreset=name;
-  const canvas=document.getElementById('map-canvas');
-  if(canvas)canvas.style.cursor='copy';
-  toast('Clique no mapa para posicionar: '+(FURNITURE[name]&&FURNITURE[name].label||name));
-}
- 
-function drawFurnitureObj(ctx,s,isSelected){
-  const f=FURNITURE[s.preset];if(!f)return;
-  const x=s.x,y=s.y,cx2=x-f.w/2,cy2=y-f.h/2;
-  ctx.save();
-  ctx.translate(x,y);ctx.rotate(s.angle||0);ctx.translate(-x,-y);
-  ctx.globalAlpha=0.85;
-  const stroke=isSelected?'#ffffc8':f.stroke;
-  const lw=isSelected?2.5:1.5;
-  if(f.shape==='circle'){
-    ctx.beginPath();ctx.arc(x,y,f.w/2,0,Math.PI*2);
-    ctx.fillStyle=f.fill;ctx.fill();
-    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();
-  }else if(f.shape==='penta'){
-    ctx.beginPath();
-    for(let i=0;i<5;i++){
-      const a1=i*Math.PI*4/5-Math.PI/2,a2=((i+2)%5)*Math.PI*4/5-Math.PI/2;
-      ctx.moveTo(x+Math.cos(a1)*f.w/2,y+Math.sin(a1)*f.h/2);
-      ctx.lineTo(x+Math.cos(a2)*f.w/2,y+Math.sin(a2)*f.h/2);
-    }
-    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.stroke();
-    ctx.beginPath();ctx.arc(x,y,f.w/2,0,Math.PI*2);
-    ctx.strokeStyle=f.stroke+'80';ctx.lineWidth=0.8;ctx.stroke();
-  }else if(f.shape==='door'){
-    ctx.fillStyle=f.fill;ctx.fillRect(cx2,cy2,f.w,f.h);
-    ctx.strokeStyle=stroke;ctx.lineWidth=lw+0.5;ctx.strokeRect(cx2,cy2,f.w,f.h);
-    ctx.beginPath();ctx.arc(cx2,cy2,f.h,0,Math.PI/2);ctx.strokeStyle=f.stroke+'80';ctx.lineWidth=0.8;ctx.stroke();
-  }else if(f.shape==='window'){
-    ctx.fillStyle=f.fill;ctx.fillRect(cx2,cy2,f.w,f.h);
-    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.strokeRect(cx2,cy2,f.w,f.h);
-    ctx.beginPath();ctx.moveTo(cx2,cy2+f.h/2);ctx.lineTo(cx2+f.w,cy2+f.h/2);ctx.stroke();
-  }else if(f.shape==='stair'){
-    ctx.strokeStyle=stroke;ctx.lineWidth=1.2;
-    const steps=5,sw=f.w/steps;
-    for(let i=0;i<=steps;i++){ctx.beginPath();ctx.moveTo(cx2+i*sw,cy2);ctx.lineTo(cx2+i*sw,cy2+f.h);ctx.stroke();}
-    ctx.strokeRect(cx2,cy2,f.w,f.h);
-  }else{
-    ctx.fillStyle=f.fill;ctx.fillRect(cx2,cy2,f.w,f.h);
-    ctx.strokeStyle=stroke;ctx.lineWidth=lw;ctx.strokeRect(cx2,cy2,f.w,f.h);
-  }
-  // halo de selecao
-  if(isSelected){
-    ctx.setLineDash([4,3]);
-    ctx.strokeStyle='rgba(255,255,160,0.5)';ctx.lineWidth=1;
-    const hw=f.w/2+10,hh=f.h/2+10;
-    if(f.shape==='circle'||f.shape==='penta'){
-      ctx.beginPath();ctx.arc(x,y,f.w/2+10,0,Math.PI*2);ctx.stroke();
-    }else{
-      ctx.strokeRect(x-hw,y-hh,hw*2,hh*2);
-    }
-    ctx.setLineDash([]);
-  }
-  if(f.label){
-    ctx.globalAlpha=0.75;
-    ctx.fillStyle=isSelected?'#ffffc8':'rgba(200,190,190,0.7)';
-    ctx.font='10px "Cinzel",serif';
-    ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(f.label,x,y);
-  }
-  ctx.restore();
-}
- 
-function drawAllStructures(){
-  if(!mapCtx)return;
-  mapStructures.forEach((s,i)=>drawFurnitureObj(mapCtx,s,i===selectedStruct));
-}
- 
-function saveStructures(){
-  if(!db.maps) db.maps={};
-  db.maps['shared_structs']=JSON.stringify(mapStructures);
-  // Salva só os structs no localStorage sem disparar o fbSaveDB pesado (que inclui bg do mapa)
-  try{ localStorage.setItem('op_db', JSON.stringify(db)); }catch(e){}
-  fbPublishMap(); // publica em tempo real via SSE (leve, só JSON)
-}
-function loadStructures(){
-  try{const d=db.maps['shared_structs']||db.maps[currentUser+'_structs'];mapStructures=d?JSON.parse(d):[];}
-  catch(e){mapStructures=[];}
+function toast(msg, color){
+  const el=document.getElementById('toast');
+  el.textContent=msg;
+  if(color) el.style.borderColor=color; else el.style.borderColor='';
+  el.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>{el.classList.remove('show');el.style.borderColor='';},2800);
 }
  
 
@@ -3884,7 +3194,7 @@ function fbConnect(user, isMestreFlag){
   _whenFbReady(()=>{
     // Verifica se Firebase está configurado (fbSetPresence existe mas fbInit pode retornar null)
     if(!window.fbSetPresence){
-      console.warn('[Firebase] funções não disponíveis');
+      console.warn('[Supabase] funções não disponíveis');
       return;
     }
     _doFbConnect(user, isMestreFlag);
@@ -3894,26 +3204,61 @@ function fbConnect(user, isMestreFlag){
 function _doFbConnect(user, isMestreFlag){
   // Monitora estado de conexão real e atualiza indicador visual
   if(window.fbWatchConnection){
-    window.fbWatchConnection(connected => {
+    window.fbWatchConnection(status => {
+      window._fbConnState = status;
+      const connected = !!(status && status.ok);
+      const info = _fbReasonInfo(status);
       const statusEl = document.getElementById('fb-status');
       if(statusEl){
-        statusEl.style.display = '';
-        statusEl.textContent = connected ? '● ONLINE' : '○ OFFLINE';
-        statusEl.style.color = connected ? 'rgba(34,204,102,0.8)' : 'rgba(200,80,80,0.8)';
-        statusEl.style.borderColor = connected ? 'rgba(34,204,102,0.35)' : 'rgba(200,80,80,0.35)';
+        if(connected){
+          statusEl.style.display = 'none'; // esconde quando conectado — o indicador "X online" já cobre isso
+        } else {
+          statusEl.style.display = '';
+          statusEl.textContent = '○ OFFLINE';
+          statusEl.title = info.text;
+          statusEl.style.color = 'rgba(200,80,80,0.8)';
+          statusEl.style.borderColor = 'rgba(200,80,80,0.35)';
+        }
       }
+      // Atualiza status bar da aba multi se estiver aberta
+      _renderMoFbStatus(status);
     });
   }
 
   // Grava presença no Firebase
   window.fbSetPresence(user, isMestreFlag);
 
+  // Estado mesclado: presença online + lastSeen de offline
+  // Pré-popula com o próprio usuário para evitar race condition com lastSeen
+  window._presenceMap = {
+    [user]: { user, isMestre: !!isMestreFlag, since: window._myPresenceSince || Date.now(), online: true }
+  };
+  window._lastSeenMap = {};
+
+  function _mergeAndRender(){
+    renderOnlineList(window._presenceMap, window._lastSeenMap);
+  }
+
   // Escuta lista de presença — todos os usuários (polling a cada 3s)
   if(window.fbWatchPresence){
     window.fbWatchPresence(presence => {
-      renderOnlineList(presence);
+      window._presenceMap = presence || {};
+      _mergeAndRender();
     });
   }
+
+  // Escuta lastSeen de quem saiu
+  if(window.fbWatchLastSeen){
+    window.fbWatchLastSeen(lastSeen => {
+      window._lastSeenMap = lastSeen || {};
+      _mergeAndRender();
+    });
+  }
+
+  // Atualiza os "há X min" a cada 30s sem refetch
+  setInterval(() => {
+    if(window._presenceMap || window._lastSeenMap) _mergeAndRender();
+  }, 30000);
 
   // Todos: escuta broadcasts do Mestre
   if(window.fbWatchBroadcast){
@@ -3961,8 +3306,6 @@ function _doFbConnect(user, isMestreFlag){
         }
         // Estruturas: todos recebem sempre (exceto se eu estiver arrastando uma)
         if(!draggingStruct) mapStructures = newStructs;
-        fullRedraw();
-        renderMapTokList();
       }catch(e){ console.warn('[mapa] sync err:',e); }
     });
   }
@@ -4082,7 +3425,10 @@ function _doFbConnect(user, isMestreFlag){
 
   // ── Trilha Sonora ──
   if(window.fbWatchMusica){
-    window.fbWatchMusica(track=>{ renderMusica(track); });
+    window.fbWatchMusica(data=>{ renderMusica(data); });
+  }
+  if(window.fbWatchAmbientacao){
+    window.fbWatchAmbientacao(data=>{ renderAmbientacaoSync(data); });
   }
 
   // ── Status de Tokens ──
@@ -4392,8 +3738,8 @@ function renderAmeaca(val){
 function ajustarAmeaca(delta){
   if(!isMestre){ toast('Apenas o Mestre controla a ameaça.'); return; }
   const novo = Math.max(0, Math.min(100, _ameacaVal + delta));
+  renderAmeaca(novo); // feedback imediato — não espera o Firebase responder
   if(window.fbSetAmeaca) window.fbSetAmeaca(novo);
-  else renderAmeaca(novo);
 }
 
 // ── NOTAS DO MESTRE ──
@@ -4472,12 +3818,12 @@ function _applyRoleUI(){
   // Ameaça: controles só para Mestre
   const ameacaCtrl = document.getElementById('ameaca-controles');
   if(ameacaCtrl) ameacaCtrl.style.display = isMestre ? 'flex' : 'none';
-  // Baú: botão limpar só para Mestre
-  const bauClear = document.getElementById('bau-clear-btn');
-  if(bauClear) bauClear.style.display = isMestre ? '' : 'none';
   // Diário: botão limpar só para Mestre
   const diarioClear = document.getElementById('diario-clear-btn');
   if(diarioClear) diarioClear.style.display = isMestre ? '' : 'none';
+  // Baú do Grupo: botão limpar só para Mestre
+  const bauClear = document.getElementById('bau-clear-btn');
+  if(bauClear) bauClear.style.display = isMestre ? '' : 'none';
   updateApplyRoleUINovas();
 }
 
@@ -4499,54 +3845,157 @@ function showCommsTab(tab){
   }
 }
 
-function renderOnlineList(presence){
-  const entries = Object.values(presence || {});
+// ── Helpers de tempo relativo ──
+function _relTime(ms){
+  if(!ms) return '';
+  const diff = Math.max(0, Date.now() - ms);
+  const secs = Math.floor(diff / 1000);
+  if(secs < 60) return 'agora mesmo';
+  const mins = Math.floor(secs / 60);
+  if(mins < 60) return 'há ' + mins + 'min';
+  const hrs = Math.floor(mins / 60);
+  if(hrs < 24) return 'há ' + hrs + 'h' + (mins % 60 ? (mins%60)+'min' : '');
+  return 'há ' + Math.floor(hrs/24) + 'd';
+}
+function _sessionDur(ms){
+  if(!ms || ms < 5000) return '';
+  const mins = Math.floor(ms / 60000);
+  if(mins < 1) return '< 1min';
+  if(mins < 60) return mins + 'min';
+  const hrs = Math.floor(mins/60);
+  return hrs + 'h' + (mins%60 ? (mins%60)+'min' : '');
+}
+function _onlineSince(ms){
+  if(!ms) return '';
+  const mins = Math.max(0, Math.floor((Date.now() - ms) / 60000));
+  if(mins < 1) return 'online há menos de 1min';
+  if(mins < 60) return 'online há ' + mins + 'min';
+  const hrs = Math.floor(mins/60);
+  return 'online há ' + hrs + 'h' + (mins%60 ? (mins%60)+'min' : '');
+}
 
-  // ── Atualiza indicador da topbar (visível para todos) ──
+function renderOnlineList(presence, lastSeen){
+  presence = presence || {};
+  lastSeen = lastSeen || {};
+
+  // Garante que o próprio usuário sempre aparece como online (evita race condition)
+  if(currentUser && !presence[currentUser]){
+    presence = {
+      ...presence,
+      [currentUser]: { user: currentUser, isMestre: !!isMestre, since: window._myPresenceSince || Date.now(), online: true }
+    };
+  }
+
+  const onlineEntries = Object.values(presence);
+  const onlineUsers = new Set(onlineEntries.map(p => p.user));
+
+  // Offline: tem lastSeen, não está online agora, e NÃO é o currentUser
+  const offlineEntries = Object.values(lastSeen).filter(ls =>
+    ls && ls.user && !onlineUsers.has(ls.user) && ls.user !== currentUser
+  );
+
+  // ── Atualiza indicador da topbar ──
   const indicator = document.getElementById('online-indicator');
   const countEl   = document.getElementById('online-count');
   const popupList = document.getElementById('online-popup-list');
+  const totalOnline = onlineEntries.length;
+
   if(indicator){
-    if(entries.length > 0){
+    if(totalOnline > 0){
       indicator.style.display = '';
-      if(countEl) countEl.textContent = entries.length;
+      if(countEl) countEl.textContent = totalOnline;
     } else {
       indicator.style.display = 'none';
     }
   }
+
+  // ── Popup (topbar) ──
   if(popupList){
-    if(!entries.length){
+    popupList.innerHTML = '';
+    if(!totalOnline && !offlineEntries.length){
       popupList.innerHTML = '<span style="color:var(--white-dust);font-size:12px">Nenhum agente online.</span>';
     } else {
-      popupList.innerHTML = '';
-      entries.forEach(p => {
-        const sinceStr = p.since ? new Date(p.since).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '--:--';
+      // Online
+      onlineEntries.forEach(p => {
         const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:7px;font-size:12px;font-family:"Oswald",sans-serif;letter-spacing:.05em;color:'+(p.isMestre?'#c49a00':'var(--white-ash)');
-        row.innerHTML = `<span style="width:7px;height:7px;border-radius:50%;background:#22cc66;flex-shrink:0;display:inline-block"></span><span>${p.isMestre?'⛧ ':''}${p.user}</span><span style="font-size:10px;color:var(--white-dust);margin-left:auto">${sinceStr}</span>`;
+        row.className = 'presence-row';
+        const dur = _onlineSince(p.since);
+        row.innerHTML =
+          `<span class="presence-dot presence-dot--online"></span>` +
+          `<span class="presence-name${p.isMestre?' presence-name--mestre':''}">${p.isMestre?'⛧ ':''}${p.user}</span>` +
+          `<span class="presence-time">${dur}</span>`;
         popupList.appendChild(row);
       });
+      // Separador se houver offline
+      if(offlineEntries.length){
+        const sep = document.createElement('div');
+        sep.style.cssText = 'border-top:1px solid rgba(139,0,0,0.2);margin:6px 0 4px;';
+        popupList.appendChild(sep);
+        const label = document.createElement('div');
+        label.style.cssText = 'font-size:9px;letter-spacing:.12em;color:var(--white-dust);text-transform:uppercase;margin-bottom:4px;';
+        label.textContent = 'Vistos recentemente';
+        popupList.appendChild(label);
+        offlineEntries.sort((a,b) => (b.lastSeen||0)-(a.lastSeen||0)).slice(0,4).forEach(ls => {
+          const row = document.createElement('div');
+          row.className = 'presence-row';
+          const ago = _relTime(ls.lastSeen);
+          const dur = ls.sessionDuration ? ' · '+_sessionDur(ls.sessionDuration) : '';
+          row.innerHTML =
+            `<span class="presence-dot presence-dot--offline"></span>` +
+            `<span class="presence-name presence-name--offline">${ls.isMestre?'⛧ ':''}${ls.user}</span>` +
+            `<span class="presence-time">${ago}${dur}</span>`;
+          popupList.appendChild(row);
+        });
+      }
     }
   }
 
-  // ── Atualiza painel da aba Mestre ──
+  // ── Painel da aba Mestre ──
   const el = document.getElementById('online-list');
-  if(!el) return;
-  if(!entries.length){
+  if(!el){ renderFocoButtons(presence); return; }
+
+  el.innerHTML = '';
+  if(!totalOnline && !offlineEntries.length){
     el.innerHTML = '<span style="color:var(--white-dust);font-size:12px">Nenhum agente online.</span>';
+    renderFocoButtons(presence);
     return;
   }
-  el.innerHTML = '';
-  entries.forEach(p => {
+
+  // Online cards
+  onlineEntries.forEach(p => {
     const card = document.createElement('div');
     card.className = 'online-card' + (p.isMestre ? ' mestre-card' : '');
-    const sinceStr = p.since ? new Date(p.since).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) : '--:--';
+    const dur = _onlineSince(p.since);
     const kickBtn = (isMestre && !p.isMestre && p.user !== currentUser)
       ? `<button class="kick-btn" onclick="fbKickPlayer('${p.user}')" title="Desconectar agente">✕</button>`
       : '';
-    card.innerHTML = `<span class="o-dot"></span><span>${p.isMestre ? '⛧ ' : ''}${p.user}</span><span style="font-size:10px;color:var(--white-dust);margin-left:4px">${sinceStr}</span>${kickBtn}`;
+    card.innerHTML =
+      `<span class="o-dot"></span>` +
+      `<span>${p.isMestre ? '⛧ ' : ''}${p.user}</span>` +
+      `<span style="font-size:10px;color:#44cc88;margin-left:4px;opacity:.8">${dur}</span>` +
+      kickBtn;
     el.appendChild(card);
   });
+
+  // Offline cards (últimos vistos)
+  if(offlineEntries.length){
+    const divider = document.createElement('div');
+    divider.style.cssText = 'width:100%;border-top:1px solid rgba(139,0,0,0.2);margin:6px 0 4px;font-size:9px;letter-spacing:.12em;color:var(--white-dust);text-transform:uppercase;';
+    divider.textContent = 'Offline';
+    el.appendChild(divider);
+    offlineEntries.sort((a,b)=>(b.lastSeen||0)-(a.lastSeen||0)).forEach(ls => {
+      const card = document.createElement('div');
+      card.className = 'online-card online-card--offline' + (ls.isMestre ? ' mestre-card' : '');
+      const ago = _relTime(ls.lastSeen);
+      const dur = ls.sessionDuration ? ' · '+_sessionDur(ls.sessionDuration) : '';
+      card.innerHTML =
+        `<span class="o-dot o-dot--offline"></span>` +
+        `<span style="opacity:.55">${ls.isMestre?'⛧ ':''}${ls.user}</span>` +
+        `<span style="font-size:10px;color:var(--white-dust);margin-left:4px">${ago}${dur}</span>`;
+      el.appendChild(card);
+    });
+  }
+
   renderFocoButtons(presence);
 }
 
@@ -4569,7 +4018,7 @@ function fbSendBroadcast(){
   const inp = document.getElementById('broadcast-input');
   const msg = inp ? inp.value.trim() : '';
   if(!msg){toast('Digite uma mensagem.');return;}
-  if(!window.fbBroadcast){toast('Firebase não conectado.');return;}
+  if(!window.fbBroadcast){toast('Supabase não conectado.');return;}
   window.fbBroadcast(msg, currentUser);
   if(inp) inp.value = '';
   toast('⛧ Mensagem enviada a todos.');
@@ -4578,7 +4027,7 @@ function fbSendBroadcast(){
 function fbKickPlayer(user){
   if(!isMestre){return;}
   if(!confirm('Desconectar o agente "' + user + '"?'))return;
-  if(!window.fbKick){toast('Firebase não conectado.');return;}
+  if(!window.fbKick){toast('Supabase não conectado.');return;}
   window.fbKick(user);
   toast('Agente ' + user + ' desconectado.');
 }
@@ -4626,8 +4075,8 @@ function renderCenaAtiva(cena){
 function setCena(id){
   if(!isMestre){ toast('Apenas o Mestre controla a cena.'); return; }
   const cena = _cenaAtiva===id ? null : id;
+  renderCenaAtiva(cena); // feedback imediato
   if(window.fbSetCena) window.fbSetCena(cena);
-  else renderCenaAtiva(cena);
 }
 function renderCenaControls(){
   const el = document.getElementById('cena-controles');
@@ -4656,6 +4105,7 @@ function syncTimer(data){
     return;
   }
   const durMs = data.durSec * 1000;
+  let _lastTickSec = -1; // controla para tocar só uma vez por segundo
   function tick(){
     const remaining = Math.max(0, data.endsAt - Date.now());
     const secs = Math.ceil(remaining/1000);
@@ -4664,6 +4114,13 @@ function syncTimer(data){
     if(el) el.textContent = secs>0 ? `${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}` : '⏰ Tempo!';
     if(bar){ bar.style.width=pct+'%'; bar.style.background=col; }
     if(label && data.label) label.textContent = data.label;
+    // Toca tic-tac a cada segundo enquanto o timer está rodando
+    if(remaining > 0 && secs !== _lastTickSec){
+      _lastTickSec = secs;
+      const urgency = Math.min(1, 1 - (pct / 100)); // 0 no início, 1 no fim
+      const phase = secs % 2 === 0 ? 'tic' : 'tac';
+      if(window.playTimerTick) window.playTimerTick(phase, urgency);
+    }
     if(remaining<=0 && _timerInterval){ clearInterval(_timerInterval); _timerInterval=null; toast('⏰ '+( data.label||'Tempo esgotado!')); }
   }
   tick();
@@ -4675,14 +4132,14 @@ function iniciarTimer(){
   const label = document.getElementById('timer-label-inp')?.value?.trim() || 'Timer';
   if(isNaN(secs)||secs<=0){ toast('Defina um tempo válido.'); return; }
   const data = { active:true, durSec:secs, endsAt:Date.now()+(secs*1000), label };
+  syncTimer(data); // feedback imediato
   if(window.fbSetTimer) window.fbSetTimer(data);
-  else syncTimer(data);
   toast('⏱ Timer iniciado: '+label);
 }
 function pararTimer(){
   if(!isMestre){ toast('Apenas o Mestre controla o timer.'); return; }
+  syncTimer(null); // feedback imediato
   if(window.fbClearTimer) window.fbClearTimer();
-  else syncTimer(null);
   toast('Timer encerrado.');
 }
 
@@ -4710,8 +4167,8 @@ function renderFoco(user){
 function darFoco(user){
   if(!isMestre){ toast('Apenas o Mestre dá foco.'); return; }
   const novo = _focoUser===user ? null : user;
+  renderFoco(novo); // feedback imediato
   if(window.fbSetFoco) { if(novo) window.fbSetFoco(novo); else window.fbClearFoco(); }
-  else renderFoco(novo);
 }
 function renderFocoButtons(presence){
   const el = document.getElementById('foco-controles');
@@ -4798,8 +4255,8 @@ function renderClima(clima){
 function setClima(id){
   if(!isMestre){ toast('Apenas o Mestre controla o clima.'); return; }
   const clima = _climaAtual===id ? null : id;
+  renderClima(clima); // feedback imediato
   if(window.fbSetClima) window.fbSetClima(clima);
-  else renderClima(clima);
 }
 function renderClimaControls(){
   const el = document.getElementById('clima-controles');
@@ -4813,44 +4270,511 @@ function renderClimaControls(){
 }
 
 // ── TRILHA SONORA ──
-const MUSICAS_LISTA = [
-  {id:'silencio',    label:'Silêncio',          icon:'🔇'},
-  {id:'tensao',      label:'Tensão Crescente',   icon:'🎵'},
-  {id:'combate',     label:'Combate',            icon:'⚔'},
-  {id:'misterio',    label:'Mistério',           icon:'🔮'},
-  {id:'descanso',    label:'Descanso',           icon:'🌙'},
-  {id:'horror',      label:'Horror',             icon:'👁'},
-  {id:'revelacao',   label:'Revelação',          icon:'⚡'},
-  {id:'encerramento',label:'Encerramento',       icon:'🌑'},
-];
-let _musicaAtual = null;
-function renderMusica(track){
-  _musicaAtual = track;
-  const el = document.getElementById('musica-display');
-  const playerEl = document.getElementById('musica-player');
-  const m = MUSICAS_LISTA.find(x=>x.id===track);
-  const label = m ? m.icon+' '+m.label : (track||'—');
-  if(el){ el.textContent=label; }
-  if(playerEl){ playerEl.textContent=label; playerEl.style.display=track&&track!=='silencio'?'':'none'; }
-  document.querySelectorAll('.musica-btn').forEach(b=>{
-    b.style.background = b.dataset.musica===track ? 'rgba(139,0,0,0.25)' : 'rgba(10,0,8,0.5)';
+// ══════════════════════════════════════════════════════════════
+// SISTEMA DE ÁUDIO — TRILHA SONORA & AMBIENTAÇÃO
+// Mestre faz upload para Supabase Storage → players recebem URL pública
+// IndexedDB mantido como cache local (opcional, sem necessidade de reimportar)
+// ══════════════════════════════════════════════════════════════
+
+// ── Supabase Storage helpers ──
+const _SB_AUDIO_BUCKET = 'audio';
+
+function _sbStorageBase(){
+  const base = _sbBase();
+  return base ? base + '/storage/v1' : null;
+}
+
+function _sbStorageHeaders(isUpload){
+  const h = {
+    'apikey': _sbKey() || '',
+    'Authorization': 'Bearer ' + (_sbKey() || ''),
+  };
+  if(isUpload) h['x-upsert'] = 'true';
+  return h;
+}
+
+// Retorna a URL pública de uma faixa no Storage
+function _sbTrackPublicURL(nome, ext){
+  const base = _sbStorageBase(); if(!base) return null;
+  const filename = encodeURIComponent(nome + (ext || '.mp3'));
+  return base + '/object/public/' + _SB_AUDIO_BUCKET + '/' + filename;
+}
+
+// Lista todas as faixas no bucket
+async function _sbListTracks(){
+  const base = _sbStorageBase(); if(!base) return [];
+  try{
+    const r = await fetch(base + '/object/list/' + _SB_AUDIO_BUCKET, {
+      method: 'POST',
+      headers: { ..._sbStorageHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefix: '', limit: 200, sortBy: { column: 'name', order: 'asc' } })
+    });
+    if(!r.ok) return [];
+    const items = await r.json();
+    return Array.isArray(items) ? items : [];
+  }catch(e){ return []; }
+}
+
+// Faz upload de um arquivo para o Storage
+async function _sbUploadTrack(nome, ext, tipo, arrayBuffer){
+  const base = _sbStorageBase(); if(!base) return null;
+  const filename = nome + ext;
+  try{
+    const blob = new Blob([arrayBuffer], { type: tipo || 'audio/mpeg' });
+    const r = await fetch(base + '/object/' + _SB_AUDIO_BUCKET + '/' + encodeURIComponent(filename), {
+      method: 'POST',
+      headers: _sbStorageHeaders(true),
+      body: blob
+    });
+    return r.ok ? _sbTrackPublicURL(nome, ext) : null;
+  }catch(e){ return null; }
+}
+
+// Remove uma faixa do Storage
+async function _sbDeleteTrack(nome, ext){
+  const base = _sbStorageBase(); if(!base) return;
+  try{
+    await fetch(base + '/object/' + _SB_AUDIO_BUCKET, {
+      method: 'DELETE',
+      headers: { ..._sbStorageHeaders(), 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prefixes: [nome + ext] })
+    });
+  }catch(e){}
+}
+
+// Cache de metadados de faixas do Storage (nome sem ext -> {ext, url, size})
+let _sbTracksCache = null;
+let _sbTracksCacheTs = 0;
+
+async function _sbGetTracksCache(force){
+  const now = Date.now();
+  if(!force && _sbTracksCache && (now - _sbTracksCacheTs) < 15000) return _sbTracksCache;
+  const items = await _sbListTracks();
+  _sbTracksCache = {};
+  for(const item of items){
+    if(!item.name) continue;
+    const dotIdx = item.name.lastIndexOf('.');
+    const ext  = dotIdx >= 0 ? item.name.slice(dotIdx) : '';
+    const nome = dotIdx >= 0 ? item.name.slice(0, dotIdx) : item.name;
+    _sbTracksCache[nome] = {
+      ext,
+      url: _sbTrackPublicURL(nome, ext),
+      size: item.metadata?.size || 0,
+      type: item.metadata?.mimetype || 'audio/mpeg'
+    };
+  }
+  _sbTracksCacheTs = now;
+  return _sbTracksCache;
+}
+
+// ── Base de dados local (IndexedDB) — mantido como cache ──
+const _AUDIO_DB_NAME = 'op_audio_v1';
+const _AUDIO_STORE   = 'tracks';
+let   _audioDB       = null;
+
+function _openAudioDB(){
+  return new Promise((res, rej)=>{
+    if(_audioDB){ res(_audioDB); return; }
+    const req = indexedDB.open(_AUDIO_DB_NAME, 1);
+    req.onupgradeneeded = e => e.target.result.createObjectStore(_AUDIO_STORE, {keyPath:'nome'});
+    req.onsuccess  = e => { _audioDB = e.target.result; res(_audioDB); };
+    req.onerror    = e => rej(e);
   });
 }
-function setMusica(id){
-  if(!isMestre){ toast('Apenas o Mestre controla a trilha.'); return; }
-  if(window.fbSetMusica) window.fbSetMusica(id);
-  else renderMusica(id);
+
+async function _saveTrackToDB(nome, tipo, arrayBuffer){
+  const db = await _openAudioDB();
+  return new Promise((res, rej)=>{
+    const tx = db.transaction(_AUDIO_STORE, 'readwrite');
+    tx.objectStore(_AUDIO_STORE).put({nome, tipo, data: arrayBuffer, ts: Date.now()});
+    tx.oncomplete = res; tx.onerror = rej;
+  });
 }
+
+async function _loadTrackFromDB(nome){
+  const db = await _openAudioDB();
+  return new Promise((res)=>{
+    const tx = db.transaction(_AUDIO_STORE, 'readonly');
+    const req = tx.objectStore(_AUDIO_STORE).get(nome);
+    req.onsuccess = () => res(req.result || null);
+    req.onerror   = () => res(null);
+  });
+}
+
+async function _listTracksFromDB(){
+  const db = await _openAudioDB();
+  return new Promise((res)=>{
+    const tx = db.transaction(_AUDIO_STORE, 'readonly');
+    const req = tx.objectStore(_AUDIO_STORE).getAll();
+    req.onsuccess = () => res(req.result || []);
+    req.onerror   = () => res([]);
+  });
+}
+
+async function _deleteTrackFromDB(nome){
+  const db = await _openAudioDB();
+  return new Promise((res)=>{
+    const tx = db.transaction(_AUDIO_STORE, 'readwrite');
+    tx.objectStore(_AUDIO_STORE).delete(nome);
+    tx.oncomplete = res; tx.onerror = res;
+  });
+}
+
+// ── Estado dos players ──
+let _trilhaPlayer  = null;  // HTMLAudioElement — trilha principal
+let _ambPlayer     = null;  // HTMLAudioElement — ambientação em loop
+let _trilhaVol     = 0.75;
+let _ambVol        = 0.45;
+let _trilhaAtual   = null;  // {nome, tipo, playing, posicao}
+let _ambAtual      = null;
+let _musicaAtual   = null;  // compat legada
+let _audioBlobURLs = {};    // nome -> objectURL (cache temporário)
+
+async function _getBlobURL(nome){
+  if(_audioBlobURLs[nome]) return _audioBlobURLs[nome];
+
+  // 1. Tenta Supabase Storage (URL pública — não precisa de importação local)
+  const sbCache = await _sbGetTracksCache();
+  if(sbCache && sbCache[nome]){
+    _audioBlobURLs[nome] = sbCache[nome].url;
+    return sbCache[nome].url;
+  }
+
+  // 2. Fallback: IndexedDB local (arquivos importados antes da migração)
+  const rec = await _loadTrackFromDB(nome);
+  if(!rec) return null;
+  const blob = new Blob([rec.data], {type: rec.tipo || 'audio/mpeg'});
+  const url  = URL.createObjectURL(blob);
+  _audioBlobURLs[nome] = url;
+  return url;
+}
+
+// ── Player de Trilha Sonora ──
+async function playTrilha(nome, fromPos){
+  const url = await _getBlobURL(nome);
+  if(!url){ toast('⚠ Faixa "'+nome+'" não encontrada no Supabase Storage. O Mestre precisa fazer o upload novamente.'); return; }
+  if(_trilhaPlayer){
+    _trilhaPlayer.pause();
+    _trilhaPlayer.src = '';
+  }
+  _trilhaPlayer = new Audio(url);
+  _trilhaPlayer.volume = _trilhaVol;
+  _trilhaPlayer.loop   = false;
+  if(fromPos) _trilhaPlayer.currentTime = fromPos;
+  _trilhaPlayer.play().catch(()=>{});
+  _trilhaPlayer.ontimeupdate = () => _updateTrilhaBar();
+  _trilhaPlayer.onended = () => { _trilhaAtual = null; renderTrilhaPlayerUI(); };
+  renderTrilhaPlayerUI();
+}
+
+function pauseTrilha(){
+  if(_trilhaPlayer && !_trilhaPlayer.paused) _trilhaPlayer.pause();
+  else if(_trilhaPlayer) _trilhaPlayer.play().catch(()=>{});
+  renderTrilhaPlayerUI();
+}
+
+function stopTrilha(publicar=true){
+  if(_trilhaPlayer){ _trilhaPlayer.pause(); _trilhaPlayer.src=''; _trilhaPlayer=null; }
+  _trilhaAtual = null;
+  renderTrilhaPlayerUI();
+  if(publicar && isMestre && window.fbClearMusica) window.fbClearMusica();
+}
+
+function setTrilhaVolume(v){
+  _trilhaVol = v;
+  if(_trilhaPlayer) _trilhaPlayer.volume = v;
+}
+
+function _updateTrilhaBar(){
+  const bar = document.getElementById('trilha-progress-bar');
+  const cur = document.getElementById('trilha-cur-time');
+  const tot = document.getElementById('trilha-tot-time');
+  if(!_trilhaPlayer) return;
+  const d = _trilhaPlayer.duration || 0;
+  const c = _trilhaPlayer.currentTime || 0;
+  if(bar) bar.style.width = (d ? (c/d*100) : 0)+'%';
+  if(cur) cur.textContent = _fmtTime(c);
+  if(tot) tot.textContent = _fmtTime(d);
+}
+
+function _fmtTime(s){
+  if(!isFinite(s)) return '--:--';
+  const m = Math.floor(s/60);
+  const ss= String(Math.floor(s%60)).padStart(2,'0');
+  return m+':'+ss;
+}
+
+function seekTrilha(e){
+  if(!_trilhaPlayer || !_trilhaPlayer.duration) return;
+  const bar = e.currentTarget;
+  const pct = e.offsetX / bar.offsetWidth;
+  _trilhaPlayer.currentTime = pct * _trilhaPlayer.duration;
+}
+
+// ── Player de Ambientação ──
+async function playAmbientacao(nome){
+  const url = await _getBlobURL(nome);
+  if(!url){ toast('⚠ Ambientação "'+nome+'" não encontrada no Supabase Storage.'); return; }
+  if(_ambPlayer){ _ambPlayer.pause(); _ambPlayer.src=''; }
+  _ambPlayer = new Audio(url);
+  _ambPlayer.volume = _ambVol;
+  _ambPlayer.loop   = true;
+  _ambPlayer.play().catch(()=>{});
+  renderAmbPlayerUI();
+}
+
+function stopAmbientacao(publicar=true){
+  if(_ambPlayer){ _ambPlayer.pause(); _ambPlayer.src=''; _ambPlayer=null; }
+  _ambAtual = null;
+  renderAmbPlayerUI();
+  if(publicar && isMestre && window.fbClearAmbientacao) window.fbClearAmbientacao();
+}
+
+function setAmbVolume(v){
+  _ambVol = v;
+  if(_ambPlayer) _ambPlayer.volume = v;
+  // também atua no sistema de ambientação sintético legado
+  if(window.setAmbienceVolume) window.setAmbienceVolume(v * 0.12);
+}
+
+// ── Sincronização Firebase (Mestre → Todos) ──
+function publicarTrilha(nome){
+  if(!isMestre){ toast('Apenas o Mestre controla a trilha.'); return; }
+  _trilhaAtual = {nome};
+  playTrilha(nome);
+  if(window.fbSetMusica) window.fbSetMusica({nome, playing:true, ts: Date.now()});
+}
+
+function publicarAmbientacao(nome){
+  if(!isMestre){ toast('Apenas o Mestre controla a ambientação.'); return; }
+  _ambAtual = {nome};
+  playAmbientacao(nome);
+  if(window.fbSetAmbientacao) window.fbSetAmbientacao({nome, playing:true, ts: Date.now()});
+}
+
+// Recebe atualização do Firebase e sincroniza
+function renderMusica(data){
+  // Compatibilidade legada (string) e novo formato (objeto)
+  if(typeof data === 'string') data = {nome: data};
+  _musicaAtual = data ? data.nome : null;
+
+  // Atualiza display textual
+  const el       = document.getElementById('musica-display');
+  const playerEl = document.getElementById('musica-player');
+  const label    = data?.nome || '—';
+  if(el) el.textContent = label;
+  if(playerEl){ playerEl.textContent = label; playerEl.style.display = data?.nome ? '' : 'none'; }
+
+  // Toca o arquivo para não-Mestre (Mestre já tocou localmente)
+  if(!isMestre && data?.nome && data.playing){
+    _trilhaAtual = data;
+    playTrilha(data.nome);
+  } else if(!isMestre && !data?.nome){
+    stopTrilha(false);
+  }
+
+  renderTrilhaPlayerUI();
+  renderBibliotecaUI();
+}
+
+function renderAmbientacaoSync(data){
+  if(!isMestre && data?.nome && data.playing){
+    _ambAtual = data;
+    playAmbientacao(data.nome);
+  } else if(!isMestre && !data?.nome){
+    stopAmbientacao(false);
+  }
+  renderAmbPlayerUI();
+}
+
+// ── Import de Arquivos ──
+function importarAudio(tipo){
+  // tipo: 'trilha' ou 'ambientacao'
+  if(!_sbBase()){
+    toast('⚠ Supabase não configurado. Configure antes de importar músicas.');
+    return;
+  }
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/webm,.mp3,.ogg,.wav,.m4a';
+  input.multiple = true;
+  input.onchange = async (e) => {
+    const files = [...e.target.files];
+    if(!files.length) return;
+
+    toast(`⏫ Enviando ${files.length} faixa(s) para o Supabase...`);
+    let ok = 0, fail = 0;
+
+    for(const f of files){
+      const buf  = await f.arrayBuffer();
+      const dotIdx = f.name.lastIndexOf('.');
+      const ext  = dotIdx >= 0 ? f.name.slice(dotIdx) : '.mp3';
+      const nome = dotIdx >= 0 ? f.name.slice(0, dotIdx) : f.name;
+      const url  = await _sbUploadTrack(nome, ext, f.type || 'audio/mpeg', buf);
+      if(url){
+        ok++;
+        // Também salva no IndexedDB local como cache
+        await _saveTrackToDB(nome, f.type || 'audio/mpeg', buf);
+        // Atualiza cache de URLs
+        if(!_sbTracksCache) _sbTracksCache = {};
+        _sbTracksCache[nome] = { ext, url, size: buf.byteLength, type: f.type || 'audio/mpeg' };
+        _audioBlobURLs[nome] = url;
+      } else {
+        fail++;
+        console.warn('[Áudio] Falha ao fazer upload de', f.name);
+      }
+    }
+
+    // Invalida cache para forçar releitura
+    _sbTracksCacheTs = 0;
+
+    if(ok > 0)   toast(`🎵 ${ok} faixa(s) enviada(s) com sucesso! Todos os players já podem ouvir.`);
+    if(fail > 0) toast(`⚠ ${fail} faixa(s) falharam. Verifique se o bucket "audio" existe no Supabase Storage com acesso público.`);
+
+    renderBibliotecaUI();
+    renderMusicaControls();
+  };
+  input.click();
+}
+
+async function deletarFaixa(nome){
+  if(!confirm(`Remover "${nome}" da biblioteca?`)) return;
+  // Remove do Storage
+  const sbCache = await _sbGetTracksCache();
+  const ext = sbCache?.[nome]?.ext || '.mp3';
+  await _sbDeleteTrack(nome, ext);
+  // Remove do IndexedDB local
+  await _deleteTrackFromDB(nome);
+  // Limpa caches
+  if(_audioBlobURLs[nome]){ URL.revokeObjectURL(_audioBlobURLs[nome]); delete _audioBlobURLs[nome]; }
+  if(_sbTracksCache) delete _sbTracksCache[nome];
+  renderBibliotecaUI();
+  renderMusicaControls();
+  toast('Faixa removida.');
+}
+
+// ── Renderização do Player de Trilha ──
+function renderTrilhaPlayerUI(){
+  const el = document.getElementById('trilha-player-ui');
+  if(!el) return;
+  const nome    = _trilhaAtual?.nome || (_trilhaPlayer ? '...' : null);
+  const playing = _trilhaPlayer && !_trilhaPlayer.paused;
+
+  el.innerHTML = nome ? `
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;min-width:0">
+      <span style="font-size:14px">${playing?'▶':'⏸'}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:11px;color:var(--white-bone);font-family:'Oswald',sans-serif;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nome}</div>
+        <div style="display:flex;gap:6px;font-size:10px;color:var(--white-dust);font-family:'Courier Prime',monospace;margin-top:2px">
+          <span id="trilha-cur-time">0:00</span><span>/</span><span id="trilha-tot-time">--:--</span>
+        </div>
+      </div>
+    </div>
+    <div id="trilha-progress-wrap" onclick="seekTrilha(event)"
+      style="height:5px;background:rgba(255,255,255,.07);border-radius:2px;cursor:pointer;margin-bottom:8px;position:relative">
+      <div id="trilha-progress-bar" style="height:100%;width:0%;background:var(--crimson);border-radius:2px;transition:width .25s linear;pointer-events:none"></div>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <button onclick="pauseTrilha()" style="flex:1;padding:4px;background:rgba(30,0,20,.7);border:1px solid rgba(139,0,0,.4);color:var(--white-bone);font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:.06em;cursor:pointer">${playing?'⏸ Pausar':'▶ Continuar'}</button>
+      <button onclick="stopTrilha()" style="padding:4px 8px;background:transparent;border:1px solid rgba(139,0,0,.3);color:var(--white-dust);font-size:10px;cursor:pointer;font-family:'Oswald',sans-serif">■ Stop</button>
+      <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--white-dust);font-family:'Oswald',sans-serif;cursor:pointer">
+        <span>🔊</span>
+        <input type="range" min="0" max="100" value="${Math.round(_trilhaVol*100)}" oninput="setTrilhaVolume(this.value/100)"
+          style="width:50px;height:3px;accent-color:var(--crimson);cursor:pointer">
+      </label>
+    </div>` : `<div style="color:var(--white-dust);font-size:12px;font-family:'Courier Prime',monospace;text-align:center;padding:6px 0">Nenhuma faixa tocando</div>`;
+}
+
+// ── Renderização do Player de Ambientação ──
+function renderAmbPlayerUI(){
+  const el = document.getElementById('amb-player-ui');
+  if(!el) return;
+  const nome    = _ambAtual?.nome || null;
+  const playing = _ambPlayer && !_ambPlayer.paused;
+
+  el.innerHTML = nome ? `
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
+      <span style="font-size:13px">${playing?'🔁':'⏸'}</span>
+      <div style="font-size:11px;color:var(--white-bone);font-family:'Oswald',sans-serif;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${nome}</div>
+    </div>
+    <div style="display:flex;gap:5px;align-items:center">
+      <button onclick="if(_ambPlayer){if(_ambPlayer.paused)_ambPlayer.play();else _ambPlayer.pause();renderAmbPlayerUI();}" style="flex:1;padding:4px;background:rgba(0,20,30,.7);border:1px solid rgba(31,200,160,.3);color:#1fc8a0;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:.06em;cursor:pointer">${playing?'⏸ Pausar':'▶ Retomar'}</button>
+      <button onclick="stopAmbientacao()" style="padding:4px 8px;background:transparent;border:1px solid rgba(31,200,160,.2);color:var(--white-dust);font-size:10px;cursor:pointer;font-family:'Oswald',sans-serif">■</button>
+      <label style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--white-dust);cursor:pointer">
+        <span>🔊</span>
+        <input type="range" min="0" max="100" value="${Math.round(_ambVol*100)}" oninput="setAmbVolume(this.value/100)"
+          style="width:46px;height:3px;accent-color:#1fc8a0;cursor:pointer">
+      </label>
+    </div>` : `<div style="color:var(--white-dust);font-size:12px;font-family:'Courier Prime',monospace;text-align:center;padding:4px 0">Sem ambientação ativa</div>`;
+}
+
+// ── Biblioteca de Faixas ──
+async function renderBibliotecaUI(){
+  const trilhaEl = document.getElementById('trilha-lista');
+  const ambEl    = document.getElementById('amb-lista');
+
+  // Mostra loading enquanto busca do Storage
+  const loadMsg = `<div style="color:var(--white-dust);font-size:11px;font-family:'Courier Prime',monospace;text-align:center;padding:8px 0">⏳ Carregando...</div>`;
+  if(trilhaEl) trilhaEl.innerHTML = loadMsg;
+  if(ambEl)    ambEl.innerHTML    = loadMsg;
+
+  // Busca faixas do Supabase Storage (fonte principal, acessível por todos)
+  const sbCache  = await _sbGetTracksCache(true);
+  const sbNomes  = sbCache ? Object.keys(sbCache) : [];
+
+  // Fallback: IndexedDB local (arquivos importados antes da migração)
+  const local    = await _listTracksFromDB();
+
+  // Mescla: Storage tem prioridade
+  const todasNomes = [...new Set([...sbNomes, ...local.map(t=>t.nome)])];
+
+  // Tipo: IndexedDB define se é 'ambientacao', senão é 'trilha'
+  function getTipo(nome){
+    const loc = local.find(t=>t.nome===nome);
+    return loc?.tipo === 'ambientacao' ? 'ambientacao' : 'trilha';
+  }
+  function getSize(nome){
+    const sb = sbCache?.[nome];
+    if(sb?.size) return sb.size;
+    const loc = local.find(t=>t.nome===nome);
+    return loc?.data?.byteLength || 0;
+  }
+
+  const trilhas = todasNomes.filter(n=>getTipo(n)==='trilha').map(n=>({nome:n,size:getSize(n)}));
+  const ambs    = todasNomes.filter(n=>getTipo(n)==='ambientacao').map(n=>({nome:n,size:getSize(n)}));
+
+  const _faixaHTML = (faixas, onPlay) => {
+    if(!faixas.length) return `<div style="color:var(--white-dust);font-size:11px;font-family:'Courier Prime',monospace;text-align:center;padding:8px 0">${_sbBase()?'Nenhuma faixa no Storage.':'Supabase não configurado.'}</div>`;
+    return faixas.map(f=>`
+      <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(58,0,0,.2)">
+        <button onclick="${onPlay}('${f.nome.replace(/'/g,"\'")}') " title="Tocar"
+          style="background:transparent;border:none;color:var(--crimson);font-size:13px;cursor:pointer;flex-shrink:0;padding:0 2px">▶</button>
+        <div style="flex:1;min-width:0;font-size:11px;color:var(--white-bone);font-family:'Courier Prime',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.nome}">${f.nome}</div>
+        <div style="font-size:10px;color:var(--white-dust);flex-shrink:0">${_fmtBytes(f.size)}</div>
+        ${isMestre?`<button onclick="deletarFaixa('${f.nome.replace(/'/g,"\'")}') " style="background:transparent;border:none;color:rgba(200,50,50,.5);font-size:12px;cursor:pointer;flex-shrink:0;padding:0 3px">✕</button>`:''}      </div>`).join('');
+  };
+
+  if(trilhaEl) trilhaEl.innerHTML = _faixaHTML(trilhas, 'publicarTrilha');
+  if(ambEl)    ambEl.innerHTML    = _faixaHTML(ambs,    'publicarAmbientacao');
+}
+
+function _fmtBytes(b){
+  if(!b) return '';
+  if(b < 1024*1024) return (b/1024).toFixed(0)+'KB';
+  return (b/(1024*1024)).toFixed(1)+'MB';
+}
+
 function renderMusicaControls(){
+  // mantém compatibilidade com o sistema legado de botões
   const el = document.getElementById('musica-controles');
   if(!el) return;
-  el.innerHTML = MUSICAS_LISTA.map(m=>
-    `<button class="musica-btn" data-musica="${m.id}" onclick="setMusica('${m.id}')"
-      style="padding:5px 10px;font-size:11px;font-family:'Oswald',sans-serif;letter-spacing:.05em;
-      background:rgba(10,0,8,0.5);border:1px solid rgba(139,0,0,0.3);color:var(--white-ash);
-      cursor:pointer;transition:all .2s">${m.icon} ${m.label}</button>`
-  ).join('');
+  el.innerHTML = isMestre ? `
+    <button onclick="importarAudio('trilha')" style="padding:5px 10px;font-size:11px;font-family:'Oswald',sans-serif;letter-spacing:.05em;background:rgba(10,0,8,0.6);border:1px solid rgba(139,0,0,0.5);color:var(--crimson-mid);cursor:pointer">⬆ Upload Trilhas</button>
+    <button onclick="importarAudio('ambientacao')" style="padding:5px 10px;font-size:11px;font-family:'Oswald',sans-serif;letter-spacing:.05em;background:rgba(0,10,8,0.6);border:1px solid rgba(31,200,160,0.4);color:#1fc8a0;cursor:pointer">⬆ Upload Ambientação</button>` : `
+    <div style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;opacity:.8">🔊 Músicas carregadas automaticamente do servidor.</div>`;
 }
+
+const MUSICAS_LISTA = []; // mantém compat sem quebrar refs
 
 // ── STATUS DE TOKENS ──
 const TOKEN_STATUS_OPTS = [
@@ -4910,6 +4834,9 @@ function _initNovasMultiplayer(){
   renderCenaControls();
   renderClimaControls();
   renderMusicaControls();
+  renderTrilhaPlayerUI();
+  renderAmbPlayerUI();
+  renderBibliotecaUI();
 }
 // Chama após o DOM estar pronto (sem repetir DOMContentLoaded que já existe)
 if(document.readyState==='loading'){
@@ -5045,6 +4972,45 @@ function updateMapToolbarVisibility(){
 
   // ── SOM DE DADOS ──
   // Simula o chacoalhar + queda de dado com ruído sintético
+  // ── SOM DE TIC-TAC DO TIMER ──
+  window.playTimerTick = function(phase, urgency){
+    if(_muted) return;
+    const ctx=_ctx(); if(!ctx) return;
+    const t = ctx.currentTime;
+    const isTic = (phase === 'tic');
+
+    // Frequencia: tic agudo, tac um pouco mais grave; sobem com a urgencia
+    const baseFreq = isTic ? (1800 + urgency * 600) : (1200 + urgency * 400);
+
+    // Oscilador principal -- corpo do clique
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(baseFreq, t);
+    osc.frequency.exponentialRampToValueAtTime(baseFreq * 0.5, t + 0.025);
+    const vol = 0.08 + urgency * 0.10;
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.06);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(t); osc.stop(t + 0.07);
+
+    // Ruido de ataque curto -- textura mecanica
+    const bufSize = Math.floor(ctx.sampleRate * 0.018);
+    const buf = ctx.createBuffer(1, bufSize, ctx.sampleRate);
+    const bdata = buf.getChannelData(0);
+    for(let i=0;i<bufSize;i++) bdata[i]=(Math.random()*2-1);
+    const noise = ctx.createBufferSource();
+    noise.buffer = buf;
+    const nFilt = ctx.createBiquadFilter();
+    nFilt.type = 'highpass';
+    nFilt.frequency.value = 4000;
+    const nGain = ctx.createGain();
+    nGain.gain.setValueAtTime(0.06 + urgency * 0.06, t);
+    nGain.gain.exponentialRampToValueAtTime(0.0001, t + 0.018);
+    noise.connect(nFilt); nFilt.connect(nGain); nGain.connect(ctx.destination);
+    noise.start(t); noise.stop(t + 0.02);
+  };
+
   window.playDiceRoll = function(faces){
     if(_muted) return;
     const ctx=_ctx(); if(!ctx) return;
@@ -5709,6 +5675,16 @@ function updateMapToolbarVisibility(){
       if(gm){ gm.gain.cancelScheduledValues(ctx2.currentTime); gm.gain.setTargetAtTime(gVol, ctx2.currentTime, 0.3); }
       if(dm){ dm.gain.cancelScheduledValues(ctx2.currentTime); dm.gain.setTargetAtTime(dVol, ctx2.currentTime, 0.3); }
     }
+    // Silencia/restaura o áudio da psique também
+    if(window._psiqueMasterGain && _psiqueAudioCtx){
+      const pm = window._psiqueMasterGain;
+      const sl2=document.getElementById('ambience-vol');
+      const ratio2 = sl2 ? parseInt(sl2.value)/100 : 0.55;
+      const baseVol = pm._psiqueBaseVol || 0.42;
+      const pVol = _muted ? 0 : baseVol * ratio2;
+      pm.gain.cancelScheduledValues(_psiqueAudioCtx.currentTime);
+      pm.gain.setTargetAtTime(pVol, _psiqueAudioCtx.currentTime, 0.3);
+    }
   };
 
   // Expõe flag de mute para as funções de som
@@ -5881,15 +5857,7 @@ function updateMapToolbarVisibility(){
 checkFirebaseSetup();
 loadDB();
 document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key==='z'){e.preventDefault();if(isMestre)mapUndo();}
-  if((e.key==='Delete'||e.key==='Backspace')&&selectedStruct!==null){
-    if(!isMestre){toast('⛧ Apenas o Mestre pode remover objetos.');return;}
-    e.preventDefault();
-    mapStructures.splice(selectedStruct,1);
-    selectedStruct=null;
-    fullRedraw();saveStructures();
-    toast('Estrutura removida.');
-  }
+
 });
 
 // ══ ELEMENTOS & CRIATURAS ══
@@ -6403,159 +6371,6 @@ function showSubTab(sub){
 }
 
 /* ══════════════════════════════════════════════
-   TOKENS NPC / CRIATURA + IMPORTAÇÃO PNG UNIVERSAL
-══════════════════════════════════════════════ */
-
-// ── Importar PNG para token selecionado no mapa ──
-function mapTokImportImg(e){
-  if(!isMestre){ toast('⛧ Apenas o Mestre pode alterar imagens de tokens.'); e.target.value=''; return; }
-  const file = e.target.files[0]; if(!file) return;
-  if(selectedToken===null || !mapTokens[selectedToken]){
-    toast('⛧ Selecione um token no mapa primeiro (clique nele).'); e.target.value=''; return;
-  }
-  const reader = new FileReader();
-  reader.onload = ev=>{
-    mapTokens[selectedToken].imgUrl = ev.target.result;
-    // Pré-aquece o cache
-    const img = new Image();
-    img.onload = ()=>{ _tokImgCache[ev.target.result]=img; fullRedraw(); };
-    img.src = ev.target.result;
-    saveMapData({skipBg:true});
-    toast('⛧ Imagem aplicada ao token "'+mapTokens[selectedToken].name+'"!');
-  };
-  reader.readAsDataURL(file);
-  e.target.value='';
-}
-
-// ── NPC Builder ──
-const NPC_RING_COLORS=['#8b0000','#cc2222','#cc4400','#c49a00','#22aa55','#1fc8a0','#5b9cf6','#8844cc','#555555','#ffffff','#ff66aa','#00ccff'];
-const NPC_ICON_MAP={skull:'☠',eye:'👁',bolt:'⚡',fire:'🔥',moon:'🌙',star:'★',cross:'✟',sword:'⚔',ghost:'👻',demon:'😈',beast:'🐺',mage:'🔮',guard:'🛡',boss:'♛',alien:'👾',rune:'⛧'};
-const NPC_TYPE_RING={npc:'#8b0000',criatura:'#cc4400',chefe:'#c49a00',aliado:'#22aa55',neutro:'#5b9cf6'};
-
-let _nR='#8b0000', _nIcon='skull', _nImg=null, _nImgUrl=null;
-let _npcList=[], _npcSel=null;
-
-function _initNpcPanel(){
-  _buildNpcSw(); _buildNpcIcons();
-  _npcList = (db.mestre&&db.mestre.npcTokens)||[];
-  _renderNpcGrid();
-  npcDraw();
-}
-
-function _buildNpcSw(){
-  const el=document.getElementById('npc-sw'); if(!el||el._b) return; el._b=1;
-  NPC_RING_COLORS.forEach(c=>{
-    const d=document.createElement('div'); d.className='npc-sw'+(c===_nR?' on':'');
-    d.style.background=c; d.title=c;
-    d.onclick=()=>{ _nR=c; el.querySelectorAll('.npc-sw').forEach(x=>x.classList.remove('on')); d.classList.add('on'); npcDraw(); };
-    el.appendChild(d);
-  });
-}
-
-function _buildNpcIcons(){
-  const el=document.getElementById('npc-icons'); if(!el||el._b) return; el._b=1;
-  Object.entries(NPC_ICON_MAP).forEach(([k,v])=>{
-    const d=document.createElement('div');
-    d.style.cssText='width:28px;height:28px;background:rgba(20,0,15,.8);border:1px solid var(--blood-deep);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;transition:all .12s';
-    d.title=k; d.textContent=v;
-    d.onclick=()=>{ _nIcon=k; el.querySelectorAll('div').forEach(x=>{x.style.borderColor='var(--blood-deep)';x.style.background='rgba(20,0,15,.8)';}); d.style.borderColor='var(--crimson-hot)'; d.style.background='rgba(139,0,0,.2)'; npcDraw(); };
-    if(k===_nIcon){ d.style.borderColor='var(--crimson-hot)'; d.style.background='rgba(139,0,0,.2)'; }
-    el.appendChild(d);
-  });
-}
-
-function npcDraw(){
-  const cv=document.getElementById('npc-prev'); if(!cv) return;
-  const nome=(document.getElementById('npc-nome')?.value||'NPC');
-  _drawNpcTok(cv,80,_nR,_nImg,_nIcon,nome);
-}
-
-function _drawNpcTok(cv,sz,ring,img,icon,nome){
-  const ctx=cv.getContext('2d'); const cx=sz/2,R=sz/2-3;
-  ctx.clearRect(0,0,sz,sz);
-  ctx.save(); ctx.beginPath(); ctx.arc(cx,cx,R-1,0,Math.PI*2); ctx.clip();
-  ctx.fillStyle='#0f000c'; ctx.fillRect(0,0,sz,sz);
-  if(img){ ctx.drawImage(img,0,0,sz,sz); }
-  else {
-    ctx.fillStyle=ring+'44'; ctx.beginPath(); ctx.arc(cx,cx,R*.5,0,Math.PI*2); ctx.fill();
-    ctx.font=`${Math.round(R*.72)}px serif`; ctx.textAlign='center'; ctx.textBaseline='middle';
-    ctx.fillStyle=ring; ctx.fillText(NPC_ICON_MAP[icon]||'☠',cx,cx);
-  }
-  ctx.restore();
-  ctx.beginPath(); ctx.arc(cx,cx,R-1,0,Math.PI*2); ctx.strokeStyle=ring; ctx.lineWidth=4; ctx.stroke();
-  if(nome){
-    const ly=sz-8;
-    ctx.fillStyle='rgba(0,0,0,.72)'; ctx.fillRect(0,ly-11,sz,20);
-    ctx.fillStyle='#e8e0e0'; ctx.font=`bold ${nome.length>5?8:10}px "Cinzel",serif`;
-    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText(nome.slice(0,9),cx,ly);
-  }
-}
-
-function npcLoadPng(e){
-  const file=e.target.files[0]; if(!file) return;
-  const r=new FileReader();
-  r.onload=ev=>{ const img=new Image(); img.onload=()=>{ _nImg=img; _nImgUrl=ev.target.result; npcDraw(); }; img.src=ev.target.result; };
-  r.readAsDataURL(file); e.target.value='';
-}
-
-function npcClearPng(){ _nImg=null; _nImgUrl=null; npcDraw(); }
-
-function _npcBuild(){
-  const nome=(document.getElementById('npc-nome')?.value||'').trim()||'NPC';
-  const tipo=document.getElementById('npc-tipo')?.value||'npc';
-  // Renderiza token final num canvas temporário para imgUrl
-  const tmp=document.createElement('canvas'); tmp.width=tmp.height=120;
-  _drawNpcTok(tmp,120,_nR,_nImg,_nIcon,nome);
-  return { id:'npc_'+Date.now(), nome, tipo, ring:_nR, icon:_nIcon, imgUrl:tmp.toDataURL() };
-}
-
-function npcAdd(){
-  const nome=(document.getElementById('npc-nome')?.value||'').trim();
-  if(!nome){ toast('⛧ Digite o nome do NPC.'); return; }
-  const t=_npcBuild();
-  _npcList.push(t); _saveNpcList(); _renderNpcGrid();
-  document.getElementById('npc-nome').value=''; _nImg=null; _nImgUrl=null; npcDraw();
-  toast('"'+t.nome+'" adicionado à lista!');
-}
-
-function npcAddPlace(){
-  const nome=(document.getElementById('npc-nome')?.value||'').trim();
-  if(!nome){ toast('⛧ Digite o nome do NPC.'); return; }
-  const t=_npcBuild();
-  _npcList.push(t); _saveNpcList(); _renderNpcGrid();
-  _npcPlace(t);
-  document.getElementById('npc-nome').value=''; _nImg=null; _nImgUrl=null; npcDraw();
-}
-
-function npcPlaceSel(){
-  if(_npcSel===null||!_npcList[_npcSel]){ toast('⛧ Selecione um token na lista.'); return; }
-  _npcPlace(_npcList[_npcSel]);
-}
-
-function npcClearList(){
-  if(!_npcList.length) return;
-  if(!confirm('Limpar todos os tokens NPC?')) return;
-  _npcList=[]; _npcSel=null; _saveNpcList(); _renderNpcGrid();
-}
-
-function _npcPlace(tok){
-  if(!mapCtx){ initMap(); }
-  const mc=document.getElementById('map-canvas');
-  if(!mc){ toast('⛧ Abra o Mapa primeiro.'); return; }
-  const cx=mc.width/2+(Math.random()-.5)*180, cy=mc.height/2+(Math.random()-.5)*140;
-  mapTokens.push({ x:cx, y:cy, name:tok.nome.slice(0,4), col:tok.ring, r:GRID_SIZE/2-4,
-    isPlayer:false, isNpc:true, npcType:tok.tipo, angle:0, state:'comum', imgUrl:tok.imgUrl||null });
-  fullRedraw(); renderMapTokList(); saveMapData({skipBg:true});
-  toast('⛧ "'+tok.nome+'" no mapa!');
-}
-
-function _saveNpcList(){
-  if(!db.mestre) db.mestre={};
-  db.mestre.npcTokens=_npcList;
-  saveDB();
-}
-
-/* ══════════════════════════════════════════════
    FICHAS DE NPC — Mestre
 ══════════════════════════════════════════════ */
 let _nfInv = [];
@@ -6907,17 +6722,22 @@ function _userColor(user){
 /* ─────────────────────────────────────────────
    CHAT EM TEMPO REAL
 ───────────────────────────────────────────── */
+let _lastChatTs = 0;
 function sendChat(){
   const inp = document.getElementById('chat-inp');
   if(!inp) return;
   const text = inp.value.trim();
   if(!text) return;
-  if(!window.fbChatSend){ toast('Chat requer Firebase.'); return; }
+  if(!window.fbChatSend){ toast('Chat requer Supabase. Configure no botão ⚙ Supabase.'); return; }
+  // Anti-spam: evita duplicatas em menos de 500ms
+  const now = Date.now();
+  if(now - _lastChatTs < 500) return;
+  _lastChatTs = now;
   const msg = {
     user: currentUser,
     isMestre,
     text,
-    ts: Date.now(),
+    ts: now,
     h: new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})
   };
   window.fbChatSend(msg);
@@ -6925,9 +6745,14 @@ function sendChat(){
   _chatMsgs.push(msg);
   renderChat();
   inp.value = '';
+  inp.style.height = 'auto';
 }
 
-function chatEnter(e){ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChat(); } }
+function chatEnter(e){
+  if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); sendChat(); return; }
+  // auto-resize
+  const t=e.target; t.style.height='auto'; t.style.height=Math.min(t.scrollHeight,80)+'px';
+}
 
 function renderChat(){
   const el = document.getElementById('chat-messages');
@@ -7021,7 +6846,7 @@ function mestreRequestRoll(){
   const dado   = document.getElementById('req-roll-dado')?.value || '1d20';
   const motivo = document.getElementById('req-roll-motivo')?.value?.trim() || '';
   if(!target){ toast('Selecione um jogador.'); return; }
-  if(!window.fbRequestRoll){ toast('Firebase não conectado.'); return; }
+  if(!window.fbRequestRoll){ toast('Supabase não conectado.'); return; }
   const req = { target, dado, motivo, from: currentUser, ts: Date.now() };
   window.fbRequestRoll(req);
   toast('⛧ Pedido de rolagem enviado para '+target+'!');
@@ -7233,29 +7058,84 @@ let _lastTurnNotified = '';
 /* ─────────────────────────────────────────────
    INIT DA ABA MULTIPLAYER
 ───────────────────────────────────────────── */
-function _updateMoStatusBar(){
+// Única fonte de verdade pro status da aba Mesa Online — chamada tanto pelo
+// monitor automático (a cada 10s) quanto ao reabrir a aba, pra nunca mais
+// "mentir" que está conectado quando na verdade não está.
+function _renderMoFbStatus(status){
   const dot   = document.getElementById('mo-fb-dot');
   const label = document.getElementById('mo-fb-label');
-  const ulab  = document.getElementById('mo-user-label');
-  if(!dot) return;
+  if(!dot || !label) return;
+  const info = _fbReasonInfo(status);
+  dot.style.background = (status && status.ok) ? '#44cc88' : '#884444';
+  label.textContent = (status && status.ok ? '● ' : '○ ') + info.text;
+  label.style.color = info.color;
+  const diagBtn = document.getElementById('mo-diag-btn');
+  if(diagBtn) diagBtn.style.display = (status && status.ok) ? 'none' : '';
+}
+
+// Diagnóstico manual sob demanda — explica exatamente por que não conectou,
+// sem precisar voltar pra tela de configuração.
+async function runMoDiagnostico(){
+  const box = document.getElementById('mo-diag-box');
+  if(!box) return;
+  box.style.display = 'block';
+  box.innerHTML = '⏳ Verificando conexão com o Supabase...';
   const base = _fbBase();
   if(!base){
-    dot.style.background   = '#884444';
-    label.textContent      = 'Firebase não configurado — funções online indisponíveis';
-    label.style.color      = '#cc6644';
-  } else {
-    dot.style.background   = '#44cc88';
-    label.textContent      = 'Firebase conectado';
-    label.style.color      = '#44cc88';
+    box.innerHTML = '⚠ Supabase não configurado. <a onclick="openFirebaseSettings()" style="color:#5b9cf6;cursor:pointer;text-decoration:underline">Clique aqui para configurar</a>.';
+    return;
   }
-  if(ulab && currentUser){
-    ulab.textContent = (isMestre ? '⛧ Mestre: ' : '◭ Agente: ') + currentUser;
+  try{
+    const r = await fetch(base+'/rest/v1/mesa_state?limit=1', {
+      headers: { 'apikey': _sbKey()||'', 'Authorization': 'Bearer '+(_sbKey()||'') },
+      cache:'no-store'
+    });
+    if(r.ok){
+      box.innerHTML = '✅ Conexão OK! O banco está acessível. Se mesmo assim algo não sincroniza, recarregue a página (F5).';
+      return;
+    }
+    const txt = await r.text();
+    let html = `❌ Erro HTTP ${r.status}.<br>`;
+    if(r.status===401||r.status===403){
+      html += '⚠ <b>Acesso bloqueado pelo Supabase.</b><br>Vá em Supabase Dashboard → Table Editor → mesa_state → desative Row Level Security ou adicione políticas de acesso público.';
+    } else if(r.status===404){
+      html += '⚠ <b>Tabela mesa_state não encontrada.</b><br>Crie a tabela no SQL Editor do Supabase:<br>' +
+        '<code style="display:block;background:rgba(0,0,0,.4);padding:6px;margin-top:4px;font-size:10px">CREATE TABLE mesa_state (path text PRIMARY KEY, data jsonb, updated_at timestamptz DEFAULT now());</code>';
+    } else {
+      html += 'Resposta do servidor: ' + _escHtml(txt.slice(0,200));
+    }
+    box.innerHTML = html;
+  } catch(e){
+    box.innerHTML = '❌ Falha de rede: ' + _escHtml(e.message) + '<br>Verifique sua internet e a URL do Supabase configurada.';
   }
 }
 
+// ── Sub-abas internas da Mesa Online (Painel / Chat & Dados / Combate / Atmosfera / Comunicação) ──
+const MO_SUBTABS = ['painel','chat','combate','atmosfera','comunicacao'];
+function showMoTab(name){
+  MO_SUBTABS.forEach(s=>{
+    const btn   = document.getElementById('mosub-btn-'+s);
+    const panel = document.getElementById('mosub-'+s);
+    const active = s===name;
+    if(btn)   btn.classList.toggle('active', active);
+    if(panel) panel.classList.toggle('active', active);
+  });
+  try{ localStorage.setItem('op_mo_lasttab', name); }catch(e){}
+}
+
 function _initMultiTab(){
-  // ── Status bar ──
-  _updateMoStatusBar();
+  // ── Status bar — usa o último status real conhecido, sem inventar "conectado" ──
+  _renderMoFbStatus(window._fbConnState);
+  const ulab = document.getElementById('mo-user-label');
+  if(ulab && currentUser){
+    ulab.textContent = (isMestre ? '⛧ Mestre: ' : '◭ Agente: ') + currentUser;
+  }
+
+  // ── Sub-aba inicial ──
+  let lastTab = 'painel';
+  try{ lastTab = localStorage.getItem('op_mo_lasttab') || 'painel'; }catch(e){}
+  if(!MO_SUBTABS.includes(lastTab)) lastTab = 'painel';
+  showMoTab(lastTab);
 
   // ── Visibilidade por role ──
   const clearChatBtn   = document.getElementById('chat-clear-btn');
@@ -7332,3 +7212,1296 @@ function _initMultiTab(){
 
 // Cache de texto de notas do mestre para renderizar ao abrir a aba
 let _notasMestreCache = '';
+
+// ══════════════════════════════════════════════════════════════════
+// PSIQUÊ — Sistema de Relacionamentos (Mapa Mental + Níveis)
+// Cada player escreve livremente sobre os outros + define o nível
+// e natureza da relação. Mestre vê tudo. Players não veem uns aos outros.
+// ══════════════════════════════════════════════════════════════════
+
+let _psiqueData = {};       // { targetUser: { nivel, natureza, vinculo, gosto, nao_gosto, mente, segredo } }
+let _psiqueTarget = null;
+let _psiqueSaveTimer = null;
+let _psiqueAllData = {};    // Mestre: { fromUser: { targetUser: {...} } }
+
+// ── Níveis de intensidade da relação (1–5) ──
+const PSIQUE_NIVEIS = [
+  { val:1, label:'distante',    desc:'mal nos conhecemos',               cor:'rgba(120,120,160,0.7)', corBg:'rgba(80,80,120,0.15)',  glyph:'○' },
+  { val:2, label:'conhecido',   desc:'há algo entre nós, ainda incerto', cor:'rgba(91,156,246,0.8)',  corBg:'rgba(40,80,160,0.15)',  glyph:'◔' },
+  { val:3, label:'próximo',     desc:'me importo com o que acontece',    cor:'rgba(196,154,0,0.9)',   corBg:'rgba(140,100,0,0.18)',  glyph:'◑' },
+  { val:4, label:'íntimo',      desc:'carrego essa pessoa comigo',       cor:'rgba(160,100,255,0.9)', corBg:'rgba(100,50,200,0.2)',  glyph:'◕' },
+  { val:5, label:'inseparável', desc:'mudar isso seria mudar quem sou',  cor:'rgba(220,80,80,0.95)',  corBg:'rgba(180,30,30,0.2)',   glyph:'●' },
+];
+
+// ── Naturezas possíveis da relação ──
+const PSIQUE_NATUREZAS = [
+  { id:'confianca',   label:'confiança',    icon:'◈',  cor:'rgba(91,200,160,0.8)'  },
+  { id:'rivalidade',  label:'rivalidade',   icon:'⚔',  cor:'rgba(220,80,80,0.8)'   },
+  { id:'fascinio',    label:'fascínio',     icon:'◉',  cor:'rgba(196,154,0,0.9)'   },
+  { id:'protecao',    label:'proteção',     icon:'⛊',  cor:'rgba(91,156,246,0.8)'  },
+  { id:'divida',      label:'dívida',       icon:'⚖',  cor:'rgba(200,140,40,0.8)'  },
+  { id:'desconfianca',label:'desconfiança', icon:'◬',  cor:'rgba(180,100,255,0.8)' },
+  { id:'admira',      label:'admiração',    icon:'★',  cor:'rgba(240,200,60,0.8)'  },
+  { id:'culpa',       label:'culpa',        icon:'◆',  cor:'rgba(160,60,160,0.8)'  },
+  { id:'medo',        label:'medo',         icon:'☠',  cor:'rgba(180,60,60,0.8)'   },
+  { id:'ternura',     label:'ternura',      icon:'◇',  cor:'rgba(200,160,220,0.8)' },
+];
+
+// Campos de texto livre
+const PSIQUE_CAMPOS = [
+  { id:'vinculo',    label:'vínculo',          hint:'o que nos une... ou separa.',          placeholder:'o que essa pessoa significa pra mim...' },
+  { id:'gosto',      label:'o que eu gosto',   hint:'fragmentos que me prendem.',            placeholder:'o que me atrai nessa pessoa...' },
+  { id:'nao_gosto',  label:'o que me incomoda',hint:'o que range entre nós.',                placeholder:'o que me perturba nela...' },
+  { id:'mente',      label:'o que penso agora',hint:'pensamentos que não consigo calar.',    placeholder:'o que cruza minha mente quando a vejo...' },
+  { id:'segredo',    label:'o que não digo',   hint:'sussurros que guardo só pra mim.',      placeholder:'o que nunca direi em voz alta...' },
+];
+
+function _psiqueOtherPlayers(){
+  return Object.keys(db.users || {}).filter(u => u !== currentUser && u !== 'billy');
+}
+function _psiqueCharName(u){ return (db.characters[u]||{}).nome || u; }
+
+function _psiqueSave(){
+  if(!currentUser || isMestre) return;
+  clearTimeout(_psiqueSaveTimer);
+  _psiqueSaveTimer = setTimeout(async () => {
+    if(window.fbSavePsique) await window.fbSavePsique(currentUser, _psiqueData);
+  }, 1200);
+}
+
+async function _psiqueLoad(){
+  if(!currentUser || isMestre) return;
+  if(window.fbLoadPsique){
+    const remote = await window.fbLoadPsique(currentUser);
+    if(remote) _psiqueData = remote;
+  }
+}
+
+// ── Render principal ──
+async function renderPsiqueTab(){
+  const root = document.getElementById('psique-root');
+  if(!root) return;
+  if(!currentUser){
+    root.innerHTML = `<div style="color:var(--white-dust);text-align:center;padding:60px 20px;font-family:'IM Fell English',serif;font-style:italic">Entre na mesa primeiro.</div>`;
+    return;
+  }
+  if(isMestre){ await _psiqueRenderMestre(root); return; }
+  await _psiqueLoad();
+  _psiqueRenderPlayer(root);
+}
+
+// ── Visão do Player ──
+function _psiqueRenderPlayer(root){
+  const others = _psiqueOtherPlayers();
+  root.innerHTML = `
+    <div class="psique-shell">
+      <div class="psique-noise"></div>
+      <div class="psique-vignette"></div>
+      <div class="psique-header">
+        <div class="psique-title-glyph">◈</div>
+        <div class="psique-title">psiquê</div>
+        <div class="psique-subtitle">o que você carrega sobre os outros — só seus olhos podem ler</div>
+      </div>
+      ${!others.length ? `
+        <div class="psique-empty"><div style="font-size:2rem;opacity:.3">◈</div><div>nenhum outro agente na mesa ainda</div></div>`
+      : `
+        <div class="psique-map">
+          <div class="psique-self-node">
+            <div class="psique-self-ring"></div>
+            <div class="psique-self-inner">${_psiqueCharName(currentUser).charAt(0).toUpperCase()}</div>
+            <div class="psique-self-label">eu</div>
+          </div>
+          <div class="psique-targets">
+            ${others.map(u => _psiqueNodeHTML(u)).join('')}
+          </div>
+        </div>
+        <div id="psique-editor" class="psique-editor ${_psiqueTarget ? 'visible' : ''}">
+          ${_psiqueTarget ? _psiqueEditorHTML(_psiqueTarget) : ''}
+        </div>
+      `}
+    </div>`;
+}
+
+function _psiqueNodeHTML(u){
+  const d = _psiqueData[u] || {};
+  const nivel = PSIQUE_NIVEIS.find(n => n.val === (d.nivel||0)) || null;
+  const natureza = PSIQUE_NATUREZAS.find(n => n.id === d.natureza) || null;
+  const filled = PSIQUE_CAMPOS.filter(f => d[f.id] && d[f.id].trim()).length;
+  const pct = Math.round((filled / PSIQUE_CAMPOS.length) * 100);
+  const ringCor = nivel ? nivel.cor : 'rgba(196,154,0,0.35)';
+  const ringBg  = nivel ? nivel.corBg : 'transparent';
+  const c = db.characters[u] || {};
+  const hasAvatar = c.token?.imgData;
+  const active = _psiqueTarget === u;
+
+  return `
+    <div class="psique-target-node ${active ? 'active' : ''}" onclick="psiqueSelectTarget('${u}')">
+      <div class="psique-target-ring" style="background:${ringBg};border-radius:50%">
+        <svg viewBox="0 0 36 36" class="psique-ring-svg">
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="rgba(255,255,255,0.04)" stroke-width="2.5"/>
+          <circle cx="18" cy="18" r="15.9" fill="none" stroke="${ringCor}" stroke-width="2.5"
+            stroke-dasharray="${pct} 100" stroke-dashoffset="25" stroke-linecap="round"/>
+        </svg>
+        <div class="psique-target-avatar" style="border-color:${ringCor}">
+          ${hasAvatar ? `<img src="${c.token.imgData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : `<span>${_psiqueCharName(u).charAt(0).toUpperCase()}</span>`}
+        </div>
+      </div>
+      <div class="psique-target-name">${_psiqueCharName(u)}</div>
+      ${nivel ? `<div class="psique-node-nivel" style="color:${nivel.cor}">${nivel.glyph} ${nivel.label}</div>` : `<div class="psique-node-nivel" style="opacity:.3">— indefinido</div>`}
+      ${natureza ? `<div class="psique-node-natureza" style="color:${natureza.cor}">${natureza.icon} ${natureza.label}</div>` : ''}
+    </div>`;
+}
+
+function _psiqueEditorHTML(u){
+  const d = _psiqueData[u] || {};
+  const name = _psiqueCharName(u);
+  const nivelAtual = d.nivel || 0;
+  const naturezaAtual = d.natureza || '';
+
+  return `
+    <div class="psique-editor-header">
+      <div class="psique-editor-thread"></div>
+      <div class="psique-editor-title">
+        <span class="psique-editor-glyph">⟁</span>
+        pensamentos sobre <em>${name}</em>
+      </div>
+      <div class="psique-editor-hint">escreva livremente — ninguém mais vai ler</div>
+    </div>
+
+    <!-- NÍVEL DE RELAÇÃO -->
+    <div class="psique-nivel-section">
+      <div class="psique-section-label">intensidade do vínculo</div>
+      <div class="psique-niveis">
+        ${PSIQUE_NIVEIS.map(n => `
+          <div class="psique-nivel-opt ${nivelAtual === n.val ? 'selected' : ''}"
+               style="--ncor:${n.cor};--nbg:${n.corBg}"
+               onclick="psiqueSetNivel('${u}',${n.val})">
+            <div class="psique-nivel-glyph">${n.glyph}</div>
+            <div class="psique-nivel-label">${n.label}</div>
+            <div class="psique-nivel-desc">${n.desc}</div>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- NATUREZA DA RELAÇÃO -->
+    <div class="psique-natureza-section">
+      <div class="psique-section-label">natureza do que sinto</div>
+      <div class="psique-naturezas">
+        ${PSIQUE_NATUREZAS.map(n => `
+          <div class="psique-natureza-opt ${naturezaAtual === n.id ? 'selected' : ''}"
+               style="--ncor:${n.cor}"
+               onclick="psiqueSetNatureza('${u}','${n.id}')">
+            <span class="psique-natureza-icon">${n.icon}</span>
+            <span class="psique-natureza-label">${n.label}</span>
+          </div>`).join('')}
+      </div>
+    </div>
+
+    <!-- CAMPOS DE TEXTO LIVRE -->
+    <div class="psique-fields">
+      ${PSIQUE_CAMPOS.map(f => `
+        <div class="psique-field">
+          <div class="psique-field-label">
+            <span class="psique-field-glyph">—</span>
+            ${f.label}
+            <span class="psique-field-sublabel">${f.hint}</span>
+          </div>
+          <textarea class="psique-textarea"
+            id="psique-field-${u}-${f.id}"
+            placeholder="${f.placeholder}"
+            oninput="psiqueFieldInput('${u}','${f.id}',this.value)"
+          >${d[f.id]||''}</textarea>
+        </div>`).join('')}
+    </div>
+    <div class="psique-save-indicator" id="psique-saving">salvando...</div>`;
+}
+
+window.psiqueSelectTarget = function(u){
+  _psiqueTarget = (_psiqueTarget === u) ? null : u;
+  const root = document.getElementById('psique-root');
+  if(root) _psiqueRenderPlayer(root);
+};
+
+window.psiqueSetNivel = function(u, val){
+  if(!_psiqueData[u]) _psiqueData[u] = {};
+  // Toggle: clicou no mesmo → remove
+  _psiqueData[u].nivel = _psiqueData[u].nivel === val ? 0 : val;
+  // Atualiza UI das opções sem re-render total
+  document.querySelectorAll('.psique-nivel-opt').forEach((el, i) => {
+    el.classList.toggle('selected', PSIQUE_NIVEIS[i].val === _psiqueData[u].nivel);
+  });
+  // Atualiza o nó no mapa
+  _psiqueUpdateNode(u);
+  _psiqueSaveIndicator();
+  _psiqueSave();
+};
+
+window.psiqueSetNatureza = function(u, id){
+  if(!_psiqueData[u]) _psiqueData[u] = {};
+  _psiqueData[u].natureza = _psiqueData[u].natureza === id ? '' : id;
+  document.querySelectorAll('.psique-natureza-opt').forEach(el => {
+    el.classList.toggle('selected', el.onclick?.toString().includes(`'${id}'`) && _psiqueData[u].natureza === id);
+  });
+  // Re-render naturezas para garantir estado correto
+  const sec = document.querySelector('.psique-naturezas');
+  if(sec){
+    const nat = _psiqueData[u].natureza;
+    sec.querySelectorAll('.psique-natureza-opt').forEach(el => {
+      const elId = el.getAttribute('onclick')?.match(/'([^']+)'\)$/)?.[1];
+      el.classList.toggle('selected', elId === nat);
+    });
+  }
+  _psiqueUpdateNode(u);
+  _psiqueSaveIndicator();
+  _psiqueSave();
+};
+
+window.psiqueFieldInput = function(u, field, val){
+  if(!_psiqueData[u]) _psiqueData[u] = {};
+  _psiqueData[u][field] = val;
+  _psiqueUpdateNode(u);
+  _psiqueSaveIndicator();
+  _psiqueSave();
+};
+
+function _psiqueUpdateNode(u){
+  const node = document.querySelector(`.psique-target-node[onclick*="'${u}'"]`);
+  if(!node) return;
+  node.outerHTML = _psiqueNodeHTML(u);
+  // Após trocar outerHTML o nó original foi removido, re-query não necessário
+  // (o novo nó foi inserido no DOM)
+}
+
+function _psiqueSaveIndicator(){
+  const ind = document.getElementById('psique-saving');
+  if(ind){ ind.style.opacity = '1'; clearTimeout(ind._t); ind._t = setTimeout(()=>{ ind.style.opacity='0'; }, 2000); }
+}
+
+// ── Visão do Mestre ──
+async function _psiqueRenderMestre(root){
+  root.innerHTML = `<div class="psique-shell psique-mestre-shell">
+    <div class="psique-noise"></div><div class="psique-vignette"></div>
+    <div class="psique-header">
+      <div class="psique-title-glyph">◉</div>
+      <div class="psique-title">mapa das mentes</div>
+      <div class="psique-subtitle">você vê o que ninguém mais pode ver — os pensamentos e vínculos de cada agente</div>
+    </div>
+    <div class="psique-mestre-loading"><div class="psique-mestre-spinner">◈</div><div>lendo as mentes...</div></div>
+  </div>`;
+
+  let allData = {};
+  if(window.fbLoadAllPsique) allData = await window.fbLoadAllPsique();
+  _psiqueAllData = allData;
+
+  const players = Object.keys(db.users || {}).filter(u => u !== 'billy');
+  if(!players.length){
+    root.innerHTML = `<div class="psique-shell"><div class="psique-noise"></div><div class="psique-vignette"></div>
+      <div class="psique-header"><div class="psique-title-glyph">◉</div><div class="psique-title">mapa das mentes</div></div>
+      <div class="psique-empty">nenhum agente registrado ainda.</div></div>`;
+    return;
+  }
+
+  const sections = players.map(fromUser => {
+    const charName = _psiqueCharName(fromUser);
+    const data = allData[fromUser] || {};
+    const others = players.filter(u => u !== fromUser);
+    if(!others.length) return '';
+
+    const relations = others.map(targetUser => {
+      const d = data[targetUser] || {};
+      const targetName = _psiqueCharName(targetUser);
+      const nivel = PSIQUE_NIVEIS.find(n => n.val === (d.nivel||0)) || null;
+      const natureza = PSIQUE_NATUREZAS.find(n => n.id === d.natureza) || null;
+      const hasText = PSIQUE_CAMPOS.some(f => d[f.id]?.trim());
+      const hasRel  = nivel || natureza;
+
+      return `
+        <div class="psique-mestre-relation ${!hasRel && !hasText ? 'psique-mestre-empty-rel' : ''}">
+          <div class="psique-mestre-rel-header">
+            <span class="psique-mestre-rel-target">→ ${targetName}</span>
+            ${nivel ? `<span class="psique-mestre-badge-nivel" style="color:${nivel.cor};border-color:${nivel.cor}">${nivel.glyph} ${nivel.label}</span>` : ''}
+            ${natureza ? `<span class="psique-mestre-badge-nat" style="color:${natureza.cor};border-color:${natureza.cor}">${natureza.icon} ${natureza.label}</span>` : ''}
+          </div>
+          ${nivel ? `<div class="psique-mestre-nivel-bar">
+            ${PSIQUE_NIVEIS.map(n => `<div class="psique-mestre-nivel-pip" style="background:${(d.nivel||0)>=n.val ? n.cor : 'rgba(255,255,255,0.07)'}"></div>`).join('')}
+            <span class="psique-mestre-nivel-desc" style="color:${nivel.cor}">${nivel.desc}</span>
+          </div>` : ''}
+          ${hasText ? PSIQUE_CAMPOS.map(f => d[f.id]?.trim() ? `
+            <div class="psique-mestre-fragment">
+              <span class="psique-mestre-frag-label">${f.label}</span>
+              <span class="psique-mestre-frag-text">"${d[f.id].trim()}"</span>
+            </div>` : '').join('') : (!hasRel ? `<div class="psique-mestre-frag-empty">nada registrado sobre ${targetName}.</div>` : '')}
+        </div>`;
+    }).join('');
+
+    const c = db.characters[fromUser] || {};
+    const hasAvatar = c.token?.imgData;
+    return `
+      <div class="psique-mestre-mind">
+        <div class="psique-mestre-mind-header">
+          <div class="psique-mestre-avatar">
+            ${hasAvatar ? `<img src="${c.token.imgData}" style="width:100%;height:100%;border-radius:50%;object-fit:cover">` : `<span>${charName.charAt(0).toUpperCase()}</span>`}
+          </div>
+          <div>
+            <div class="psique-mestre-mind-name">${charName}</div>
+            <div class="psique-mestre-mind-user">@${fromUser}</div>
+          </div>
+          <div class="psique-mestre-mind-flicker"></div>
+        </div>
+        <div class="psique-mestre-relations">${relations}</div>
+      </div>`;
+  }).join('');
+
+  root.innerHTML = `
+    <div class="psique-shell psique-mestre-shell">
+      <div class="psique-noise"></div><div class="psique-vignette"></div>
+      <div class="psique-header">
+        <div class="psique-title-glyph">◉</div>
+        <div class="psique-title">mapa das mentes</div>
+        <div class="psique-subtitle">você vê o que ninguém mais pode ver — os vínculos e pensamentos de cada agente</div>
+      </div>
+      <button onclick="renderPsiqueTab()" class="psique-refresh-btn">↺ atualizar mentes</button>
+      <div class="psique-mestre-grid">${sections}</div>
+    </div>`;
+}
+
+// ══════════════════════════════════════════════════════════════════
+// PSIQUÊ — ÁUDIO SINTÉTICO DA MENTE
+// Web Audio API puro: drone, batimento cardíaco, ruído filtrado,
+// sussurros e pulsos. Sem arquivos externos.
+// ══════════════════════════════════════════════════════════════════
+
+let _psiqueAudioCtx   = null;
+let _psiqueAudioNodes = [];   // nós ativos para desligar
+let _psiqueAudioActive = false;
+let _psiqueTrilhaSnap = null; // estado salvo da trilha antes de entrar
+let _psiqueAmbSnap    = null; // estado salvo da amb antes de entrar
+
+function _psiqueAudioInit(){
+  if(_psiqueAudioCtx && _psiqueAudioCtx.state !== 'closed') return;
+  try {
+    _psiqueAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  } catch(e){ _psiqueAudioCtx = null; }
+}
+
+function _psiqueAudioStop(){
+  _psiqueAudioNodes.forEach(n => {
+    try { n.stop ? n.stop(0) : n.disconnect(); } catch(e){}
+  });
+  _psiqueAudioNodes = [];
+  if(_psiqueAudioCtx){
+    try { _psiqueAudioCtx.close(); } catch(e){}
+    _psiqueAudioCtx = null;
+  }
+  _psiqueAudioActive = false;
+}
+
+function _psiqueAudioEnter(){
+  if(_psiqueAudioActive) return;
+
+  // Salva estado atual dos players
+  _psiqueTrilhaSnap = null;
+  _psiqueAmbSnap    = null;
+
+  if(typeof _trilhaPlayer !== 'undefined' && _trilhaPlayer && !_trilhaPlayer.paused){
+    _psiqueTrilhaSnap = {
+      nome:    _trilhaAtual?.nome || null,
+      pos:     _trilhaPlayer.currentTime,
+      playing: true
+    };
+    // Fade out suave e pausa
+    _psiqueAudioFade(_trilhaPlayer, _trilhaPlayer.volume, 0, 1200, () => {
+      if(_trilhaPlayer) _trilhaPlayer.pause();
+    });
+  }
+
+  if(typeof _ambPlayer !== 'undefined' && _ambPlayer && !_ambPlayer.paused){
+    _psiqueAmbSnap = {
+      nome:    _ambAtual?.nome || null,
+      playing: true
+    };
+    _psiqueAudioFade(_ambPlayer, _ambPlayer.volume, 0, 1200, () => {
+      if(_ambPlayer) _ambPlayer.pause();
+    });
+  }
+
+  // Para a ambientação sintética (Web Audio API) com fade suave
+  if(window._ambienceMaster && window._ambienceCtx){
+    const m  = window._ambienceMaster;
+    const gm = window._ambienceGuitarMaster;
+    const dm = window._ambienceDrumMaster;
+    const t  = window._ambienceCtx.currentTime;
+    m.gain.cancelScheduledValues(t);
+    m.gain.linearRampToValueAtTime(0, t + 1.2);
+    if(gm){ gm.gain.cancelScheduledValues(t); gm.gain.linearRampToValueAtTime(0, t + 1.2); }
+    if(dm){ dm.gain.cancelScheduledValues(t); dm.gain.linearRampToValueAtTime(0, t + 1.2); }
+  }
+
+  // Inicia o áudio sintético com delay para dar tempo do fade
+  setTimeout(() => {
+    _psiqueAudioActive = true;
+    _psiqueAudioInit();
+    if(!_psiqueAudioCtx) return;
+    _psiqueBuildSoundscape();
+    // Aplica volume atual do slider ao áudio da psique
+    _psiqueApplyVolume();
+  }, 900);
+}
+
+function _psiqueAudioLeave(){
+  if(!_psiqueAudioActive) return;
+
+  // Fade out do áudio da mente
+  // (os nós vão parar sozinhos via gain.linearRampToValueAtTime)
+  if(_psiqueAudioCtx){
+    const masterGain = _psiqueAudioNodes.find(n => n._isPsiqueMaster);
+    if(masterGain){
+      const t = _psiqueAudioCtx.currentTime;
+      masterGain.gain.setValueAtTime(masterGain.gain.value, t);
+      masterGain.gain.linearRampToValueAtTime(0, t + 1.5);
+    }
+  }
+
+  setTimeout(() => {
+    _psiqueAudioStop();
+
+    // Restaura trilha e ambientação
+    if(_psiqueTrilhaSnap?.nome){
+      const snap = _psiqueTrilhaSnap;
+      _psiqueTrilhaSnap = null;
+      if(typeof playTrilha === 'function') playTrilha(snap.nome, snap.pos);
+    }
+    if(_psiqueAmbSnap?.nome){
+      const snap = _psiqueAmbSnap;
+      _psiqueAmbSnap = null;
+      if(typeof playAmbientacao === 'function') playAmbientacao(snap.nome);
+    }
+
+    // Restaura o volume da ambientação sintética (Web Audio)
+    if(window._ambienceMaster && window._ambienceCtx){
+      const sl = document.getElementById('ambience-vol');
+      const ratio = sl ? parseInt(sl.value)/100 : 0.55;
+      const m  = window._ambienceMaster;
+      const gm = window._ambienceGuitarMaster;
+      const dm = window._ambienceDrumMaster;
+      const t  = window._ambienceCtx.currentTime;
+      m.gain.cancelScheduledValues(t);
+      m.gain.linearRampToValueAtTime(ratio * 0.12, t + 1.5);
+      if(gm){ gm.gain.cancelScheduledValues(t); gm.gain.linearRampToValueAtTime(ratio * 0.13, t + 1.5); }
+      if(dm){ dm.gain.cancelScheduledValues(t); dm.gain.linearRampToValueAtTime(ratio * 0.11, t + 1.5); }
+    }
+  }, 1600);
+}
+
+function _psiqueAudioFade(audioEl, from, to, ms, cb){
+  const steps = 30;
+  const interval = ms / steps;
+  const delta = (to - from) / steps;
+  let step = 0;
+  const t = setInterval(() => {
+    step++;
+    audioEl.volume = Math.max(0, Math.min(1, from + delta * step));
+    if(step >= steps){ clearInterval(t); if(cb) cb(); }
+  }, interval);
+}
+
+// Aplica o valor do slider de ambientação ao master gain da psique
+function _psiqueApplyVolume(){
+  if(!_psiqueAudioActive || !window._psiqueMasterGain || !_psiqueAudioCtx) return;
+  const sl = document.getElementById('ambience-vol');
+  const ratio = sl ? parseInt(sl.value)/100 : 0.55;
+  const master = window._psiqueMasterGain;
+  const baseVol = master._psiqueBaseVol || 0.42;
+  const t = _psiqueAudioCtx.currentTime;
+  master.gain.cancelScheduledValues(t);
+  master.gain.setTargetAtTime(baseVol * ratio, t, 0.3);
+}
+
+function _psiqueBuildSoundscape(){
+  const ctx = _psiqueAudioCtx;
+  if(!ctx) return;
+
+  // Master gain (usado no fade de saída e no controle de volume)
+  const master = ctx.createGain();
+  master.gain.setValueAtTime(0, ctx.currentTime);
+
+  // Volume base derivado do slider de ambientação
+  const sl = document.getElementById('ambience-vol');
+  const sliderRatio = sl ? parseInt(sl.value)/100 : 0.55;
+  const targetVol = 0.42 * sliderRatio; // mais sutil — era 0.72
+  master.gain.linearRampToValueAtTime(targetVol, ctx.currentTime + 3.0);
+  master.connect(ctx.destination);
+  master._isPsiqueMaster = true;
+  master._psiqueBaseVol = 0.42; // referência para escalar com slider
+  _psiqueAudioNodes.push(master);
+  window._psiqueMasterGain = master; // expõe para o slider
+
+  // ── 1. Drone suave — tons quentes e aconchegantes ──
+  _psiqueDrone(ctx, master, 55,  0.10);   // fundamental (reduzido de 0.18)
+  _psiqueDrone(ctx, master, 82.5, 0.06);  // quinta (reduzido de 0.10)
+  _psiqueDrone(ctx, master, 110, 0.04);   // oitava (reduzido de 0.07)
+  _psiqueDrone(ctx, master, 165, 0.025);  // décima quinta — harmônico suave extra
+
+  // ── 2. Ruído filtrado muito tênue — como respiração distante ──
+  _psiqueFilteredNoise(ctx, master, 'bandpass', 250, 3, 0.025); // era 0.06
+  _psiqueFilteredNoise(ctx, master, 'lowpass',  60,  1, 0.018); // era 0.04
+
+  // ── 3. Batimento cardíaco mais suave e lento ──
+  _psiqueBeat(ctx, master);
+
+  // ── 4. Pulsos melódicos aconchegantes — mais lentos e delicados ──
+  _psiquePulses(ctx, master);
+}
+
+function _psiqueDrone(ctx, dest, freq, vol){
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  const lfo  = ctx.createOscillator();
+  const lfoG = ctx.createGain();
+
+  osc.type = 'sawtooth';
+  osc.frequency.value = freq;
+
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.07 + Math.random() * 0.05;
+  lfoG.gain.value = freq * 0.004; // vibrato sutil
+  lfo.connect(lfoG);
+  lfoG.connect(osc.frequency);
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = freq * 3;
+  filter.Q.value = 0.8;
+
+  gain.gain.value = vol;
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(dest);
+
+  osc.start();
+  lfo.start();
+
+  _psiqueAudioNodes.push(osc, lfo);
+}
+
+function _psiqueFilteredNoise(ctx, dest, type, freq, Q, vol){
+  // Gera buffer de ruído branco
+  const bufferSize = ctx.sampleRate * 4;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+  const data   = buffer.getChannelData(0);
+  for(let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+
+  const source = ctx.createBufferSource();
+  source.buffer = buffer;
+  source.loop = true;
+
+  const filter = ctx.createBiquadFilter();
+  filter.type = type;
+  filter.frequency.value = freq;
+  filter.Q.value = Q;
+
+  const gain = ctx.createGain();
+  gain.gain.value = vol;
+
+  // LFO para mover o filtro — como pensamentos flutuando
+  const lfo = ctx.createOscillator();
+  const lfoG = ctx.createGain();
+  lfo.type = 'sine';
+  lfo.frequency.value = 0.04 + Math.random() * 0.06;
+  lfoG.gain.value = freq * 0.3;
+  lfo.connect(lfoG);
+  lfoG.connect(filter.frequency);
+
+  source.connect(filter);
+  filter.connect(gain);
+  gain.connect(dest);
+
+  source.start();
+  lfo.start();
+  _psiqueAudioNodes.push(source, lfo);
+}
+
+function _psiqueBeat(ctx, dest){
+  // Batimento cardíaco suave — quase imperceptível, como conforto interno
+  const bpm  = 56 + Math.random() * 6; // mais lento e calmo
+  const period = 60 / bpm;
+
+  const scheduleBeat = (when) => {
+    if(!_psiqueAudioActive) return;
+
+    // Pulso 1 — "lub" — mais suave
+    const lub = ctx.createOscillator();
+    const lubG = ctx.createGain();
+    lub.type = 'sine';
+    lub.frequency.setValueAtTime(72, when);
+    lub.frequency.linearRampToValueAtTime(38, when + 0.14);
+    lubG.gain.setValueAtTime(0, when);
+    lubG.gain.linearRampToValueAtTime(0.10, when + 0.025); // era 0.22
+    lubG.gain.linearRampToValueAtTime(0, when + 0.16);
+    lub.connect(lubG); lubG.connect(dest);
+    lub.start(when); lub.stop(when + 0.18);
+
+    // Pulso 2 — "dub" — quase inaudível
+    const dub = ctx.createOscillator();
+    const dubG = ctx.createGain();
+    dub.type = 'sine';
+    dub.frequency.setValueAtTime(58, when + 0.20);
+    dub.frequency.linearRampToValueAtTime(28, when + 0.32);
+    dubG.gain.setValueAtTime(0, when + 0.20);
+    dubG.gain.linearRampToValueAtTime(0.06, when + 0.22); // era 0.14
+    dubG.gain.linearRampToValueAtTime(0, when + 0.34);
+    dub.connect(dubG); dubG.connect(dest);
+    dub.start(when + 0.20); dub.stop(when + 0.36);
+
+    const nextWhen = when + period;
+    const delay = (nextWhen - ctx.currentTime) * 1000 - 80;
+    setTimeout(() => scheduleBeat(ctx.currentTime + 0.08), Math.max(0, delay));
+  };
+
+  scheduleBeat(ctx.currentTime + 2.0);
+}
+
+function _psiquePulses(ctx, dest){
+  // Notas suaves e etéreas — como memórias gentis emergindo
+  // Escala: Sol maior pentatônica — G A B D E (mais aconchegante e luminosa)
+  const notes = [98, 110, 123.5, 146.8, 164.8, 196, 220, 246.9];
+
+  const scheduleNext = () => {
+    if(!_psiqueAudioActive || !_psiqueAudioCtx) return;
+
+    const freq   = notes[Math.floor(Math.random() * notes.length)];
+    const when   = ctx.currentTime + 0.05;
+    const dur    = 3.5 + Math.random() * 4.5; // mais longas e contemplativas
+    const vol    = 0.025 + Math.random() * 0.04; // mais suaves (era 0.04–0.11)
+
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    const rev  = ctx.createDelay(2.5);
+    const revG = ctx.createGain();
+
+    osc.type = 'sine'; // sempre seno — mais suave, sem triangle áspero
+    osc.frequency.value = freq;
+
+    // Detune muito sutil — quase em uníssono
+    osc.detune.value = (Math.random() - 0.5) * 6;
+
+    // Attack mais lento — emerge gentilmente
+    gain.gain.setValueAtTime(0, when);
+    gain.gain.linearRampToValueAtTime(vol, when + 1.2); // era 0.6
+    gain.gain.setValueAtTime(vol, when + dur - 1.2);
+    gain.gain.linearRampToValueAtTime(0, when + dur);
+
+    // Reverb mais pronunciado para sensação etérea
+    rev.delayTime.value = 0.45 + Math.random() * 0.4;
+    revG.gain.value = 0.38; // era 0.28
+
+    osc.connect(gain);
+    gain.connect(dest);
+    gain.connect(rev);
+    rev.connect(revG);
+    revG.connect(dest);
+
+    osc.start(when);
+    osc.stop(when + dur + 0.8);
+    _psiqueAudioNodes.push(osc);
+
+    // Intervalos mais espaçados — silêncio também é parte da psique
+    const nextIn = (2500 + Math.random() * 5000);
+    setTimeout(scheduleNext, nextIn);
+  };
+
+  // Começa escalonado para preencher o espaço sonoro gradualmente
+  setTimeout(scheduleNext, 1200);
+  setTimeout(scheduleNext, 3000);
+  setTimeout(scheduleNext, 5500);
+}
+
+
+// ══════════════════════════════════════════════════════════════════════════
+//  ⛧ SISTEMA DE TRANSCENDÊNCIA — Ordem Paranormal ⛧
+// ══════════════════════════════════════════════════════════════════════════
+
+const TRANSCENDENCIA_ELEMENTOS = {
+  sangue: {
+    nome: 'Sangue', cor: '#cc1111', corGlow: '#ff3333',
+    corFundo: 'radial-gradient(ellipse at center, #330000 0%, #0a0002 60%, #000000 100%)',
+    simbolo: 'sym-sangue',
+    textos: ['Você ouve. Uma batida.','Não é um tambor. É o seu próprio coração.','... mas acelerado demais. Frenético.','E então você percebe — não é só o seu.','São centenas. Milhares.','Todos pulsando em uníssono com ELE.','ELE que reina onde o sangue para de fluir.','O Rei Carmesim. O Senhor das Veias Abertas.','ELE estendeu a mão. E o Sangue obedeceu.','A membrana se rasga. E do outro lado... ELE espera.'],
+    ritual_gratis: 'Hemofagia',
+    bonus_desc: '+1d6 PV temporários ao usar rituais de Sangue • Rastreia portadores próximos'
+  },
+  morte: {
+    nome: 'Morte', cor: '#6655aa', corGlow: '#9977ff',
+    corFundo: 'radial-gradient(ellipse at center, #0d0020 0%, #040008 60%, #000000 100%)',
+    simbolo: 'sym-morte',
+    textos: ['O silêncio vem primeiro.','Não o silêncio comum — o silêncio que ELE habita.','O espaço entre as batidas. O trono do Rei Carmesim.','Você sente o frio se espalhando pelos dedos.','Não com medo.','Com... reconhecimento.','ELE sempre soube sobre você.','E agora você sabe sobre ELE.','A Morte não é um fim. É a coroa que ELE carrega.','E agora... ELE a compartilha com você.'],
+    ritual_gratis: 'Decadência',
+    bonus_desc: 'Enxerga espíritos e ecos de mortos • Imune ao 1º teste de Medo por cena'
+  },
+  energia: {
+    nome: 'Energia', cor: '#9933cc', corGlow: '#cc55ff',
+    corFundo: 'radial-gradient(ellipse at center, #1a0033 0%, #060010 60%, #000000 100%)',
+    simbolo: 'sym-energia',
+    textos: ['Uma faísca.','Pequena demais para iluminar.','Grande demais para ignorar.','Ela corre pela sua espinha — como se ELE tocasse sua espinha.','O Rei Carmesim. Senhor do Caos Que Pulsa.','ELE não destruiu. ELE liberou.','Em roxo. Em carmesim. Em cada cor que arde.','O caos não é ausência de ordem.','É a ordem de ELE — uma ordem que só os escolhidos ouvem.','Você ouviu. E agora você pertence a ELE.'],
+    ritual_gratis: 'Barreira Energética',
+    bonus_desc: 'Equipamentos respondem ao toque • +2 em Reflexos contra ataques de Energia'
+  },
+  conhecimento: {
+    nome: 'Conhecimento', cor: '#c8a000', corGlow: '#ffdd44',
+    corFundo: 'radial-gradient(ellipse at center, #1a1400 0%, #090800 60%, #000000 100%)',
+    simbolo: 'sym-conhecimento',
+    textos: ['Uma voz.','Não de fora — de dentro.','A voz de ELE. Do Rei Carmesim.','De um lugar tão profundo que você não sabia que existia.','ELE sussurra coisas que você nunca aprendeu.','Mas reconhece. Como se sempre soubesse.','ELE sempre soube o seu nome.','O Conhecimento não se estuda. Se herda.','E ELE escolheu você como herdeiro.','A membrana se afina. E você começa a lembrar... de ELE.'],
+    ritual_gratis: 'Detetizar',
+    bonus_desc: 'Detecta rituais e auras automaticamente • +5 em Ocultismo'
+  },
+  medo: {
+    nome: 'Medo', cor: '#1155aa', corGlow: '#3388ff',
+    corFundo: 'radial-gradient(ellipse at center, #000820 0%, #00020a 60%, #000000 100%)',
+    simbolo: 'sym-medo',
+    textos: ['Você olha para o escuro.','E o escuro tem o rosto de ELE.','O Rei Carmesim. Aquele que o Medo teme.','Mas desta vez... você não sente o frio habitual.','Você sente algo diferente.','Você sente o Medo... recuar diante de ELE.','ELE é mais antigo que o próprio terror.','ELE reconhece em você algo que poucos têm.','A coragem de encarar o que ELE é.','E por isso... ELE te faz sucessor do Medo.'],
+    ritual_gratis: null,
+    bonus_desc: 'Aura passiva de terror (DT 12 para adjacentes) • Enigmas de Medo se revelam'
+  }
+};
+
+function _jaTranscendeu() {
+  const c = userChar(currentUser);
+  return !!(c.transcendencia && c.transcendencia.elemento);
+}
+
+function _getRituaisDesbloqueados(nex) {
+  if (nex < 5)  return 0;
+  if (nex < 15) return 2;
+  if (nex < 25) return 4;
+  if (nex < 50) return 7;
+  if (nex < 75) return 12;
+  return 999;
+}
+
+// ── Painel da aba Rituais ──
+function renderTranscendenciaPanel() {
+  const el = document.getElementById('transcendencia-panel');
+  const afinBtn = document.getElementById('transcendencia-afinidade-btn');
+  if (!el) return;
+  const c = userChar(currentUser);
+
+  if (_jaTranscendeu()) {
+    const t = c.transcendencia;
+    const ed = TRANSCENDENCIA_ELEMENTOS[t.elemento];
+    if (!c.rituaisAprendidos) c.rituaisAprendidos = {};
+    const totalElem = RITUAIS_DB.filter(r => r.elem === ed.nome).length;
+    const desbElem = RITUAIS_DB.filter(r => r.elem === ed.nome && c.rituaisAprendidos[r.nome]).length;
+    const liberadaNovaRodada = _mestreTransLiberada(currentUser);
+    const haRituaisRestantes = desbElem < totalElem;
+
+    let novaTransHtml;
+    if (!haRituaisRestantes) {
+      if (liberadaNovaRodada) {
+        novaTransHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(58,0,0,0.4);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div style="flex:1;font-size:11px;color:var(--gold-light);font-family:'IM Fell English',serif;font-style:italic">Você esgotou os segredos de ${ed.nome}. ELE abre uma nova faceta — outro elemento aguarda.</div>
+          <button onclick="transIniciarCutscene()" style="padding:8px 16px;background:rgba(139,0,0,0.15);border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.12em;cursor:pointer;flex-shrink:0;text-transform:uppercase">⛧ Nova Transcendência ⛧</button>
+        </div>`;
+      } else {
+        novaTransHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(58,0,0,0.4);font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;font-style:italic">Você desbloqueou todos os rituais de ${ed.nome}. Aguarde o Mestre liberar uma nova Transcendência para abraçar um novo elemento.</div>`;
+      }
+    } else if (liberadaNovaRodada) {
+      novaTransHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(58,0,0,0.4);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="flex:1;font-size:11px;color:var(--gold-light);font-family:'IM Fell English',serif;font-style:italic">ELE chama de novo. A membrana se abre — um novo ritual aguarda.</div>
+        <button onclick="transIniciarCutscene()" style="padding:8px 16px;background:rgba(139,0,0,0.15);border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.12em;cursor:pointer;flex-shrink:0;text-transform:uppercase">⛧ Transcender de Novo ⛧</button>
+      </div>`;
+    } else {
+      novaTransHtml = `<div style="margin-top:10px;padding-top:10px;border-top:1px solid rgba(58,0,0,0.4);font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace">🔒 Aguardando o Mestre liberar uma nova Transcendência para desbloquear outro ritual de ${ed.nome}.</div>`;
+    }
+
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span class="sym-el ${ed.simbolo}" style="width:44px;height:44px;display:block;flex-shrink:0;background-size:contain;filter:drop-shadow(0 0 8px ${ed.corGlow})"></span>
+        <div style="flex:1">
+          <div style="font-family:'Cinzel',serif;font-size:11px;letter-spacing:.18em;color:${ed.cor};text-transform:uppercase;margin-bottom:3px">⛧ TRANSCENDÊNCIA — ${ed.nome.toUpperCase()}</div>
+          <div style="font-size:11px;color:var(--white-ash);font-family:'Courier Prime',monospace;line-height:1.6">${ed.bonus_desc}</div>
+          ${t.ritual_gratis ? `<div style="margin-top:4px;font-size:10px;color:${ed.cor};font-family:'Oswald',sans-serif;letter-spacing:.08em">✦ Ritual de Afinidade: <b>${t.ritual_gratis}</b></div>` : ''}
+          <div style="margin-top:3px;font-size:10px;color:var(--white-dust);font-family:'Courier Prime',monospace">Rituais de ${ed.nome} desbloqueados: ${desbElem}/${totalElem}</div>
+        </div>
+        <button onclick="transReviver()" style="padding:7px 14px;background:transparent;border:1px solid ${ed.cor}55;color:${ed.cor}99;font-family:'Cinzel',serif;font-size:10px;letter-spacing:.1em;cursor:pointer;flex-shrink:0;text-transform:uppercase">↺ Rever</button>
+      </div>
+      ${novaTransHtml}`;
+    if (afinBtn) afinBtn.style.display = c.transcendencia.ritual_gratis ? 'block' : 'none';
+  } else {
+    const transLiberada = !!(db.mestre && db.mestre.transLiberada && db.mestre.transLiberada[currentUser]);
+    el.innerHTML = `
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <div style="flex:1">
+          ${transLiberada
+            ? `<div style="font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:6px">⛧ Transcendência Disponível</div>
+               <div style="font-size:12px;color:var(--white-ash);font-family:'IM Fell English',serif;font-style:italic;line-height:1.6">ELE aguarda. O Rei Carmesim estendeu a mão — a membrana nunca foi tão fina.</div>`
+            : `<div style="font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;color:var(--white-dust);text-transform:uppercase;margin-bottom:6px">⛧ Transcendência Bloqueada</div>
+               <div style="font-size:12px;color:var(--white-dust);font-family:'IM Fell English',serif;font-style:italic;line-height:1.6">ELE ainda não escolheu você. Aguarde a autorização do Mestre para cruzar a membrana.</div>`
+          }
+        </div>
+        ${transLiberada
+          ? `<button onclick="transIniciarCutscene()" style="padding:10px 22px;background:rgba(139,0,0,0.15);border:1px solid var(--gold);color:var(--gold-light);font-family:'Cinzel',serif;font-size:12px;letter-spacing:.15em;cursor:pointer;flex-shrink:0;text-transform:uppercase" onmouseover="this.style.background='rgba(138,106,0,0.2)'" onmouseout="this.style.background='rgba(139,0,0,0.15)'">⛧ Transcender ⛧</button>`
+          : `<div style="padding:10px 18px;background:rgba(30,0,20,0.4);border:1px solid rgba(80,40,40,0.4);color:rgba(180,100,100,0.5);font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;flex-shrink:0;text-transform:uppercase;text-align:center">🔒 Aguardando<br>o Mestre</div>`
+        }
+      </div>`;
+    if (afinBtn) afinBtn.style.display = 'none';
+  }
+}
+
+// ── CUTSCENE ──
+let _transCtxAudio = null;
+
+function transIniciarCutscene() {
+  const ov = _transCriarOverlay();
+  document.body.appendChild(ov);
+  _transIniciarAudio();
+  _transPartículas(null);
+  requestAnimationFrame(() => { ov.style.opacity = '1'; });
+
+  const textoIntro = [
+    'A membrana entre mundos...','...é mais fina do que você imaginava.',
+    'Você sempre sentiu.','Aquele peso. Aquela presença.',
+    'ELE está do outro lado.','O Rei Carmesim. O Senhor do Outro Lado.',
+    'ELE sabe o seu nome.','ELE sempre soube.',
+    'E agora...','...ELE está chamando por você.'
+  ];
+  _transNarrar(textoIntro, 'rgba(220,200,200,0.9)', () => {
+    _transMostrarEscolha();
+  });
+}
+
+function transReviver() {
+  const c = userChar(currentUser);
+  if (!c.transcendencia) return;
+  const ed = TRANSCENDENCIA_ELEMENTOS[c.transcendencia.elemento];
+  const ov = _transCriarOverlay();
+  const bg = ov.querySelector('#_trans_bg');
+  if (bg) bg.style.background = ed.corFundo;
+  const symInner = ov.querySelector('#_trans_sym_inner');
+  if (symInner) {
+    symInner.className = 'sym-el ' + ed.simbolo;
+    symInner.style.filter = `drop-shadow(0 0 40px ${ed.corGlow})`;
+  }
+  document.body.appendChild(ov);
+  _transPartículas(ed.corGlow);
+  requestAnimationFrame(() => { ov.style.opacity = '1'; });
+  setTimeout(() => {
+    _transNarrar(ed.textos, ed.corGlow, () => {
+      // só fecha ao final
+    });
+  }, 600);
+}
+
+function _transCriarOverlay() {
+  const existing = document.getElementById('_trans_overlay');
+  if (existing) existing.remove();
+
+  const ov = document.createElement('div');
+  ov.id = '_trans_overlay';
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity 1.2s ease;overflow:hidden;';
+  ov.innerHTML = `
+    <div id="_trans_bg" style="position:absolute;inset:0;background:radial-gradient(ellipse at center,#1a0008 0%,#000 70%);transition:background 2s"></div>
+    <canvas id="_trans_canvas" style="position:absolute;inset:0;width:100%;height:100%;opacity:0.55;pointer-events:none"></canvas>
+    <div id="_trans_sym" style="position:absolute;width:340px;height:340px;opacity:0.7;display:flex;align-items:center;justify-content:center;transition:all 1.5s">
+      <div id="_trans_sym_inner" class="sym-el sym-medo" style="width:300px;height:300px;background-size:contain;filter:drop-shadow(0 0 60px #880033)"></div>
+    </div>
+    <div id="_trans_texto" style="position:absolute;bottom:14%;left:50%;transform:translateX(-50%);width:min(580px,88%);text-align:center;z-index:10;pointer-events:none">
+      <div id="_trans_linha" style="font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(15px,2.8vw,22px);color:transparent;letter-spacing:.05em;line-height:1.65;transition:color 0.8s ease"></div>
+    </div>
+    <div id="_trans_escolha" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity 1.2s;z-index:15;padding:20px;box-sizing:border-box"></div>
+    <div onclick="transPular()" style="position:absolute;bottom:4%;right:4%;font-family:'Oswald',sans-serif;font-size:10px;letter-spacing:.15em;color:rgba(255,255,255,0.2);text-transform:uppercase;cursor:pointer;z-index:20;user-select:none">PULAR ▶</div>
+    <div onclick="transFecharOverlay()" style="position:absolute;top:12px;right:14px;font-family:'Oswald',sans-serif;font-size:18px;color:rgba(255,255,255,0.2);cursor:pointer;z-index:20;line-height:1;user-select:none">✕</div>`;
+  return ov;
+}
+
+// ── Rasura do Rei Carmesim — efeito visual por elemento ──
+function _rascarReiCarmesim(texto, elem) {
+  if (!texto.includes('Rei Carmesim')) return _escHtml(texto);
+
+  // CSS base: texto transparente + pseudo-elemento que cobre tudo
+  if (!document.getElementById('rc-base-css')) {
+    const s = document.createElement('style'); s.id = 'rc-base-css';
+    s.textContent = `
+      .rc-rasura { display:inline-block; position:relative; cursor:default;
+                   color:transparent !important; text-shadow:none !important;
+                   -webkit-text-fill-color:transparent !important;
+                   user-select:none; border-radius:2px; padding:0 3px; }
+      .rc-rasura::after { content:''; position:absolute; inset:0;
+                          border-radius:inherit; pointer-events:none; }
+      @keyframes rc-drip    { 0%,100%{transform:scaleY(1)}50%{transform:scaleY(1.06)} }
+      @keyframes rc-fade    { 0%,100%{opacity:1}50%{opacity:.55} }
+      @keyframes rc-glitch  { 0%,93%,100%{transform:none} 94%{transform:translateX(-3px) skewX(9deg)} 96%{transform:translateX(2px) skewX(-7deg)} }
+      @keyframes rc-burn    { 0%,100%{box-shadow:0 0 3px #aa880055} 50%{box-shadow:0 0 10px #cc9900aa} }
+      @keyframes rc-tremble { 0%,100%{transform:none} 30%{transform:translateY(-1px)} 70%{transform:translateY(1px)} }
+    `;
+    document.head.appendChild(s);
+  }
+
+  const EFEITOS = {
+    sangue:      { bg:'#7a0000', after:'linear-gradient(105deg,#6b0000 0%,#a00000 40%,#550000 70%,#8b0000 100%)', anim:'rc-drip 2s ease-in-out infinite',     title:'O nome que sangra'  },
+    morte:       { bg:'#18102e', after:'linear-gradient(120deg,#1a0e30 0%,#2a1a4a 50%,#0e0820 100%)',             anim:'rc-fade 3s ease-in-out infinite',     title:'O nome que apaga'   },
+    energia:     { bg:'#2b0044', after:'linear-gradient(110deg,#1e0033 0%,#3d005c 45%,#1a0033 100%)',             anim:'rc-glitch 2.5s steps(1) infinite',    title:'O nome que treme'   },
+    conhecimento:{ bg:'#130d00', after:'linear-gradient(115deg,#1a1000 0%,#2a1e00 50%,#0e0800 100%)',             anim:'rc-burn 2s ease-in-out infinite',     title:'O nome redatado'    },
+    medo:        { bg:'#000e22', after:'linear-gradient(110deg,#000b1a 0%,#001533 50%,#00081a 100%)',             anim:'rc-tremble 0.9s ease-in-out infinite',title:'O nome que apavora' }
+  };
+
+  const ef = EFEITOS[elem] || EFEITOS.sangue;
+  const cssId = 'rc-css-' + (elem||'sangue');
+  if (!document.getElementById(cssId)) {
+    const s = document.createElement('style'); s.id = cssId;
+    s.textContent = `.rc-rasura.rc-${elem||'sangue'}::after{background:${ef.after};}`;
+    document.head.appendChild(s);
+  }
+
+  const rasura = `<span class="rc-rasura rc-${elem||'sangue'}" style="background:${ef.bg};animation:${ef.anim}" title="${ef.title}" aria-label="[nome suprimido]">Rei Carmesim</span>`;
+  // Escapa partes ao redor do nome e junta com o span
+  return texto.split('Rei Carmesim').map(p => _escHtml(p)).join(rasura);
+}
+function _escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+
+let _transNarrando = false;
+
+function _transNarrar(textos, cor, onFim) {
+  _transNarrando = true;
+  let idx = 0;
+  function next() {
+    if (!_transNarrando) return;
+    const linha = document.getElementById('_trans_linha');
+    if (!linha) return;
+    if (idx >= textos.length) {
+      if (onFim) setTimeout(onFim, 800);
+      return;
+    }
+    linha.style.color = 'transparent';
+    _transNarrarTimer = setTimeout(() => {
+      const l2 = document.getElementById('_trans_linha');
+      if (!l2) return;
+      const textoRaw = textos[idx++];
+      const elem = (()=>{ try{ const c=userChar(currentUser); return c&&c.transcendencia&&c.transcendencia.elemento?c.transcendencia.elemento:null; }catch(e){return null;} })();
+      l2.innerHTML = _rascarReiCarmesim(textoRaw, elem);
+      l2.style.color = cor;
+      _transNarrarTimer = setTimeout(next, 2300);
+    }, 500);
+  }
+  next();
+}
+
+function transPular() {
+  _transNarrando = false;
+  if (_transNarrarTimer) clearTimeout(_transNarrarTimer);
+  const linha = document.getElementById('_trans_linha');
+  if (linha) { linha.textContent = ''; linha.style.color = 'transparent'; }
+  _transMostrarEscolha();
+}
+
+function _transMostrarEscolha() {
+  if (_jaTranscendeu()) {
+    // Verifica se ainda há rituais do elemento atual para desbloquear
+    const c = userChar(currentUser);
+    const ed = TRANSCENDENCIA_ELEMENTOS[c.transcendencia.elemento];
+    if (ed) {
+      const totalElem = RITUAIS_DB.filter(r => r.elem === ed.nome).length;
+      const desbElem = RITUAIS_DB.filter(r => r.elem === ed.nome && c.rituaisAprendidos && c.rituaisAprendidos[r.nome]).length;
+      const semRituaisRestantes = totalElem > 0 && desbElem >= totalElem;
+      if (semRituaisRestantes) {
+        // Todos os rituais desbloqueados — permite escolher novo elemento
+        _transRenderEscolhaElementoNovo();
+        const esc = document.getElementById('_trans_escolha');
+        if (esc) { esc.style.opacity = '1'; esc.style.pointerEvents = 'auto'; }
+        const sym = document.getElementById('_trans_sym');
+        if (sym) sym.style.opacity = '0';
+        return;
+      }
+    }
+    _transRenderEscolhaRitual();
+  } else {
+    _transRenderEscolhaElemento();
+  }
+  const esc = document.getElementById('_trans_escolha');
+  if (esc) { esc.style.opacity = '1'; esc.style.pointerEvents = 'auto'; }
+  const sym = document.getElementById('_trans_sym');
+  if (sym) sym.style.opacity = '0';
+}
+
+// ── Escolha de Novo Elemento (Transcendência múltipla — todos rituais do elemento anterior desbloqueados) ──
+function _transRenderEscolhaElementoNovo() {
+  const esc = document.getElementById('_trans_escolha');
+  if (!esc) return;
+  const c = userChar(currentUser);
+  const elemAtual = c.transcendencia ? c.transcendencia.elemento : null;
+  esc.innerHTML = `
+    <div style="font-family:'Cinzel',serif;font-size:clamp(12px,2vw,17px);letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;text-align:center">⛧ Nova Faceta do Outro Lado ⛧</div>
+    <div style="font-family:'IM Fell English',serif;font-style:italic;color:var(--white-ash);font-size:13px;margin-bottom:24px;text-align:center;max-width:480px">ELE revelou tudo que havia para mostrar. Agora, outro aspecto da membrana se abre — escolha a próxima essência que você abraça.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;width:min(640px,92%);max-width:640px">
+      ${Object.entries(TRANSCENDENCIA_ELEMENTOS).filter(([id])=>id!=='medo').map(([id,ed])=>`
+        <div onclick="transEscolherElemNovo('${id}')" style="background:rgba(10,0,8,0.96);border:1px solid ${id===elemAtual?ed.cor+'bb':ed.cor+'55'};padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px;position:relative" onmouseover="this.style.borderColor='${ed.corGlow}';this.style.transform='translateY(-3px)'" onmouseout="this.style.borderColor='${id===elemAtual?ed.cor+'bb':ed.cor+'55'}';this.style.transform=''">
+          <div class="sym-el ${ed.simbolo}" style="width:50px;height:50px;background-size:contain;filter:drop-shadow(0 0 6px ${ed.corGlow})"></div>
+          <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.12em;color:${ed.cor};text-transform:uppercase">${ed.nome}</div>
+          ${id===elemAtual?`<div style="font-size:8px;color:${ed.cor}88;font-family:'Courier Prime',monospace;letter-spacing:.06em">atual</div>`:''}
+        </div>`).join('')}
+    </div>`;
+}
+
+window.transEscolherElemNovo = function(elemId) {
+  const ed = TRANSCENDENCIA_ELEMENTOS[elemId];
+  if (!ed) return;
+  _transNarrando = false;
+  if (_transNarrarTimer) clearTimeout(_transNarrarTimer);
+
+  const esc = document.getElementById('_trans_escolha');
+  if (esc) { esc.style.opacity = '0'; esc.style.pointerEvents = 'none'; }
+
+  const bg = document.getElementById('_trans_bg');
+  if (bg) bg.style.background = ed.corFundo;
+
+  const sym = document.getElementById('_trans_sym');
+  const symInner = document.getElementById('_trans_sym_inner');
+  if (sym) { sym.style.opacity = '0.95'; sym.style.width = '340px'; sym.style.height = '340px'; }
+  if (symInner) { symInner.className = 'sym-el ' + ed.simbolo; symInner.style.width = '300px'; symInner.style.height = '300px'; symInner.style.filter = `drop-shadow(0 0 80px ${ed.corGlow}) drop-shadow(0 0 30px ${ed.corGlow})`; }
+
+  setTimeout(() => {
+    _transNarrando = true;
+    _transNarrar(ed.textos, ed.corGlow, () => {
+      _transFinalizarElem(elemId);
+    });
+  }, 600);
+};
+
+// ── Escolha de Elemento (apenas na 1ª Transcendência) ──
+function _transRenderEscolhaElemento() {
+  const esc = document.getElementById('_trans_escolha');
+  if (!esc) return;
+  esc.innerHTML = `
+    <div style="font-family:'Cinzel',serif;font-size:clamp(12px,2vw,17px);letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;text-align:center">⛧ Escolha seu Elemento ⛧</div>
+    <div style="font-family:'IM Fell English',serif;font-style:italic;color:var(--white-ash);font-size:13px;margin-bottom:24px;text-align:center;max-width:480px">O Outro Lado te reconhece. Mas qual faceta sua essência reflete? Esta escolha é permanente.</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;width:min(640px,92%);max-width:640px">
+      ${Object.entries(TRANSCENDENCIA_ELEMENTOS).filter(([id])=>id!=='medo').map(([id,ed])=>`
+        <div onclick="transEscolherElem('${id}')" style="background:rgba(10,0,8,0.96);border:1px solid ${ed.cor}55;padding:14px 8px;text-align:center;cursor:pointer;transition:all .2s;display:flex;flex-direction:column;align-items:center;gap:8px" onmouseover="this.style.borderColor='${ed.corGlow}';this.style.transform='translateY(-3px)'" onmouseout="this.style.borderColor='${ed.cor}55';this.style.transform=''">
+          <div class="sym-el ${ed.simbolo}" style="width:50px;height:50px;background-size:contain;filter:drop-shadow(0 0 6px ${ed.corGlow})"></div>
+          <div style="font-family:'Cinzel',serif;font-size:10px;letter-spacing:.12em;color:${ed.cor};text-transform:uppercase">${ed.nome}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+// ── Escolha de Ritual (2ª Transcendência em diante — elemento já definido) ──
+function _transRenderEscolhaRitual() {
+  const esc = document.getElementById('_trans_escolha');
+  if (!esc) return;
+  const c = userChar(currentUser);
+  const ed = TRANSCENDENCIA_ELEMENTOS[c.transcendencia.elemento];
+  if (!c.rituaisAprendidos) c.rituaisAprendidos = {};
+  const candidatos = RITUAIS_DB.filter(r => r.elem === ed.nome && !c.rituaisAprendidos[r.nome]);
+
+  if (!candidatos.length) {
+    esc.innerHTML = `
+      <div style="font-family:'Cinzel',serif;font-size:clamp(12px,2vw,17px);letter-spacing:.2em;color:${ed.cor};text-transform:uppercase;margin-bottom:10px;text-align:center">⛧ ${ed.nome} não guarda mais segredos ⛧</div>
+      <div style="font-family:'IM Fell English',serif;font-style:italic;color:var(--white-ash);font-size:13px;margin-bottom:24px;text-align:center;max-width:480px">Você já desbloqueou todos os rituais conhecidos deste elemento.</div>
+      <div onclick="transFecharOverlay()" style="padding:9px 22px;border:1px solid ${ed.cor}88;color:${ed.cor};font-family:'Cinzel',serif;font-size:11px;letter-spacing:.12em;cursor:pointer;text-transform:uppercase">Fechar</div>`;
+    return;
+  }
+
+  esc.innerHTML = `
+    <div style="font-family:'Cinzel',serif;font-size:clamp(12px,2vw,17px);letter-spacing:.2em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;text-align:center">⛧ Escolha um Ritual de ${ed.nome} ⛧</div>
+    <div style="font-family:'IM Fell English',serif;font-style:italic;color:var(--white-ash);font-size:13px;margin-bottom:18px;text-align:center;max-width:520px">ELE oferece apenas um segredo por vez. Escolha qual ritual o Outro Lado revela a você agora — esta escolha desbloqueará o ritual permanentemente.</div>
+    <div style="display:flex;flex-direction:column;gap:8px;width:min(560px,92%);max-height:48vh;overflow-y:auto;padding-right:4px">
+      ${candidatos.map(r => `
+        <div onclick="transEscolherRitual('${r.nome.replace(/'/g, "\\'")}')" style="background:rgba(10,0,8,0.96);border:1px solid ${ed.cor}55;padding:10px 14px;text-align:left;cursor:pointer;transition:all .2s" onmouseover="this.style.borderColor='${ed.corGlow}';this.style.transform='translateX(3px)'" onmouseout="this.style.borderColor='${ed.cor}55';this.style.transform=''">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:baseline">
+            <span style="font-family:'Cinzel',serif;font-size:12px;color:${ed.cor};letter-spacing:.05em">${r.nome}</span>
+            <span style="font-size:9px;color:var(--white-dust);font-family:'Courier Prime',monospace;flex-shrink:0;white-space:nowrap">${r.circ===0?'Manif.':r.circ+'º círculo'} · ${r.pe} PE</span>
+          </div>
+          <div style="font-size:11px;color:var(--white-ash);margin-top:3px;line-height:1.4">${r.efeito}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+function transEscolherElem(elemId) {
+  const ed = TRANSCENDENCIA_ELEMENTOS[elemId];
+  if (!ed) return;
+  _transNarrando = false;
+  if (_transNarrarTimer) clearTimeout(_transNarrarTimer);
+
+  const esc = document.getElementById('_trans_escolha');
+  if (esc) { esc.style.opacity = '0'; esc.style.pointerEvents = 'none'; }
+
+  const bg = document.getElementById('_trans_bg');
+  if (bg) bg.style.background = ed.corFundo;
+
+  const sym = document.getElementById('_trans_sym');
+  const symInner = document.getElementById('_trans_sym_inner');
+  if (sym) { sym.style.opacity = '0.95'; sym.style.width = '340px'; sym.style.height = '340px'; }
+  if (symInner) { symInner.className = 'sym-el ' + ed.simbolo; symInner.style.width = '300px'; symInner.style.height = '300px'; symInner.style.filter = `drop-shadow(0 0 80px ${ed.corGlow}) drop-shadow(0 0 30px ${ed.corGlow})`; }
+
+  setTimeout(() => {
+    _transNarrando = true;
+    _transNarrar(ed.textos, ed.corGlow, () => {
+      _transFinalizarElem(elemId);
+    });
+  }, 600);
+}
+
+function _transFinalizarElem(elemId) {
+  const c = userChar(currentUser);
+  const ed = TRANSCENDENCIA_ELEMENTOS[elemId];
+  if (!c.rituaisAprendidos) c.rituaisAprendidos = {};
+  if (ed.ritual_gratis) c.rituaisAprendidos[ed.ritual_gratis] = true;
+  c.transcendencia = { elemento: elemId, nome: ed.nome, dataHora: new Date().toISOString(), ritual_gratis: ed.ritual_gratis };
+  saveDB();
+
+  _transParãrAudio();
+  const ov = document.getElementById('_trans_overlay');
+  if (ov) { ov.style.opacity = '0'; ov.style.transition = 'opacity 1.5s'; }
+  _transNarrando = false;
+  setTimeout(() => {
+    if (ov) ov.remove();
+    toast(`⛧ Transcendência — ${ed.nome}${ed.ritual_gratis ? ' · ✦ ' + ed.ritual_gratis + ' concedido!' : ''}`, ed.cor);
+    renderTranscendenciaPanel();
+    if (typeof renderRituaisTab === 'function') renderRituaisTab();
+  }, 1600);
+}
+
+// ── Escolher e desbloquear um ritual (Transcendência, 2ª vez em diante) ──
+function transEscolherRitual(nome) {
+  const c = userChar(currentUser);
+  if (!c.transcendencia) return;
+  const ed = TRANSCENDENCIA_ELEMENTOS[c.transcendencia.elemento];
+  const r = RITUAIS_DB.find(x => x.nome === nome);
+  if (!ed || !r) return;
+  _transNarrando = false;
+  if (_transNarrarTimer) clearTimeout(_transNarrarTimer);
+
+  const esc = document.getElementById('_trans_escolha');
+  if (esc) { esc.style.opacity = '0'; esc.style.pointerEvents = 'none'; }
+
+  const sym = document.getElementById('_trans_sym');
+  const symInner = document.getElementById('_trans_sym_inner');
+  if (sym) { sym.style.opacity = '0.95'; sym.style.width = '340px'; sym.style.height = '340px'; }
+  if (symInner) { symInner.className = 'sym-el ' + ed.simbolo; symInner.style.width = '300px'; symInner.style.height = '300px'; symInner.style.filter = `drop-shadow(0 0 80px ${ed.corGlow}) drop-shadow(0 0 30px ${ed.corGlow})`; }
+
+  setTimeout(() => {
+    _transNarrando = true;
+    _transNarrar(['ELE concede um novo segredo...', r.nome.toUpperCase(), 'A membrana se abre só um pouco mais.'], ed.corGlow, () => {
+      _transFinalizarRitual(r.nome, ed);
+    });
+  }, 600);
+}
+
+function _transFinalizarRitual(nome, ed) {
+  const c = userChar(currentUser);
+  if (!c.rituaisAprendidos) c.rituaisAprendidos = {};
+  c.rituaisAprendidos[nome] = true;
+  if (!c.transcendenciaHistorico) c.transcendenciaHistorico = [];
+  c.transcendenciaHistorico.push({ ritual: nome, ts: new Date().toISOString() });
+  // Consome a liberação do Mestre — cada nova rodada de Transcendência exige nova autorização
+  if (db.mestre && db.mestre.transLiberada) db.mestre.transLiberada[currentUser] = false;
+  saveDB();
+
+  _transParãrAudio();
+  const ov = document.getElementById('_trans_overlay');
+  if (ov) { ov.style.opacity = '0'; ov.style.transition = 'opacity 1.5s'; }
+  _transNarrando = false;
+  setTimeout(() => {
+    if (ov) ov.remove();
+    toast(`⛧ Transcendência — Ritual desbloqueado: ${nome}!`, ed.cor);
+    renderTranscendenciaPanel();
+    if (typeof renderRituaisTab === 'function') renderRituaisTab();
+  }, 1600);
+}
+
+function transFecharOverlay() {
+  _transNarrando = false;
+  _transParãrAudio();
+  const ov = document.getElementById('_trans_overlay');
+  if (ov) { ov.style.opacity = '0'; setTimeout(() => ov.remove(), 1000); }
+}
+
+// ── Partículas ──
+function _transPartículas(cor) {
+  const canvas = document.getElementById('_trans_canvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const c = cor || '#cc1111';
+  const pts = Array.from({length:55},()=>({
+    x:Math.random()*canvas.width, y:Math.random()*canvas.height+canvas.height*0.3,
+    vx:(Math.random()-.5)*.7, vy:-(Math.random()*1+.2),
+    r:Math.random()*2.5+.5, a:Math.random()*.5+.1, fd:Math.random()*.006+.002
+  }));
+  let running = true;
+  function draw(){
+    if(!running||!document.getElementById('_trans_canvas'))return;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    pts.forEach(p=>{
+      ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fillStyle=c+Math.floor(p.a*255).toString(16).padStart(2,'0');
+      ctx.fill();
+      p.x+=p.vx;p.y+=p.vy;p.a-=p.fd;
+      if(p.a<=0||p.y<-10){p.x=Math.random()*canvas.width;p.y=canvas.height+5;p.a=Math.random()*.5+.15;p.vx=(Math.random()-.5)*.7;p.vy=-(Math.random()*1+.2);}
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+  const obs=new MutationObserver(()=>{if(!document.getElementById('_trans_canvas')){running=false;obs.disconnect();}});
+  obs.observe(document.body,{childList:true,subtree:true});
+}
+
+// ── Áudio ──
+function _transIniciarAudio() {
+  try {
+    _transCtxAudio = new (window.AudioContext||window.webkitAudioContext)();
+    const ctx = _transCtxAudio;
+    const buf = ctx.createBuffer(2,ctx.sampleRate*3,ctx.sampleRate);
+    for(let ch=0;ch<2;ch++){const d=buf.getChannelData(ch);for(let i=0;i<d.length;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/d.length,2);}
+    const conv=ctx.createConvolver(); conv.buffer=buf;
+    const revG=ctx.createGain(); revG.gain.value=0.3;
+    conv.connect(revG); revG.connect(ctx.destination);
+
+    [[55,.06],[82.4,.04],[110,.025]].forEach(([f,v])=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='sine';o.frequency.value=f;
+      g.gain.setValueAtTime(0,ctx.currentTime);g.gain.linearRampToValueAtTime(v,ctx.currentTime+3);
+      o.connect(g);g.connect(ctx.destination);g.connect(conv);o.start();
+    });
+    const notas=[220,196,174.6,185,220,164.8,196,174.6];
+    let t=ctx.currentTime+2.5;
+    notas.forEach(f=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='triangle';o.frequency.value=f;
+      g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(0.055,t+.3);g.gain.linearRampToValueAtTime(0,t+1.6);
+      o.connect(g);g.connect(conv);g.connect(ctx.destination);o.start(t);o.stop(t+2);t+=2.3;
+    });
+  } catch(e){}
+}
+
+function _transParãrAudio() {
+  if(_transCtxAudio){try{_transCtxAudio.close();}catch(e){}_transCtxAudio=null;}
+}
+
+// ── Ritual de Afinidade (1× por sessão) ──
+function usarRitualDeAfinidade() {
+  const c = userChar(currentUser);
+  if (!c.transcendencia||!c.transcendencia.ritual_gratis){toast('⚠ Nenhum ritual de afinidade disponível.','#cc4422');return;}
+  const key = `_afinidade_${currentUser}_${new Date().toDateString()}`;
+  if(localStorage.getItem(key)){toast('⚠ Ritual de afinidade já usado hoje.','#cc6633');return;}
+  const nomeRitual = c.transcendencia.ritual_gratis;
+  localStorage.setItem(key,'1');
+  const ed = TRANSCENDENCIA_ELEMENTOS[c.transcendencia.elemento];
+  toast(`⛧ ${nomeRitual} — Afinidade ativada sem custo! (1× por sessão)`, ed?ed.cor:'#c49a00');
+  db.rolls.unshift({user:currentUser,type:'ritual',detail:`${nomeRitual} (AFINIDADE — 0 PE)`,ts:Date.now()});
+  saveDB();
+  if(typeof renderLog==='function')renderLog();
+}
+
+// ── Garante que o painel renderize junto com renderRituaisTab ──
+(function(){
+  const _orig = renderRituaisTab;
+  window.renderRituaisTab = function(){
+    _orig.apply(this, arguments);
+    renderTranscendenciaPanel();
+  };
+})();
+
