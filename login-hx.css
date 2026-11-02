@@ -1,0 +1,261 @@
+/* ═══════════════════════════════════════════════════════════
+   LOGIN v3 — Ordem Paranormal.
+   Terminal da Ordo Realitas: círculo ritual atrás da lua, dossiê com
+   foto de identificação, os cinco elementos, ruído de "Outro Lado".
+   Mantém a lua de sangue; só sobrescreve hexatombe.css.
+   ═══════════════════════════════════════════════════════════ */
+#screen-login{
+  --op-sangue:#e0303a;--op-morte:#c4cad6;--op-conh:#e8b93a;--op-energia:#b95cf0;--op-medo:#f3efe6;
+  --op-red:#d1202a;--op-ink:#080505;
+  overflow:hidden;position:relative;isolation:isolate;
+}
+.hx-scene::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 90% 80% at 40% 45%,transparent 35%,rgba(3,2,2,.85) 100%)}
+
+/* ── camadas de ruído / CRT ── */
+.lg-fx{position:absolute;inset:0;z-index:4;pointer-events:none;overflow:hidden}
+.lg-fx::before{content:'';position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 3px);opacity:.5}
+/* brasas */
+.lg-embers{position:absolute;inset:0;z-index:0;pointer-events:none;overflow:hidden}
+.lg-embers i{position:absolute;bottom:-12px;width:var(--s);height:var(--s);border-radius:50%;background:#ff4a3a;will-change:transform,opacity;opacity:0;animation:lg-rise var(--d) var(--w) linear infinite}
+@keyframes lg-rise{0%{opacity:0;transform:translate(0,0)}10%{opacity:.9}70%{opacity:.5}100%{opacity:0;transform:translate(var(--x),-95vh)}}
+
+/* ── herói ── */
+.hx-hero{z-index:1;bottom:clamp(3.4rem,8vh,5rem)}
+.hx-hero h1{position:relative;font-size:clamp(3rem,6.6vw,6rem);text-transform:uppercase;letter-spacing:.02em;line-height:.88;color:var(--op-medo);
+  text-shadow:4px 4px 0 #5a0d12,0 0 46px rgba(209,32,42,.35)}
+.hx-hero p{border-left:2px solid var(--op-red);padding-left:14px;margin-top:1rem;color:var(--white-ash)}
+
+.lg-hud-l{color:#ff5a64;text-shadow:0 0 8px rgba(209,32,42,.5);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-caret{display:inline-block;width:.55em;height:.9em;vertical-align:-2px;margin-left:3px;flex:none;background:var(--op-red);animation:lg-blink 1s steps(2) infinite}
+@keyframes lg-blink{50%{opacity:0}}
+
+/* HUD inferior */
+.lg-hud{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:12px;padding:.55rem clamp(1rem,3vw,2.4rem);
+  font-family:'Special Elite',monospace;font-size:.6rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(231,220,194,.45);
+  border-top:1px solid rgba(231,220,194,.1);background:linear-gradient(0deg,rgba(5,3,2,.85),transparent)}
+.lg-bars{display:inline-flex;align-items:flex-end;gap:2px;height:10px;margin-left:8px;vertical-align:-1px}
+.lg-bars b{width:3px;background:var(--op-red);}
+.lg-bars b:nth-child(1){height:30%}.lg-bars b:nth-child(2){height:55%;animation-delay:.3s}.lg-bars b:nth-child(3){height:80%;animation-delay:.6s}.lg-bars b:nth-child(4){height:100%;animation-delay:.9s}
+@keyframes lg-bar{0%,100%{opacity:1}50%{opacity:.25}}
+
+/* ── cartão: dossiê do agente ── */
+.login-box{
+  backdrop-filter:none;-webkit-backdrop-filter:none;
+  position:relative;z-index:2;width:min(440px,100%);max-width:440px;padding:1.5rem 2rem 1.3rem 2.2rem;border:0;border-left:5px solid var(--op-red);
+  background:
+    linear-gradient(var(--op-medo),var(--op-medo)) left top/16px 1px no-repeat,linear-gradient(var(--op-medo),var(--op-medo)) left top/1px 16px no-repeat,
+    linear-gradient(var(--op-medo),var(--op-medo)) right top/16px 1px no-repeat,linear-gradient(var(--op-medo),var(--op-medo)) right top/1px 16px no-repeat,
+    linear-gradient(var(--op-medo),var(--op-medo)) left bottom/16px 1px no-repeat,linear-gradient(var(--op-medo),var(--op-medo)) left bottom/1px 16px no-repeat,
+    linear-gradient(var(--op-medo),var(--op-medo)) right bottom/16px 1px no-repeat,linear-gradient(var(--op-medo),var(--op-medo)) right bottom/1px 16px no-repeat,
+    radial-gradient(ellipse 80% 50% at 100% 0%,rgba(209,32,42,.16),transparent 70%),
+    repeating-linear-gradient(180deg,transparent 0 31px,rgba(231,220,194,.03) 31px 32px),
+    linear-gradient(170deg,rgba(18,10,9,.95),rgba(6,4,4,.97));
+  box-shadow:0 30px 70px rgba(0,0,0,.75),0 0 0 1px rgba(209,32,42,.18),inset 0 0 70px rgba(125,16,22,.25);
+}
+.login-box::before{content:'';position:absolute;top:-1px;left:-5px;width:5px;height:72px;background:#ff3a44;clip-path:none;box-shadow:0 0 16px rgba(255,58,68,.85)}
+.lg-stamp{position:absolute;top:-16px;right:-14px;z-index:3;rotate:7deg;padding:.18rem .7rem .12rem;border:3px solid rgba(224,48,58,.9);color:rgba(224,48,58,.95);background:rgba(8,5,5,.55);
+  font-family:'Special Elite',monospace;font-size:.8rem;letter-spacing:.3em;text-transform:uppercase;filter:url(#hx-rough-fino);pointer-events:none;
+  animation:lg-stamp .5s 1.4s cubic-bezier(.2,.9,.3,1.4) both}
+@keyframes lg-stamp{from{opacity:0;scale:2.2;rotate:-4deg}}
+.lg-seal{position:absolute;right:-30px;bottom:-34px;width:230px;height:230px;color:var(--op-red);opacity:.06;pointer-events:none;top:auto}
+@keyframes lg-spin{to{rotate:360deg}}
+.lg-file{display:flex;justify-content:space-between;font-family:'Special Elite',monospace;font-size:.62rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(231,220,194,.55);
+  padding-bottom:.6rem;border-bottom:1px dashed rgba(231,220,194,.2);margin-bottom:1rem}
+.lg-file b{color:#ff4a54;font-weight:400}
+
+.lg-id{display:flex;gap:16px;align-items:flex-start}
+.lg-photo{--tint:rgba(231,220,194,.28);position:relative;flex:none;width:76px;height:94px;overflow:hidden;color:var(--tint);
+  background:linear-gradient(180deg,#14100d,#0a0706);border:1px solid rgba(231,220,194,.3);
+  box-shadow:inset 0 0 18px rgba(0,0,0,.9);transition:color .3s,border-color .3s,box-shadow .3s}
+.lg-photo::before,.lg-photo::after{content:'';position:absolute;width:9px;height:9px;border:solid var(--op-red);z-index:2}
+.lg-photo::before{left:2px;top:2px;border-width:1px 0 0 1px}.lg-photo::after{right:2px;bottom:2px;border-width:0 1px 1px 0}
+.lg-photo svg{position:absolute;left:8px;right:8px;bottom:-4px;width:calc(100% - 16px);height:auto}
+.lg-photo em{position:absolute;inset:0;display:grid;place-items:center;font:normal 2rem 'Special Elite',monospace;color:rgba(224,48,58,.65);text-shadow:0 0 12px rgba(224,48,58,.7);transition:opacity .3s}
+.lg-scan{position:absolute;left:0;right:0;top:0;height:18px;z-index:1;background:linear-gradient(180deg,transparent,rgba(224,48,58,.55));border-bottom:1px solid #ff4a54;animation:lg-scan 2.6s ease-in-out infinite}
+@keyframes lg-scan{0%{transform:translateY(-18px)}100%{transform:translateY(94px)}}
+.lg-photo.on{--tint:rgba(224,48,58,.75);border-color:var(--op-red);box-shadow:inset 0 0 18px rgba(0,0,0,.9),0 0 18px rgba(209,32,42,.45)}
+.lg-photo.on em{opacity:0}.lg-photo.on .lg-scan{animation-duration:1.1s}
+.lg-idtxt{min-width:0;flex:1;padding-right:6px}
+.login-title{font-size:1.85rem;line-height:1.02;margin:.1rem 0 .35rem;padding-right:0;color:var(--op-medo);text-shadow:2px 2px 0 #5a0d12}
+.login-sub{font-family:'Special Elite',monospace;font-style:normal;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:rgba(231,220,194,.7);margin-bottom:0}
+.login-sub::after{content:'';display:block;width:48px;height:2px;margin-top:.6rem;background:var(--op-red)}
+.lg-meta{display:grid;grid-template-columns:1.6fr .7fr .9fr;margin:1rem 0 1.2rem;border:1px solid rgba(231,220,194,.14);background:rgba(231,220,194,.025)}
+.lg-meta>div{padding:5px 9px 6px;min-width:0}.lg-meta>div+div{border-left:1px solid rgba(231,220,194,.14)}
+.lg-meta small{display:block;font-family:'Special Elite',monospace;font-size:.5rem;letter-spacing:.24em;text-transform:uppercase;color:rgba(231,220,194,.42)}
+.lg-meta b{display:block;font-family:'Courier Prime',monospace;font-size:.76rem;font-weight:400;letter-spacing:.06em;text-transform:uppercase;color:var(--op-medo);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lg-meta #lg-who{color:rgba(231,220,194,.5)}.lg-meta #lg-who.set{color:#ff6a72}
+.lg-meta .lg-sig{color:var(--op-conh)}
+
+/* campos */
+.login-box .form-field{position:relative;margin-bottom:1.05rem;counter-increment:lgf}
+.login-box #login-form,.login-box #register-form{counter-reset:lgf}
+.login-box .form-field label{display:block;margin-bottom:2px;font-family:'Special Elite',monospace;font-size:.64rem;letter-spacing:.2em;text-transform:uppercase;color:rgba(231,220,194,.7)}
+.login-box .form-field label::before{content:'0' counter(lgf) ' // ';color:var(--op-red)}
+.login-box .form-field input{background:rgba(231,220,194,.025);border:0;border-bottom:1px solid rgba(231,220,194,.28);border-left:2px solid transparent;border-radius:0;padding:9px 8px;font-family:'Courier Prime',monospace;font-size:1rem;color:var(--op-medo);
+  transition:border-color .2s,box-shadow .2s,background .2s;width:100%}
+.login-box .form-field input::placeholder{color:rgba(231,220,194,.24)}
+.login-box .form-field input:focus{background:rgba(209,32,42,.07);outline:none;border-bottom-color:#ff4a54;border-left-color:var(--op-red);box-shadow:0 8px 14px -10px rgba(224,48,58,.9)}
+.lg-eye{position:absolute;right:2px;bottom:7px;background:none;border:1px solid rgba(231,220,194,.22);color:rgba(231,220,194,.55);font:.58rem 'Special Elite',monospace;letter-spacing:.18em;text-transform:uppercase;padding:2px 6px;cursor:var(--cur-pointer,pointer);transition:color .2s,border-color .2s}
+.lg-eye:hover,.lg-eye.on{color:#ff6a72;border-color:var(--op-red)}
+.login-box #li-pass,.login-box #rg-pass{padding-right:52px}
+
+/* botão: pincelada de sangue */
+.login-box .btn-ritual{position:relative;isolation:isolate;width:100%;margin-top:.5rem;padding:13px 10px;border:0;background:none;color:var(--op-medo);
+  font-family:'IM Fell English SC',serif;font-size:1.1rem;letter-spacing:.1em;text-shadow:1px 1px 0 #000;transition:translate .15s,color .2s;cursor:var(--cur-pointer,pointer)}
+.login-box .btn-ritual::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(100deg,#b3202a,#8a141c 55%,#4d0e13);filter:url(#hx-rough);transition:background .2s}
+.login-box .btn-ritual::after{content:'';position:absolute;inset:0;z-index:-2;transform:translate(4px,4px);background:#0b0504;filter:url(#hx-rough);display:block;opacity:1;animation:none}
+.login-box .btn-ritual:hover{background:none;color:#fff;translate:-1px -1px;border:0}
+.login-box .btn-ritual:hover::before{background:linear-gradient(100deg,#e0303a,#b3202a 55%,#6d1018)}
+.login-box .btn-ritual:hover span{animation:lg-jit .25s steps(2) 2}
+@keyframes lg-jit{50%{translate:1px -1px;text-shadow:-2px 0 #b95cf0,2px 0 #e0303a}}
+.login-box .btn-ritual:active{translate:3px 3px}
+.login-box .btn-ritual:focus-visible,.lg-eye:focus-visible,.login-toggle a:focus-visible{outline:2px solid var(--op-conh);outline-offset:3px}
+
+.login-err{min-height:1.2rem;font-family:'Special Elite',monospace;font-size:.78rem;margin-top:.7rem;color:#ff5a64}
+.login-err:not(:empty)::before{content:'⚠ ACESSO NEGADO // ';color:var(--op-conh);letter-spacing:.06em}
+.login-toggle{font-family:'Special Elite',monospace;font-size:.78rem;margin-top:.9rem;color:rgba(231,220,194,.7)}
+.login-toggle a{cursor:var(--cur-pointer,pointer);color:#ff6a72;text-decoration-color:rgba(255,106,114,.5)}
+.lg-tourwrap{text-align:left;margin-top:.5rem}
+.lg-tour{font-family:'Special Elite',monospace;font-size:.68rem;letter-spacing:.06em;color:var(--op-conh);opacity:.6;cursor:var(--cur-pointer,pointer);text-decoration:underline;text-decoration-style:dotted}
+.lg-tour:hover{opacity:1}
+.login-box.lg-deny{animation:lg-deny .45s}
+@keyframes lg-deny{15%{translate:-9px 0;box-shadow:0 0 0 1px #ff3a44,0 0 40px rgba(255,58,68,.5),inset 0 0 70px rgba(255,58,68,.35)}35%{translate:7px 0}55%{translate:-5px 0}75%{translate:3px 0}}
+
+/* mestre: secundário, discreto — ouro */
+.lg-mestre{margin-top:1.2rem}
+.lg-or{display:flex;align-items:center;gap:10px;font-family:'Special Elite',monospace;font-size:.62rem;letter-spacing:.22em;text-transform:uppercase;color:rgba(231,220,194,.45);margin-bottom:.7rem}
+.lg-or::before,.lg-or::after{content:'';flex:1;height:1px;background:rgba(231,220,194,.16)}
+.login-box .lg-btn-mestre{font-size:.85rem;padding:9px;margin-top:0;color:#d8a050}
+.login-box .lg-btn-mestre::before{background:rgba(216,160,80,.08);box-shadow:inset 0 0 0 1px rgba(216,160,80,.5);filter:none}
+.login-box .lg-btn-mestre::after{display:none}
+.login-box .lg-btn-mestre:hover{color:#f0c878}
+.login-box .lg-btn-mestre:hover::before{background:rgba(216,160,80,.16)}
+
+/* rodapé do dossiê */
+.lg-foot{margin-top:1.1rem;padding-top:.8rem;border-top:1px dashed rgba(231,220,194,.18)}
+.lg-bar{height:20px;opacity:.4;background:repeating-linear-gradient(90deg,var(--op-medo) 0 2px,transparent 2px 4px,var(--op-medo) 4px 5px,transparent 5px 9px,var(--op-medo) 9px 12px,transparent 12px 14px,var(--op-medo) 14px 15px,transparent 15px 17px)}
+.lg-foot p{margin:.55rem 0 0;font-family:'Special Elite',monospace;font-size:.56rem;letter-spacing:.1em;line-height:1.5;text-transform:uppercase;color:rgba(231,220,194,.36)}
+
+@media (max-width:900px){
+  .login-box{padding:1.4rem 1.3rem 1.2rem 1.5rem;margin:0;max-width:none}
+  .lg-stamp{right:6px;top:-14px;font-size:.7rem}
+  .lg-seal{width:170px;height:170px}
+  .login-title{font-size:1.55rem}
+  .hx-hero{margin:44vh 0 1.4rem}
+  .hx-hero h1{font-size:clamp(2.6rem,13vw,4rem)}
+  #screen-login{padding-bottom:3.6rem}
+  .lg-hud{font-size:.52rem;letter-spacing:.14em}
+  .lg-hud-mid{display:none}
+  }
+@media (prefers-reduced-motion:reduce){.lg-embers i,.lg-scan,.lg-caret,.lg-stamp,.login-box.lg-deny{animation:none}}
+
+/* ═══════════ ACESSO DE MESTRE — "câmara do Mestre" (ouro antigo) ═══════════ */
+.mm{position:fixed;inset:0;z-index:500;align-items:center;justify-content:center;padding:16px;
+  background:radial-gradient(ellipse 60% 55% at 50% 50%,rgba(60,38,10,.55),rgba(3,2,1,.94) 75%);backdrop-filter:blur(4px);animation:mm-in .3s ease both}
+@keyframes mm-in{from{opacity:0}}
+.mm-card{--g:#d8a050;--g2:#8a5a22;position:relative;width:min(380px,100%);padding:2rem 2.1rem 1.8rem;text-align:left;
+  border-left:4px solid var(--g2);
+  background:
+    linear-gradient(var(--g),var(--g)) left top/14px 1px no-repeat,linear-gradient(var(--g),var(--g)) left top/1px 14px no-repeat,
+    linear-gradient(var(--g),var(--g)) right top/14px 1px no-repeat,linear-gradient(var(--g),var(--g)) right top/1px 14px no-repeat,
+    linear-gradient(var(--g),var(--g)) left bottom/14px 1px no-repeat,linear-gradient(var(--g),var(--g)) left bottom/1px 14px no-repeat,
+    linear-gradient(var(--g),var(--g)) right bottom/14px 1px no-repeat,linear-gradient(var(--g),var(--g)) right bottom/1px 14px no-repeat,
+    radial-gradient(ellipse 90% 60% at 80% 0%,rgba(216,160,80,.12),transparent 70%),linear-gradient(170deg,#1f160c,#0d0905);
+  box-shadow:0 30px 80px rgba(0,0,0,.8),inset 0 0 60px rgba(138,90,34,.12);animation:mm-up .45s cubic-bezier(.2,.8,.2,1) both}
+@keyframes mm-up{from{opacity:0;transform:translateY(16px) scale(.98)}}
+.mm-card.shake{animation:mm-shake .4s}
+@keyframes mm-shake{20%{transform:translateX(-7px)}40%{transform:translateX(6px)}60%{transform:translateX(-4px)}80%{transform:translateX(3px)}}
+.mm-x{position:absolute;top:8px;right:12px;background:none;border:0;color:#7a6c55;font-size:1.5rem;line-height:1;cursor:var(--cur-pointer,pointer);transition:color .2s}
+.mm-x:hover{color:var(--g)}
+.mm-sigil{position:absolute;right:22px;top:26px;width:62px;height:62px;color:var(--g2);opacity:.75;animation:lg-spin 80s linear infinite;pointer-events:none}
+.mm-sigil *{fill:none;stroke:currentColor;stroke-width:1.6;stroke-linejoin:round}.mm-sigil .f{fill:currentColor;stroke:none}
+.mm-kick{font-family:'Special Elite',monospace;font-size:.64rem;letter-spacing:.3em;text-transform:uppercase;color:var(--g);display:flex;align-items:center;gap:10px}
+.mm-kick::before{content:'';width:26px;height:2px;background:var(--g2)}
+.mm-card h2{font-family:'IM Fell English SC',serif;font-weight:400;font-size:2rem;line-height:1.05;margin:.7rem 0 .3rem;color:#eadfc6;text-shadow:2px 2px 0 #4a3010;padding-right:70px}
+.mm-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:.95rem;color:#a89878;margin:0 0 1.4rem}
+.mm-field{margin-bottom:1.1rem}
+.mm-field label{display:block;font-family:'Special Elite',monospace;font-size:.64rem;letter-spacing:.2em;text-transform:uppercase;color:var(--g);margin-bottom:2px}
+.mm-field input{width:100%;background:transparent;border:0;border-bottom:1px solid rgba(216,160,80,.3);padding:8px 2px;color:#eadfc6;
+  font-family:'Courier Prime',monospace;font-size:1rem;outline:none;transition:border-color .2s,box-shadow .2s}
+.mm-field input::placeholder{color:rgba(231,220,194,.22)}
+.mm-field input:focus{border-bottom-color:var(--g);box-shadow:0 8px 14px -10px rgba(216,160,80,.8)}
+.mm-err{min-height:1.1rem;margin-bottom:.7rem;font-family:'Special Elite',monospace;font-size:.76rem;color:#e0705a}
+.mm-go{position:relative;isolation:isolate;width:100%;padding:13px 10px;border:0;background:none;cursor:var(--cur-pointer,pointer);color:#1a0f05;
+  font-family:'IM Fell English SC',serif;font-size:1.05rem;letter-spacing:.1em;transition:translate .15s}
+.mm-go::before{content:'';position:absolute;inset:0;z-index:-1;background:linear-gradient(100deg,#e8b868,#d8a050 55%,#a8742f);filter:url(#hx-rough)}
+.mm-go::after{content:'';position:absolute;inset:0;z-index:-2;transform:translate(4px,4px);background:#0b0704;filter:url(#hx-rough)}
+.mm-go:hover{translate:-1px -1px}.mm-go:active{translate:3px 3px}
+@media (prefers-reduced-motion:reduce){.mm,.mm-card,.mm-sigil{animation:none}}
+
+/* ═══════════════════════════════════════════════════════════
+   v26 — login CLEAN.
+   Tira o ruído (CRT, brasas, HUD, carimbo, selo, foto, células,
+   código de barras) e deixa: lua + título à esquerda, um cartão
+   simples à direita, um botão sólido. Os elementos continuam no HTML
+   (o login-hx.js ainda os atualiza) — só ficam escondidos.
+   ═══════════════════════════════════════════════════════════ */
+.lg-fx::before,.lg-embers,.lg-hud,.lg-stamp,.lg-seal,.lg-file,.lg-photo,.lg-meta,.lg-foot{display:none !important}
+
+/* herói: só tipografia */
+.hx-hero h1{letter-spacing:.03em;text-shadow:0 4px 44px rgba(0,0,0,.6)}
+.hx-hero p{border-left:0;padding-left:0;opacity:.85}
+
+/* cartão: painel de vidro, linha fina, um fio vermelho no topo */
+.login-box{width:min(380px,100%);max-width:380px;padding:2.2rem 2.2rem 1.8rem;border:1px solid rgba(231,220,194,.1);border-radius:2px;
+  background:linear-gradient(180deg,rgba(24,14,10,.8),rgba(10,6,5,.88));
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 30px 80px rgba(0,0,0,.55)}
+.login-box::before{content:'';position:absolute;top:-1px;left:0;right:0;width:auto;height:2px;transform:none;clip-path:none;border-radius:0;
+  background:linear-gradient(90deg,var(--op-red),rgba(209,32,42,0) 75%);box-shadow:none}
+
+/* título */
+.lg-id{display:block}
+.login-title{font-size:1.7rem;line-height:1.1;margin:0 0 .35rem;text-shadow:none;color:var(--hx-osso)}
+.login-sub{font-family:'IM Fell English',serif;font-style:italic;font-size:.95rem;letter-spacing:.01em;text-transform:none;color:rgba(231,220,194,.6);margin:0 0 1.7rem}
+.login-sub::after{display:none}
+
+/* campos: rótulo pequeno, linha embaixo, fio vermelho que corre no foco */
+.login-box .form-field{margin-bottom:1.15rem}
+.login-box .form-field label{margin-bottom:3px;font-size:.62rem;letter-spacing:.18em;color:rgba(231,220,194,.55)}
+.login-box .form-field label::before{content:none}
+.login-box .form-field input{padding:10px 10px;border-left:0;border-bottom:1px solid rgba(231,220,194,.2);background:rgba(231,220,194,.04)}
+.login-box .form-field input:focus{border-left-color:transparent;border-bottom-color:rgba(231,220,194,.2);background:rgba(231,220,194,.07);box-shadow:none}
+.login-box .form-field::after{content:'';position:absolute;left:0;right:0;bottom:0;height:2px;background:var(--op-red);transform:scaleX(0);transform-origin:left;transition:transform .3s cubic-bezier(.2,.8,.2,1)}
+.login-box .form-field:focus-within::after{transform:scaleX(1)}
+.lg-eye{border:0;background:none;font-size:.6rem;letter-spacing:.16em;color:rgba(231,220,194,.5)}
+.lg-eye:hover,.lg-eye.on{color:var(--hx-osso);border:0}
+
+/* botão: sólido e liso */
+.login-box .btn-ritual{margin-top:.5rem;padding:12px 10px;border-radius:2px;background:var(--op-red);color:#fff;font-size:1rem;letter-spacing:.14em;text-shadow:none;
+  transition:background .2s,translate .15s,box-shadow .2s}
+.login-box .btn-ritual::before,.login-box .btn-ritual::after{display:none}
+.login-box .btn-ritual:hover{background:#e0303a;color:#fff;translate:0 -1px;box-shadow:0 10px 26px -10px rgba(224,48,58,.8)}
+.login-box .btn-ritual:active{translate:0 1px;box-shadow:none}
+.login-box .btn-ritual:hover span{animation:none}
+
+/* links e acesso de mestre: discretos */
+.login-toggle{text-align:center;margin-top:1.2rem;font-size:.8rem}
+.login-toggle a{text-decoration:none;border-bottom:1px solid rgba(255,106,114,.4)}
+.lg-tourwrap{text-align:center;margin-top:.4rem}
+.lg-tour{color:rgba(231,220,194,.4);text-decoration:none}
+.lg-tour:hover{color:var(--hx-osso);opacity:1}
+.lg-mestre{margin-top:1.3rem}
+.login-box .btn-ritual.lg-btn-mestre{background:none;border:1px solid rgba(231,220,194,.2);color:rgba(231,220,194,.8);font-size:.85rem;padding:9px;box-shadow:none}
+.login-box .btn-ritual.lg-btn-mestre:hover{background:rgba(231,220,194,.06);border-color:rgba(231,220,194,.4);color:#fff;translate:0 0;box-shadow:none}
+.login-err:not(:empty)::before{content:none}
+
+@media (max-width:900px){.login-box{max-width:none;padding:1.8rem 1.5rem 1.5rem}.login-title{font-size:1.5rem}}
+
+/* movimento: o mesmo vocabulário da Ficha (névoa, subida em cascata), sem inclinar nada */
+@media (prefers-reduced-motion:no-preference){
+  .lg-fx::after{content:'';position:absolute;inset:-25%;
+    background:radial-gradient(ellipse 35% 28% at 25% 20%,rgba(231,220,194,.06),transparent 70%),radial-gradient(ellipse 30% 30% at 80% 45%,rgba(217,130,58,.09),transparent 70%),radial-gradient(ellipse 40% 25% at 50% 85%,rgba(125,26,20,.2),transparent 70%);
+    animation:hx-fog 38s ease-in-out infinite alternate}
+  .hx-hero h1{animation:hx-in-up .7s .2s cubic-bezier(.2,.9,.3,1.1) backwards}
+  .hx-hero p{animation:hx-in-up .6s .4s backwards}
+  .lg-id{animation:hx-in-up .5s .35s backwards}
+  #login-form>*,#register-form>*{animation:hx-in-up .45s backwards}
+  #login-form>*:nth-child(1),#register-form>*:nth-child(1){animation-delay:.12s}
+  #login-form>*:nth-child(2),#register-form>*:nth-child(2){animation-delay:.2s}
+  #login-form>*:nth-child(3),#register-form>*:nth-child(3){animation-delay:.28s}
+  #login-form>*:nth-child(n+4),#register-form>*:nth-child(n+4){animation-delay:.36s}
+}

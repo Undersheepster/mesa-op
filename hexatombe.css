@@ -1,0 +1,479 @@
+/* ═══════════════════════════════════════════════════════════
+   HEXATOMBE — camada visual
+   Terra queimada, osso, sangue seco e o brilho do sol do
+   amanhecer. Carregada depois de style.css: só sobrescreve.
+   Paleta
+     --hx-terra   #17100b  chão escuro (painéis)
+     --hx-poeira  #c9965a  areia ao sol (detalhes, ouro antigo)
+     --hx-osso    #e7dcc2  texto principal
+     --hx-seco    #7d1a14  sangue seco (bordas)
+     --hx-vivo    #d23a26  sangue vivo (estados ativos, perigo)
+     --hx-sol     #d9823a  brilho do amanhecer (uso raro)
+   Fontes
+     IM Fell English SC  títulos e abas (gravura antiga)
+     Special Elite       rótulos pequenos (carimbo de máquina)
+     Courier Prime       corpo e dados (já usada no app)
+   ═══════════════════════════════════════════════════════════ */
+
+:root{
+  --hx-terra:#17100b; --hx-terra-2:#1f150e; --hx-poeira:#c9965a; --hx-osso:#e7dcc2;
+  --hx-seco:#7d1a14; --hx-vivo:#d23a26; --hx-sol:#d9823a;
+
+  --bg-void:#120b07; --bg-deep:#17100b; --bg-dark:#1f150e; --bg-mid:#2b1a10; --bg-panel:#1a120d;
+  --crimson:#a3241a; --crimson-mid:#d23a26; --crimson-hot:#e5553d;
+  --blood:#7d1a14; --blood-deep:#4a120d; --maroon:#3a0f0b;
+  --white-dim:#f1e8d2; --white-bone:#e7dcc2; --white-ash:#bfae8e; --white-dust:#8f7f66;
+  --gold:#a8742f; --gold-light:#d8a050;
+  --border-blood:rgba(163,36,26,.5); --glow-red:rgba(217,130,58,.28);
+  --ink:#e7dcc2; --ink-soft:#c4b595; --ink-faint:#8f7f66; --paper:#1a120d;
+  --topbar-bg:rgba(18,11,7,.96);
+}
+
+/* ── Fundo: chão de poeira com o sol logo abaixo do horizonte ── */
+html{background:#120b07}
+body{
+  background-color:#120b07;
+  background-image:
+    radial-gradient(ellipse 120% 38% at 50% 118%,rgba(217,130,58,.32) 0%,rgba(163,36,26,.16) 45%,transparent 72%),
+    linear-gradient(180deg,#0f0906 0%,#1b110b 60%,#2a170d 100%),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' seed='11'/%3E%3CfeColorMatrix values='0 0 0 0 .8  0 0 0 0 .6  0 0 0 0 .35  0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)' opacity='.22'/%3E%3C/svg%3E");
+  background-attachment:fixed,fixed,scroll;
+  -webkit-text-stroke:0;
+}
+.top-seal{
+  height:3px;
+  background:linear-gradient(90deg,transparent 0%,var(--hx-seco) 14%,var(--hx-vivo) 38%,var(--hx-sol) 50%,var(--hx-vivo) 62%,var(--hx-seco) 86%,transparent 100%);
+  box-shadow:0 2px 14px rgba(217,130,58,.28);
+}
+
+/* ═════════ LOGIN ═════════ */
+#screen-login{
+  background:#0d0806;background-image:none;
+  flex-direction:row;justify-content:flex-end;align-items:center;
+  padding:3rem clamp(1rem,8vw,7rem);
+}
+#screen-login::before,#screen-login::after{display:none}
+.hx-scene{position:absolute;inset:0;z-index:0;pointer-events:none}
+.hx-scene svg{width:100%;height:100%;display:block}
+.hx-moongroup{transform:translateX(-240px)}
+.hx-ring .hx-st path,.hx-ring .hx-st circle{
+  stroke-dasharray:140;stroke-dashoffset:140;
+  animation:hx-burn 1.5s var(--d,1s) cubic-bezier(.4,.1,.2,1) forwards;
+}
+@keyframes hx-burn{to{stroke-dashoffset:0}}
+.hx-hero{position:absolute;left:clamp(1.2rem,6vw,6rem);bottom:clamp(2rem,9vh,6rem);z-index:1;max-width:min(34rem,46vw);text-align:left}
+.hx-hero h1{
+  font-family:'IM Fell English SC',serif;font-weight:400;
+  font-size:clamp(2.8rem,7.4vw,6.6rem);line-height:.92;letter-spacing:-.01em;
+  color:var(--hx-osso);margin:0 0 1rem;
+  text-shadow:0 2px 0 #4a120d,0 0 38px rgba(217,130,58,.28);
+}
+.hx-hero p{font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(1rem,1.5vw,1.25rem);line-height:1.5;color:var(--white-ash);max-width:26rem;margin:0}
+
+.login-box{
+  max-width:400px;background:rgba(18,11,7,.9);color:var(--hx-osso);
+  border:1px solid var(--hx-seco);border-radius:0;transform:none;
+  padding:2.4rem 2.2rem 2rem;text-align:left;
+  box-shadow:0 24px 60px rgba(0,0,0,.65),0 0 0 1px rgba(0,0,0,.6),inset 0 0 60px rgba(125,26,20,.18);
+  backdrop-filter:blur(3px);
+  animation:hx-card-in .9s .2s cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes hx-card-in{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.login-box::before{
+  /* corte de sangue no topo do cartão */
+  top:-1px;left:2.2rem;transform:none;width:44px;height:7px;border-radius:0;
+  background:var(--hx-vivo);box-shadow:none;animation:none;
+  clip-path:polygon(0 0,100% 0,96% 40%,82% 100%,70% 45%,52% 75%,34% 30%,14% 90%,6% 40%);
+}
+.login-box::after{display:none}
+.login-title{font-family:'IM Fell English SC',serif;font-size:1.9rem;letter-spacing:.01em;color:var(--hx-osso);text-align:left;margin:.6rem 0 .3rem}
+.login-sub{text-align:left;color:var(--white-ash);margin-bottom:1.6rem}
+.form-field label,.field label{color:var(--hx-poeira);font-family:'Special Elite',monospace;text-transform:none;letter-spacing:.04em;font-size:.8rem}
+.form-field input{background:rgba(231,220,194,.06);border-bottom:2px solid var(--hx-seco);color:var(--hx-osso)}
+.form-field input:focus{border-color:var(--hx-sol);background:rgba(231,220,194,.1)}
+.btn-ritual{
+  font-family:'IM Fell English SC',serif;font-size:1rem;letter-spacing:.06em;text-transform:none;
+  color:var(--hx-osso);background:var(--hx-seco);border:1px solid var(--hx-vivo);
+}
+.btn-ritual:hover{background:var(--hx-vivo);color:#fff;border-color:var(--hx-sol)}
+.login-toggle{text-align:left;color:var(--white-ash)}
+.login-toggle a{color:var(--hx-sol);text-decoration-color:rgba(217,130,58,.5)}
+.login-err{text-align:left;color:var(--hx-vivo)}
+
+/* ═════════ BARRA SUPERIOR / ABAS ═════════ */
+.topbar{border-bottom:1px solid var(--hx-seco);box-shadow:0 6px 24px rgba(0,0,0,.5)}
+.topbar-logo{font-family:'IM Fell English SC',serif;font-size:15px;color:var(--hx-osso);border-right:1px solid var(--blood-deep);letter-spacing:.02em}
+.topbar-logo span{font-family:'Special Elite',monospace;font-size:10px;letter-spacing:.04em;color:var(--hx-poeira)}
+.tab-btn{
+  font-family:'IM Fell English SC',serif;font-size:14px;letter-spacing:.03em;text-transform:none;
+  color:var(--white-dust);border-right:1px solid rgba(125,26,20,.35);
+}
+.tab-btn:hover{color:var(--hx-osso);background:rgba(217,130,58,.07)}
+.tab-btn.active{color:var(--hx-osso);background:linear-gradient(180deg,rgba(163,36,26,.22),rgba(163,36,26,.04))}
+.tab-btn.active::after{
+  /* estigma: corte aberto com gota, no lugar do sublinhado */
+  left:50%;right:auto;bottom:-1px;width:30px;height:9px;transform:translateX(-50%);
+  background:var(--hx-vivo);
+  clip-path:polygon(0 0,100% 0,88% 28%,78% 100%,64% 34%,50% 70%,36% 30%,18% 82%,10% 28%);
+}
+.tab-btn.mestre-only{border-left:2px solid var(--hx-poeira);color:var(--hx-poeira)}
+.tab-btn.mestre-only.active{color:var(--hx-sol)}
+.topbar-user{border-left:1px solid var(--blood-deep)}
+.topbar-user button{font-family:'Special Elite',monospace;letter-spacing:.02em;border-color:rgba(125,26,20,.7)}
+.topbar-user button:hover{border-color:var(--hx-sol);color:var(--hx-sol)}
+
+/* ═════════ PAINÉIS ═════════
+   Marcas de canto, como o limite de uma arena riscado no chão. */
+.panel,.ficha-header{
+  background-color:rgba(26,18,13,.9);
+  background-image:
+    linear-gradient(var(--hx-poeira),var(--hx-poeira)),linear-gradient(var(--hx-poeira),var(--hx-poeira)),
+    linear-gradient(var(--hx-poeira),var(--hx-poeira)),linear-gradient(var(--hx-poeira),var(--hx-poeira)),
+    linear-gradient(var(--hx-poeira),var(--hx-poeira)),linear-gradient(var(--hx-poeira),var(--hx-poeira)),
+    linear-gradient(var(--hx-poeira),var(--hx-poeira)),linear-gradient(var(--hx-poeira),var(--hx-poeira));
+  background-size:12px 1px,1px 12px,12px 1px,1px 12px,12px 1px,1px 12px,12px 1px,1px 12px;
+  background-position:left top,left top,right top,right top,left bottom,left bottom,right bottom,right bottom;
+  background-repeat:no-repeat;
+  border:1px solid rgba(125,26,20,.55);
+  box-shadow:inset 0 0 40px rgba(0,0,0,.35);
+}
+.panel::before{background:linear-gradient(90deg,transparent,rgba(217,130,58,.35),transparent)}
+.panel-title{
+  font-family:'IM Fell English SC',serif;font-size:15px;letter-spacing:.03em;text-transform:none;
+  color:var(--hx-osso);border-bottom:1px solid rgba(125,26,20,.55);
+}
+.panel-title::before{
+  content:'';width:11px;height:11px;flex:none;opacity:1;font-size:0;background:var(--hx-vivo);
+  clip-path:polygon(0 0,100% 0,86% 36%,74% 100%,58% 40%,46% 78%,30% 30%,16% 70%,8% 30%);
+}
+.stat-box{background:rgba(23,16,11,.92);border-color:rgba(125,26,20,.55)}
+
+/* campos */
+.field input,.field select,.field textarea{background:rgba(15,9,6,.75);border-color:rgba(125,26,20,.6);color:var(--hx-osso)}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--hx-sol)}
+
+/* foco visível para teclado */
+:focus-visible{outline:2px solid var(--hx-sol);outline-offset:2px}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline-offset:0}
+
+/* rolagem */
+.tab-nav::-webkit-scrollbar-thumb{background:var(--hx-seco)}
+html{scrollbar-color:var(--hx-seco) #120b07}
+
+/* ═════════ TELAS PEQUENAS ═════════ */
+@media (max-width:900px){
+  #screen-login{flex-direction:column;justify-content:flex-start;align-items:stretch;padding:1.2rem 16px 2.5rem}
+  .hx-scene{height:70vh;bottom:auto}
+  .hx-moongroup{transform:translate(144px,66px) scale(.8)}
+  .hx-hero{position:relative;left:auto;bottom:auto;max-width:none;margin:44vh 0 1.4rem}
+  .login-box{max-width:none;width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  .hx-ring .hx-st path,.hx-ring .hx-st circle{animation:none;stroke-dashoffset:0}
+  .login-box{animation:none}
+}
+
+/* ═══════════════════════════════════════════════════════════
+   ESTRUTURA — navegação lateral e ficha reorganizada
+   ═══════════════════════════════════════════════════════════ */
+:root{--hx-rail:252px}
+
+/* Trilho lateral no lugar da barra superior */
+#screen-app{margin-left:var(--hx-rail)}
+.topbar{
+  position:fixed;left:0;top:3px;bottom:0;width:var(--hx-rail);z-index:100;
+  flex-direction:column;align-items:stretch;
+  background:linear-gradient(180deg,var(--topbar-bg,rgba(18,11,7,.98)) 0%,rgba(26,14,8,.98) 100%);
+  border-bottom:0;border-right:1px solid var(--hx-seco);box-shadow:6px 0 28px rgba(0,0,0,.5);
+  overflow-y:auto;overflow-x:hidden;
+}
+.topbar-logo{
+  padding:16px 22px 12px;border-right:0;border-bottom:1px solid rgba(125,26,20,.45);
+  font-size:26px;line-height:1.05;color:var(--hx-osso);
+}
+.topbar-logo span{display:block;margin-top:6px;font-size:11px}
+.tab-nav{flex-direction:column;flex:1 1 auto;overflow-x:hidden;overflow-y:auto;padding:4px 0 10px}
+.hx-nav-group{
+  font-family:'Special Elite',monospace;font-size:11.5px;color:var(--hx-poeira);letter-spacing:.03em;
+  padding:12px 22px 3px;opacity:.9;
+}
+.hx-nav-group:first-child{padding-top:12px}
+.hx-nav-mestre{display:none}
+.tab-nav:has(#tab-mestre-btn:not([style*="none"])) .hx-nav-mestre,
+.tab-nav:has(#tab-status-btn:not([style*="none"])) .hx-nav-mestre{display:block}
+.tab-btn{
+  display:flex;align-items:center;text-align:left;width:100%;
+  padding:6px 22px 6px 19px;font-size:16px;border-right:0;border-left:3px solid transparent;
+}
+.tab-btn:hover{background:rgba(217,130,58,.07);border-left-color:rgba(217,130,58,.4)}
+.tab-btn.active{
+  background:linear-gradient(90deg,rgba(163,36,26,.3),rgba(163,36,26,0));
+  border-left-color:transparent;
+}
+.tab-btn.active::after{
+  /* estigma vertical na borda esquerda */
+  left:-1px;top:50%;right:auto;bottom:auto;width:9px;height:28px;transform:translateY(-50%);
+  background:var(--hx-vivo);
+  clip-path:polygon(0 0,100% 10%,64% 26%,100% 42%,52% 58%,88% 76%,0 100%);
+}
+.tab-btn.mestre-only{border-left:3px solid transparent;color:var(--hx-poeira)}
+.tab-btn.mestre-only.active{color:var(--hx-sol)}
+.topbar-user{
+  flex-wrap:wrap;gap:6px 6px;padding:10px 14px 12px;white-space:normal;border-left:0;
+  border-top:1px solid rgba(125,26,20,.45);background:rgba(0,0,0,.18);
+}
+#topbar-username{width:100%;font-size:14px;color:var(--hx-osso)}
+
+/* Conteúdo */
+.app-body{max-width:1500px;padding:30px 38px 60px}
+#tab-multi{margin:-30px -38px;width:calc(100% + 76px)}
+
+/* Cabeçalho da página, lido da aba ativa (hexatombe.js) */
+.hx-pagehead{
+  margin:0 0 22px;padding:0 0 14px 20px;position:relative;
+  border-bottom:1px solid rgba(125,26,20,.5);
+}
+.hx-pagehead[hidden]{display:none}
+.hx-pagehead::before{
+  content:'';position:absolute;left:0;top:6px;width:9px;height:46px;background:var(--hx-vivo);
+  clip-path:polygon(0 0,100% 8%,60% 24%,100% 40%,50% 58%,90% 78%,0 100%);
+}
+.hx-pagehead h2{
+  font-family:'IM Fell English SC',serif;font-weight:400;font-size:clamp(2rem,3.4vw,3rem);
+  line-height:1;color:var(--hx-osso);margin:0;letter-spacing:-.005em;
+}
+.hx-pagehead p{margin:8px 0 0;font-family:'IM Fell English',serif;font-style:italic;font-size:1.05rem;color:var(--white-ash)}
+
+/* Ficha: identidade à esquerda, ação à direita */
+.ficha-header{padding:20px 22px 18px;margin-bottom:20px}
+.ficha-nome-input{font-family:'IM Fell English SC',serif !important;font-size:clamp(1.6rem,2.6vw,2.4rem) !important;color:var(--hx-osso)}
+.ficha-layout{grid-template-columns:minmax(0,7fr) minmax(300px,5fr);gap:20px;align-items:start;margin-bottom:20px}
+.hx-col{display:flex;flex-direction:column;gap:14px;min-width:0}
+.hx-col>.panel{margin-bottom:0}
+.hx-col-acao>.panel[data-hx="vitais"]{border-color:var(--hx-vivo);box-shadow:inset 0 0 0 1px rgba(210,58,38,.25),inset 0 0 60px rgba(125,26,20,.25)}
+@media (max-width:1100px){
+  .ficha-layout{grid-template-columns:minmax(0,1fr)}
+}
+
+/* Telas estreitas: volta a ser barra horizontal no topo */
+@media (max-width:900px){
+  #screen-app{margin-left:0}
+  .topbar{position:sticky;left:auto;top:3px;bottom:auto;width:auto;flex-direction:row;flex-wrap:wrap;overflow:visible;
+    border-right:0;border-bottom:1px solid var(--hx-seco);box-shadow:0 6px 24px rgba(0,0,0,.5)}
+  .topbar-logo{padding:10px 14px;font-size:17px;border-bottom:0}
+  .topbar-logo span{display:none}
+  .tab-nav{flex-direction:row;flex:1 1 100%;order:3;overflow-x:auto;overflow-y:hidden;padding:0}
+  .hx-nav-group,.hx-nav-mestre{display:none !important}
+  .tab-btn{width:auto;padding:12px 14px;font-size:15px;border-left:0}
+  .tab-btn.active::after{left:50%;top:auto;bottom:-1px;right:auto;width:30px;height:9px;transform:translateX(-50%);
+    clip-path:polygon(0 0,100% 0,88% 28%,78% 100%,64% 34%,50% 70%,36% 30%,18% 82%,10% 28%)}
+  .topbar-user{flex:1;border-top:0;background:none;padding:6px 10px}
+  #topbar-username{width:auto}
+  .app-body{padding:18px 14px 50px}
+  #tab-multi{margin:-18px -14px;width:calc(100% + 28px)}
+  .hx-pagehead{margin-bottom:16px}
+}
+
+/* ═══ FICHA v2 — ação à esquerda, estado à direita, perícias largas, dossiê no fim ═══ */
+.hx-namebar{padding:14px 20px 12px;margin-bottom:18px;background-image:none}
+.hx-namebar::before,.hx-namebar::after{display:none}
+.hx-namebar .ficha-header-top{margin-bottom:0;align-items:flex-end}
+.hx-namebar .ficha-nome-wrap{flex:1;min-width:0}
+.hx-namebar .ficha-nome-label{font-family:'Special Elite',monospace;font-size:12px;letter-spacing:.02em;text-transform:none;color:var(--hx-poeira)}
+.hx-namebar .ficha-nome-input{font-size:clamp(1.8rem,3vw,2.8rem) !important;width:100%;background:transparent;border:0;border-bottom:1px solid rgba(125,26,20,.5);padding:2px 0}
+.hx-namebar .ficha-nome-input:focus{border-bottom-color:var(--hx-sol);outline:none}
+
+/* Pontos vitais: números grandes, botões com área de toque maior */
+.snum{font-family:'IM Fell English SC',serif !important;font-size:3rem !important;line-height:1}
+.sadj{min-width:34px;min-height:34px;font-size:18px}
+.smax{font-size:14px}
+.panel[data-hx="vitais"] .stat-box{padding:16px 10px 14px}
+.stat-name{font-size:13px !important;letter-spacing:.03em !important;text-transform:none !important;font-family:'Special Elite',monospace !important}
+
+/* Atributos e defesa: valores legíveis à distância */
+.defesa-val{font-family:'IM Fell English SC',serif;font-size:2.6rem}
+.defesa-val-sm{font-size:1.3rem}
+.defesa-sub,.defesa-resist-inp{font-size:12px}
+
+/* Perícias em largura total, duas colunas */
+.panel[data-hx="pericias"]{margin-bottom:20px}
+.hx-pericia-heads{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}
+.hx-pericia-heads .pericia-table-head{font-size:12px;letter-spacing:.03em;text-transform:none;color:var(--hx-poeira)}
+#pericias-wrap{display:grid;grid-template-columns:1fr 1fr;column-gap:28px;row-gap:3px}
+.pericia-row{padding:5px 8px}
+.pericia-col-nome{font-size:14px}
+.pericia-col-dados{font-size:12.5px}
+.pericia-col-bonus{font-size:17px}
+.pericia-treino-btn{width:34px;height:26px;font-size:12px}
+.pericia-attr-tag{font-size:10px;opacity:.85}
+@media (max-width:1100px){
+  .hx-pericia-heads .hx-dup{display:none}
+  .hx-pericia-heads,#pericias-wrap{grid-template-columns:1fr}
+}
+
+/* Ataques: texto maior */
+.ataque-col-arma{font-size:14px}
+.ataque-col-especial{font-size:12px}
+.ataque-table-head{font-size:12px;letter-spacing:.03em;text-transform:none;color:var(--hx-poeira)}
+
+/* Dossiê recolhível */
+.hx-dossie{padding:0}
+.hx-dossie>summary{
+  list-style:none;cursor:var(--cur-pointer,pointer);margin:0;padding:14px 18px;border-bottom:0;
+  display:flex;align-items:center;gap:10px;user-select:none;
+}
+.hx-dossie>summary::-webkit-details-marker{display:none}
+.hx-dossie>summary::after{content:'+';margin-left:auto;font-family:'Special Elite',monospace;color:var(--hx-poeira);font-size:18px}
+.hx-dossie[open]>summary::after{content:'−'}
+.hx-dossie[open]>summary{border-bottom:1px solid rgba(125,26,20,.55)}
+.hx-sumhint{font-family:'IM Fell English',serif;font-style:italic;font-size:.9rem;color:var(--white-ash);letter-spacing:0;margin-left:6px}
+.hx-dossie>.ficha-tags-row,.hx-dossie>.ficha-desc-box,.hx-dossie>.hx-motiv{margin-left:18px;margin-right:18px}
+.hx-dossie>.ficha-tags-row{margin-top:16px}
+.hx-dossie>.hx-motiv{margin-top:16px;margin-bottom:18px}
+.hx-sublabel{font-family:'Special Elite',monospace;font-size:12px;color:var(--hx-poeira);margin-bottom:6px}
+.ficha-tag-label{font-size:12px !important;letter-spacing:.02em !important;text-transform:none !important;font-family:'Special Elite',monospace !important;color:var(--hx-poeira) !important}
+.ficha-desc-box{font-size:13.5px;color:var(--white-ash)}
+
+/* Legibilidade geral: cinzas mais claros e corpo maior nos painéis */
+:root{--white-dust:#a8987c;--ink-faint:#a8987c}
+.panel{font-size:14px}
+
+/* ═══════════════════════════════════════════════════════════
+   OUTRAS ABAS — cada bloco no lugar mais útil
+   ═══════════════════════════════════════════════════════════ */
+.pericia-attr-tag{display:inline;margin-left:5px}
+.pericia-col-dados{white-space:nowrap}
+
+/* ── Dados: resultado grande em cima, controles embaixo, histórico sempre ao lado ── */
+#tab-dados.active{display:grid;grid-template-columns:minmax(0,1fr) 380px;gap:18px;align-items:start}
+#tab-dados .two-col,#tab-dados .two-col>div:first-child{display:contents}
+#tab-dados .two-col>div:first-child>.panel:nth-child(2){grid-column:1;grid-row:1;margin-bottom:0}
+#tab-dados .two-col>div:first-child>.panel:nth-child(1){grid-column:1;grid-row:2;margin-bottom:0}
+#tab-dados .two-col>.panel{grid-column:2;grid-row:1 / span 2;position:sticky;top:16px;margin-bottom:0;max-height:calc(100vh - 40px);overflow:auto}
+.roll-result{font-family:'IM Fell English SC',serif !important;font-size:clamp(3.4rem,7vw,6rem) !important;line-height:1;color:var(--hx-osso);text-align:left}
+.roll-detail{font-size:14px}
+.die-btn{min-height:64px;font-size:16px}
+.dice-grid{grid-template-columns:repeat(auto-fill,minmax(88px,1fr)) !important}
+
+/* ── Danos: lista de armas à esquerda, resultado fixo à direita ── */
+#tab-danos.active{display:grid;grid-template-columns:minmax(0,1fr) minmax(320px,440px);gap:18px;align-items:start}
+#tab-danos>.panel{margin-bottom:0}
+#tab-danos>.panel:nth-child(2){position:sticky;top:16px}
+
+/* ── Missão: operação como faixa, pistas e anotações lado a lado ── */
+#tab-missao.active{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;align-items:start}
+#tab-missao>.two-col{display:contents}
+#tab-missao>.two-col>.panel:first-child{grid-column:1 / -1;border-color:var(--hx-vivo)}
+#tab-missao .panel{margin-bottom:0}
+#tab-missao>.save-ok{grid-column:1 / -1}
+#tab-missao textarea{min-height:160px;font-size:14.5px}
+
+/* ── Trilhas: escolha estreita à esquerda, habilidades grandes à direita ── */
+#tab-trilhas.active{display:grid;grid-template-columns:minmax(280px,360px) minmax(0,1fr);gap:18px;align-items:start}
+#tab-trilhas>.panel{margin-bottom:0}
+#tab-trilhas>.panel:first-child{position:sticky;top:16px}
+
+/* ── Poderes: elementos em lista lateral, poderes ao lado ── */
+#tab-poderes>.panel{display:grid;grid-template-columns:210px minmax(0,1fr);column-gap:26px;align-items:start}
+#tab-poderes>.panel>div:first-child{grid-column:1 / -1;font-size:20px !important;color:var(--hx-osso) !important;margin-bottom:14px !important}
+#poderes-filtro-elem{grid-column:1;flex-direction:column !important;flex-wrap:nowrap !important;position:sticky;top:16px}
+#poderes-lista{grid-column:2}
+#poderes-filtro-elem>*{width:100%;text-align:left}
+
+/* ── Rituais: Transcendência em faixa, filtros fixos à esquerda, grimório à direita ── */
+#tab-rituais.active{display:grid;grid-template-columns:260px minmax(0,1fr);gap:18px;align-items:start}
+#tab-rituais>#transcendencia-panel-wrap{grid-column:1 / -1;margin-bottom:0 !important}
+#tab-rituais>.panel:not(#transcendencia-panel-wrap){grid-column:1;grid-row:3;position:sticky;top:16px;margin-bottom:0 !important}
+#tab-rituais>.panel:not(#transcendencia-panel-wrap)>div[style*="display:flex"]{flex-direction:column !important;align-items:stretch !important;gap:10px !important}
+#tab-rituais>.panel:not(#transcendencia-panel-wrap) input,
+#tab-rituais>.panel:not(#transcendencia-panel-wrap) select{width:100%;font-size:14px !important;min-width:0 !important}
+#tab-rituais>#sumonados-wrap{grid-column:1 / -1;grid-row:2;margin-bottom:0 !important}
+#tab-rituais>#rituais-grid{grid-column:2;grid-row:3}
+
+/* ── Itens: categorias na lateral, catálogo à direita ── */
+#tab-itens>.panel{display:grid;grid-template-columns:250px minmax(0,1fr);column-gap:26px;align-items:start}
+#tab-itens>.panel>.panel-title{grid-column:1 / -1}
+#tab-itens>.panel>#itens-filtros-principais{grid-column:1;grid-row:2;flex-direction:column !important;flex-wrap:nowrap !important;position:sticky;top:16px}
+#tab-itens>.panel>#itens-filtros-principais .fit-chip{width:100%;text-align:left;padding:9px 12px;font-size:14px}
+#tab-itens>.panel>#itens-subfiltros-arma{grid-column:1;grid-row:3}
+#tab-itens>.panel>div:nth-child(4){grid-column:1;grid-row:4}
+#tab-itens>.panel>#itens-grid{grid-column:2;grid-row:2 / span 3}
+#tab-itens>.panel>#item-detail-panel{grid-column:1 / -1}
+
+/* ── Elementos ── */
+#elementos-grid{grid-template-columns:repeat(auto-fill,minmax(185px,1fr)) !important}
+
+/* ── Inventário: equipado e carga numa coluna, mochila no resto ── */
+#tab-inventario.active{display:grid;grid-template-columns:300px minmax(0,1fr);gap:18px;align-items:start}
+#tab-inventario>.armor-status-card{grid-column:1;grid-row:1;flex-direction:column;align-items:flex-start;position:sticky;top:16px;margin:0;border-color:rgba(125,26,20,.6)}
+#tab-inventario>.panel{grid-column:2;grid-row:1 / span 3;margin:0}
+#tab-inventario>#inv-action-panel{grid-column:1;grid-row:2}
+#tab-inventario>.save-ok{grid-column:1 / -1}
+.armor-status-label{font-size:12px;letter-spacing:.03em;text-transform:none;color:var(--hx-poeira)}
+
+/* ── Bestiário, relíquias e agentes: barra de busca fixa e cartões mais legíveis ── */
+.cr-toolbar{position:sticky;top:0;z-index:6;background:var(--hx-terra);padding-top:10px}
+.cr-grid{grid-template-columns:repeat(auto-fill,minmax(310px,1fr)) !important}
+.cr-card{background:rgba(26,18,13,.92);border-color:rgba(125,26,20,.55)}
+.cr-card:hover{border-color:var(--hx-vivo);box-shadow:0 6px 24px rgba(210,58,38,.2)}
+.cr-card-name{font-size:18px;letter-spacing:.01em}
+.cr-card-desc{font-size:13px;color:var(--white-ash)}
+.cr-stats-row{font-size:13px;color:var(--white-ash)}
+.cr-stats-row b{font-size:16px}
+.cr-badge,.cr-tipo-tag{font-size:11px;letter-spacing:.02em;text-transform:none}
+.cr-card-cta{font-size:12px;letter-spacing:.02em}
+.cr-count{font-size:13px}
+
+/* ── Mesa online: sub-menu superior com tipografia nova ── */
+.mo-subnav{background:rgba(18,11,7,.94);border-bottom:1px solid rgba(125,26,20,.6)}
+.mo-subtab-btn{font-size:15px;letter-spacing:0;text-transform:none;padding:12px 18px}
+.mo-subtab-btn.active{color:var(--hx-osso);border-bottom-color:var(--hx-vivo)}
+
+/* ── Status ── */
+#tab-status>.panel{margin-bottom:14px}
+
+/* ── Telas médias e pequenas: tudo empilha ── */
+@media (max-width:1100px){
+  #tab-dados.active,#tab-danos.active,#tab-missao.active,#tab-trilhas.active,#tab-rituais.active,#tab-inventario.active{grid-template-columns:minmax(0,1fr)}
+  #tab-dados .two-col>.panel,#tab-danos>.panel:nth-child(2),#tab-trilhas>.panel:first-child,#tab-rituais>.panel:not(#transcendencia-panel-wrap),#tab-inventario>.armor-status-card{position:static;max-height:none}
+  #tab-dados .two-col>div:first-child>.panel:nth-child(2),#tab-dados .two-col>div:first-child>.panel:nth-child(1),#tab-dados .two-col>.panel,
+  #tab-rituais>.panel:not(#transcendencia-panel-wrap),#tab-rituais>#rituais-grid,#tab-rituais>#sumonados-wrap,#tab-inventario>.armor-status-card,#tab-inventario>.panel,#tab-inventario>#inv-action-panel{grid-column:1;grid-row:auto}
+  #tab-poderes>.panel,#tab-itens>.panel{grid-template-columns:minmax(0,1fr)}
+  #poderes-filtro-elem,#poderes-lista,#tab-itens>.panel>*{grid-column:1 !important;grid-row:auto !important;position:static !important}
+  #poderes-filtro-elem{flex-direction:row !important;flex-wrap:wrap !important}
+  #tab-itens>.panel>#itens-filtros-principais{flex-direction:row !important;flex-wrap:wrap !important}
+  #tab-itens>.panel>#itens-filtros-principais .fit-chip{width:auto}
+}
+@media (max-width:1100px){
+  #tab-dados .two-col>div:first-child>.panel:nth-child(2){order:-1}
+}
+
+/* (a camada visual da Ficha agora vive em ficha.css) */
+
+/* ══ Rodapé da barra lateral (rework) ══ */
+.topbar-user.hx-foot{display:flex;flex-direction:column;align-items:stretch;flex-wrap:nowrap;gap:12px;padding:14px 16px 16px;white-space:normal;overflow:visible}
+.hx-foot .hx-foot-id{display:flex;align-items:center;gap:11px;min-width:0}
+.hx-foot-avatar{flex:0 0 38px;height:38px;display:grid;place-items:center;font-family:'IM Fell English SC',serif;font-size:19px;color:var(--hx-osso);text-transform:uppercase;background:radial-gradient(circle at 35% 30%,#a3241a,#4a120d);border:1px solid var(--hx-seco);border-radius:50%;box-shadow:inset 0 0 8px rgba(0,0,0,.5)}
+.hx-foot-who{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0}
+.hx-foot #topbar-username{width:auto;max-width:100%;font-size:15px;line-height:1.1;color:var(--hx-osso);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hx-foot #topbar-role .role-badge{padding:1px 7px;font-size:9.5px;letter-spacing:.14em}
+.hx-foot .hx-foot-online{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:var(--cur-pointer,pointer);user-select:none;font-family:'Special Elite',monospace;font-size:12px;letter-spacing:.03em;color:#b9d08e;background:rgba(159,194,107,.07);border:1px solid rgba(159,194,107,.28);transition:background .15s,border-color .15s}
+.hx-foot .hx-foot-online:hover{background:rgba(159,194,107,.14);border-color:rgba(159,194,107,.55)}
+.hx-foot .hx-foot-online .presence-dot{width:7px;height:7px;margin:0}
+.hx-foot-online-txt{flex:1}
+.hx-foot-online-arrow{opacity:.6;font-size:15px;line-height:1}
+.hx-foot-audio{display:flex;align-items:center;gap:10px;padding:6px 8px;background:rgba(0,0,0,.25);border:1px solid rgba(125,26,20,.4)}
+.topbar-user.hx-foot .hx-foot-audio button{flex:0 0 auto;padding:2px 4px;border:0;background:transparent;font-size:15px;line-height:1;cursor:var(--cur-pointer,pointer);color:var(--hx-osso)}
+.hx-foot-audio input[type=range]{flex:1;min-width:0;height:4px;accent-color:var(--hx-vivo);cursor:var(--cur-pointer,pointer)}
+.hx-foot-links{display:flex;justify-content:space-between;gap:4px}
+.topbar-user.hx-foot .hx-foot-link{flex:1;padding:4px 2px;border:0;border-bottom:1px solid transparent;background:transparent;font-family:'Special Elite',monospace;font-size:11.5px;letter-spacing:.04em;color:var(--hx-poeira);opacity:.8;cursor:var(--cur-pointer,pointer)}
+.topbar-user.hx-foot .hx-foot-link:hover{color:var(--hx-sol);opacity:1;border-bottom-color:rgba(217,130,58,.5)}
+.topbar-user.hx-foot .hx-foot-exit{padding:8px 10px;font-family:'Special Elite',monospace;font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#d98878;background:transparent;border:1px solid rgba(125,26,20,.7);cursor:var(--cur-pointer,pointer)}
+.topbar-user.hx-foot .hx-foot-exit:hover{background:rgba(125,26,20,.3);color:#fff;border-color:var(--hx-vivo)}
+@media (max-width:900px){
+  .topbar-user.hx-foot{flex-direction:row;flex-wrap:wrap;align-items:center;gap:8px 10px;padding:8px 10px}
+  .hx-foot .hx-foot-id{flex:1 1 auto}
+  .hx-foot-audio{flex:0 1 150px}
+  .hx-foot-links{flex:1 1 100%;order:5}
+  .topbar-user.hx-foot .hx-foot-exit{padding:5px 10px}
+}

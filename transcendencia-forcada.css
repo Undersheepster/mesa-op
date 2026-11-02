@@ -1,0 +1,200 @@
+/* ════════════════════════════════════════════════════════════
+   TRANSCENDENCIA-FORCADA.CSS — overlay, chip e marca da
+   Transcendência Forçada. Prefixo .tf-  (ver transcendencia-forcada.js)
+   A cor do elemento em foco entra pela variável --tf-cor.
+   ════════════════════════════════════════════════════════════ */
+
+.tf-root{
+  --tf-cor:#cc2244; --tf-glow:#ff4466;
+  position:fixed;inset:0;z-index:9997;background:#000;color:var(--white-ash,#d8cfc4);
+  display:flex;align-items:stretch;justify-content:center;overflow:hidden;
+  opacity:0;transition:opacity 1s ease;
+}
+.tf-root.tf-in{opacity:1}
+.tf-root.tf-out{opacity:0;transition-duration:.9s}
+.tf-bg{position:absolute;inset:0;pointer-events:none;transition:background 1.4s ease;
+  background:radial-gradient(ellipse at 50% 40%,#2a0014 0%,#08000a 58%,#000 100%)}
+.tf-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;opacity:.6}
+.tf-vinheta{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 160px 40px #000}
+
+/* pulso do coração: o fundo respira junto com o batimento */
+.tf-root[data-stage="intro"] .tf-bg{animation:tf-batida 1.5s ease-in-out infinite}
+@keyframes tf-batida{
+  0%,100%{filter:brightness(.8)} 12%{filter:brightness(1.35)} 22%{filter:brightness(.9)} 34%{filter:brightness(1.2)} 50%{filter:brightness(.8)}
+}
+
+/* controles de canto */
+.tf-corner{position:absolute;z-index:30;display:flex;gap:8px;top:14px;right:16px}
+.tf-ctl{
+  background:rgba(0,0,0,.45);border:1px solid rgba(200,160,140,.28);color:rgba(220,200,190,.75);
+  font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+  padding:7px 12px;cursor:var(--cur-pointer,pointer);transition:all .15s;
+}
+.tf-ctl:hover,.tf-ctl:focus-visible{border-color:var(--tf-cor);color:#fff;outline:none}
+.tf-ctl[hidden]{display:none}
+
+/* palco */
+.tf-stage{
+  position:relative;z-index:10;width:100%;max-width:980px;
+  display:flex;flex-direction:column;align-items:center;
+  padding:clamp(54px,8vh,84px) clamp(14px,3vw,28px) clamp(16px,3vh,28px);box-sizing:border-box;min-height:0;
+}
+.tf-view{display:flex;flex-direction:column;align-items:center;width:100%;min-height:0;flex:1;gap:14px;overflow-y:auto;overflow-x:hidden;padding:2px 4px 6px;box-sizing:border-box;animation:tf-rise .7s ease both}
+@keyframes tf-rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.tf-eyebrow{font-family:'Special Elite',monospace;font-size:11px;letter-spacing:.32em;text-transform:uppercase;color:var(--tf-cor);opacity:.9;text-align:center}
+.tf-titulo{
+  margin:0;text-align:center;font-family:'IM Fell English SC',serif;font-weight:400;letter-spacing:.1em;
+  font-size:clamp(22px,4.4vw,36px);color:var(--tf-cor);line-height:1.15;
+  text-shadow:0 0 26px color-mix(in srgb,var(--tf-glow) 55%,transparent),0 0 70px color-mix(in srgb,var(--tf-cor) 35%,transparent);
+}
+.tf-sub{margin:0;max-width:60ch;text-align:center;font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(13px,1.9vw,15.5px);line-height:1.7;color:rgba(225,212,205,.82)}
+
+/* ── intro / cutscene ── */
+.tf-intro{flex:1;justify-content:center;gap:34px}
+.tf-sym{width:min(250px,52vw);aspect-ratio:1;opacity:.55;display:flex;align-items:center;justify-content:center}
+.tf-sym .sym-el{width:86%;height:86%;filter:drop-shadow(0 0 46px var(--tf-glow));animation:tf-sym 4.4s ease-in-out infinite alternate}
+@keyframes tf-sym{from{transform:scale(.96);opacity:.7}to{transform:scale(1.04);opacity:1}}
+.tf-linha{
+  min-height:4.6em;max-width:min(620px,92%);text-align:center;
+  font-family:'IM Fell English',serif;font-style:italic;font-size:clamp(17px,3vw,24px);line-height:1.6;letter-spacing:.04em;
+  color:#ecdcd4;opacity:0;transition:opacity .9s ease;
+}
+.tf-linha.on{opacity:1}
+.tf-linha b{font-style:normal;color:var(--tf-glow);font-weight:400}
+.tf-pontos{display:flex;gap:7px}
+.tf-pontos i{width:6px;height:6px;border-radius:50%;background:rgba(220,200,190,.2);transition:background .4s}
+.tf-pontos i.on{background:var(--tf-cor)}
+
+/* Os símbolos são SVGs 16:9 com o glifo pequeno no centro: amplia para o glifo preencher a caixa */
+.tf-root .sym-el,.tf-marca .sym-el{background-size:270%;background-position:center}
+
+/* ── cartões de elemento ── */
+.tf-elems{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,160px),1fr));gap:12px;width:100%;margin-top:6px}
+.tf-elem{
+  --c:#888;--g:#bbb;
+  display:flex;flex-direction:column;align-items:center;gap:8px;padding:20px 12px 16px;cursor:var(--cur-pointer,pointer);text-align:center;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 11%,#0b0508),#08030a);
+  border:1px solid color-mix(in srgb,var(--c) 45%,transparent);color:inherit;font:inherit;
+  transition:transform .18s,border-color .18s,box-shadow .18s;
+}
+.tf-elem:hover,.tf-elem:focus-visible{transform:translateY(-3px);border-color:var(--c);box-shadow:0 0 28px color-mix(in srgb,var(--c) 38%,transparent);outline:none}
+.tf-elem .sym-el{width:64px;height:64px;filter:drop-shadow(0 0 12px var(--g))}
+.tf-elem b{font-family:'IM Fell English SC',serif;font-weight:400;font-size:19px;letter-spacing:.1em;color:var(--c);text-transform:uppercase}
+.tf-elem span{font-family:'Special Elite',monospace;font-size:11.5px;color:rgba(215,200,190,.65)}
+
+/* ── lista de rituais ── */
+.tf-barra{display:flex;gap:10px;width:100%;align-items:center;flex-wrap:wrap}
+.tf-back{background:none;border:1px solid rgba(200,160,140,.28);color:rgba(220,200,190,.8);font-family:'Special Elite',monospace;font-size:12px;padding:8px 13px;cursor:var(--cur-pointer,pointer);white-space:nowrap}
+.tf-back:hover,.tf-back:focus-visible{border-color:var(--tf-cor);color:#fff;outline:none}
+.tf-busca{
+  flex:1;min-width:150px;padding:9px 12px;background:rgba(0,0,0,.55);border:1px solid rgba(200,160,140,.28);
+  color:#eadede;font-family:'Courier Prime',monospace;font-size:14px;
+}
+.tf-busca:focus{outline:none;border-color:var(--tf-cor)}
+.tf-cont{font-family:'Special Elite',monospace;font-size:11.5px;color:rgba(215,200,190,.55);white-space:nowrap}
+.tf-lista{display:flex;flex-direction:column;gap:6px;width:100%;flex:1;min-height:0;overflow-y:auto;padding-right:4px;overscroll-behavior:contain}
+.tf-vazio{padding:30px 10px;text-align:center;font-family:'IM Fell English',serif;font-style:italic;color:rgba(215,200,190,.55)}
+
+.tf-rit{background:rgba(8,3,10,.92);border:1px solid color-mix(in srgb,var(--tf-cor) 28%,transparent);transition:border-color .15s}
+.tf-rit.is-sel{border-color:var(--tf-cor);box-shadow:0 0 22px color-mix(in srgb,var(--tf-cor) 22%,transparent)}
+.tf-rit-hd{
+  display:flex;align-items:baseline;justify-content:space-between;gap:10px;width:100%;padding:11px 14px;cursor:var(--cur-pointer,pointer);
+  background:none;border:0;color:inherit;font:inherit;text-align:left;
+}
+.tf-rit-hd:hover b,.tf-rit-hd:focus-visible b{color:#fff}
+.tf-rit-hd:focus-visible{outline:2px solid var(--tf-cor);outline-offset:-2px}
+.tf-rit-hd b{font-family:'IM Fell English SC',serif;font-weight:400;font-size:16px;letter-spacing:.05em;color:var(--tf-cor)}
+.tf-rit-hd span{font-family:'Courier Prime',monospace;font-size:12px;color:rgba(215,200,190,.6);white-space:nowrap}
+.tf-rit-bd{display:none;padding:0 14px 14px}
+.tf-rit.is-sel .tf-rit-bd{display:block;animation:tf-rise .3s ease both}
+
+.tf-det{display:flex;flex-direction:column;gap:8px}
+.tf-tags{display:flex;flex-wrap:wrap;gap:6px}
+.tf-tag{padding:2px 8px;border:1px solid rgba(200,160,140,.25);font-family:'Special Elite',monospace;font-size:11px;color:rgba(225,210,200,.75)}
+.tf-tag b{color:var(--tf-cor);font-weight:400}
+.tf-efeito{margin:0;font-family:'Courier Prime',monospace;font-size:14px;line-height:1.65;color:#e2d6cf}
+.tf-var{margin:0;font-family:'Courier Prime',monospace;font-size:12.5px;line-height:1.55;color:rgba(215,200,190,.62)}
+.tf-var em{font-style:normal;color:var(--tf-cor)}
+
+/* botões de ação */
+.tf-btn{
+  align-self:flex-start;padding:10px 20px;cursor:var(--cur-pointer,pointer);
+  background:color-mix(in srgb,var(--tf-cor) 16%,transparent);border:1px solid var(--tf-cor);color:#fff;
+  font-family:'IM Fell English SC',serif;font-size:13px;letter-spacing:.14em;text-transform:uppercase;transition:background .15s,box-shadow .15s;
+}
+.tf-btn:hover,.tf-btn:focus-visible{background:color-mix(in srgb,var(--tf-cor) 34%,transparent);box-shadow:0 0 22px color-mix(in srgb,var(--tf-cor) 40%,transparent);outline:none}
+.tf-btn.is-big{align-self:center;padding:14px 34px;font-size:15px}
+
+/* ── oferta (3 cartas) ── */
+.tf-cartas{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr));gap:14px;width:100%;flex:1;min-height:0;overflow-y:auto;align-content:start;padding:4px}
+.tf-carta{
+  --c:#888;--g:#bbb;display:flex;flex-direction:column;gap:10px;padding:18px 16px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--c) 10%,#0b0508),#07020a);
+  border:1px solid color-mix(in srgb,var(--c) 50%,transparent);
+  animation:tf-rise .8s ease both;
+}
+.tf-carta:nth-child(2){animation-delay:.18s}.tf-carta:nth-child(3){animation-delay:.36s}
+.tf-carta-hd{display:flex;align-items:center;gap:10px}
+.tf-carta-hd .sym-el{width:40px;height:40px;filter:drop-shadow(0 0 8px var(--g))}
+.tf-carta-hd small{display:block;font-family:'Special Elite',monospace;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--c)}
+.tf-carta-hd b{font-family:'IM Fell English SC',serif;font-weight:400;font-size:19px;color:#f0e4de;letter-spacing:.04em;line-height:1.15}
+.tf-carta .tf-btn{align-self:stretch;text-align:center;--tf-cor:var(--c)}
+
+/* ── sorteio ── */
+.tf-roleta{
+  min-height:3.2em;display:flex;align-items:center;justify-content:center;text-align:center;
+  font-family:'IM Fell English SC',serif;font-size:clamp(22px,5vw,40px);letter-spacing:.08em;color:var(--tf-cor);
+  text-shadow:0 0 30px color-mix(in srgb,var(--tf-glow) 60%,transparent);
+}
+.tf-roleta.is-girando{filter:blur(1.4px);opacity:.75}
+.tf-resultado{width:100%;max-width:560px;display:flex;flex-direction:column;gap:14px;align-items:stretch}
+
+/* ── selar (segurar) ── */
+.tf-selo-box{width:100%;max-width:600px;display:flex;flex-direction:column;gap:14px;padding:20px 22px;background:rgba(8,3,10,.92);border:1px solid var(--tf-cor)}
+.tf-aviso{margin:0;text-align:center;font-family:'Special Elite',monospace;font-size:12px;line-height:1.6;color:rgba(235,200,190,.75)}
+.tf-segure{
+  position:relative;overflow:hidden;align-self:center;min-width:260px;padding:16px 30px;cursor:var(--cur-pointer,pointer);user-select:none;touch-action:none;
+  background:rgba(0,0,0,.5);border:1px solid var(--tf-cor);color:#fff;
+  font-family:'IM Fell English SC',serif;font-size:15px;letter-spacing:.16em;text-transform:uppercase;
+}
+.tf-segure::before{content:'';position:absolute;inset:0;transform-origin:left;transform:scaleX(var(--p,0));
+  background:linear-gradient(90deg,color-mix(in srgb,var(--tf-cor) 55%,transparent),var(--tf-cor))}
+.tf-segure span{position:relative}
+.tf-segure:focus-visible{outline:2px solid var(--tf-glow);outline-offset:3px}
+
+/* ── selo final ── */
+.tf-final{justify-content:center;gap:16px;text-align:center}
+.tf-final .tf-sym{width:min(150px,36vw);opacity:1;animation:tf-selar 1.1s cubic-bezier(.2,1.6,.4,1) both}
+@keyframes tf-selar{from{opacity:0;transform:scale(2.4);filter:blur(10px)}to{opacity:1;transform:none;filter:blur(0)}}
+.tf-final .tf-resultado{animation:tf-rise .9s .7s ease both}
+.tf-acoes{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:4px}
+
+/* ── chip "ELE aguarda" (quando o jogador adia) ── */
+#_tf_chip{
+  position:fixed;right:18px;bottom:18px;z-index:9000;display:flex;align-items:center;gap:8px;padding:10px 16px;cursor:var(--cur-pointer,pointer);
+  background:rgba(14,2,10,.94);border:1px solid #cc2244;color:#ff8fa5;
+  font-family:'IM Fell English SC',serif;font-size:12px;letter-spacing:.14em;text-transform:uppercase;
+  animation:tf-chip 2.2s ease-in-out infinite;
+}
+#_tf_chip:hover,#_tf_chip:focus-visible{color:#fff;background:#2a0014;outline:none}
+@keyframes tf-chip{0%,100%{box-shadow:0 0 0 0 rgba(204,34,68,.5)}50%{box-shadow:0 0 18px 4px rgba(204,34,68,.45)}}
+
+/* ── marca na aba Rituais ── */
+.tf-marca{margin-top:10px;padding-top:10px;border-top:1px solid rgba(106,10,10,.4);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.tf-marca .sym-el{width:34px;height:34px}
+.tf-marca-tx{flex:1;min-width:180px;font-family:'Courier Prime',monospace;font-size:12.5px;line-height:1.6;color:var(--white-ash,#d0c4b8)}
+.tf-marca-tx b{font-family:'IM Fell English SC',serif;font-weight:400;letter-spacing:.1em;text-transform:uppercase;font-size:11px;color:#cc2244;display:block}
+.tf-marca-tx em{font-style:normal;color:var(--tf-m,#cc2244)}
+.tf-marca button{padding:7px 14px;cursor:var(--cur-pointer,pointer);background:rgba(204,34,68,.14);border:1px solid #cc2244;color:#ff8fa5;font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase}
+.tf-marca button:hover{background:rgba(204,34,68,.3);color:#fff}
+
+@media (max-width:640px){
+  .tf-corner{top:8px;right:8px}
+  .tf-stage{padding-top:58px}
+  .tf-segure{min-width:0;width:100%}
+}
+@media (prefers-reduced-motion:reduce){
+  .tf-root *,#_tf_chip{animation:none !important;transition-duration:.01s !important}
+}
+@media (max-width:640px){.tf-busca{flex-basis:100%;order:3}.tf-cont{margin-left:auto}}

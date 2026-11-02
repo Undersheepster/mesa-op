@@ -1,0 +1,144 @@
+/* ═══════════════════════════════════════════════════════════
+   FICHA v5 — rework visual inspirado na ficha de dados do
+   Ordem Paranormal (nome pintado, atributos em hexágonos de dado,
+   títulos em pinceladas), na paleta Hexatombe.
+   A pincelada é osso (#e7dcc2) com tinta escura por cima e uma
+   sombra de sangue seco deslocada. As bordas esfiapadas vêm dos
+   filtros SVG #hx-rough / #hx-rough-fino (definidos no index.html).
+   Carregado depois de ficha.css e nivel.css; só sobrescreve.
+   ═══════════════════════════════════════════════════════════ */
+#tab-ficha{--hx-ink:#1b110b}
+
+/* ── cartões: sem caixa, a pincelada é o título ── */
+#tab-ficha .fx-card{border:0;background:linear-gradient(180deg,rgba(26,17,11,.88),rgba(18,11,7,.8));box-shadow:inset 0 0 0 1px rgba(125,26,20,.32)}
+#tab-ficha .fx-card>.fx-card-head,#tab-ficha summary.fx-card-head{border-bottom:0;padding:18px 22px 4px}
+#tab-ficha .fx-card-body{padding:12px 22px 22px}
+#tab-ficha .fx-card-head h3{
+  position:relative;isolation:isolate;display:inline-flex;align-items:center;
+  padding:5px 32px 5px 20px;margin-left:-6px;font-size:1.3rem;letter-spacing:.05em;
+  color:var(--hx-ink);transform:rotate(-.7deg);
+}
+#tab-ficha .fx-card-head h3::before{content:'';position:absolute;inset:0;width:auto;height:auto;clip-path:none;background:var(--hx-osso);z-index:-1;filter:url(#hx-rough)}
+#tab-ficha .fx-card-head h3::after{content:'';position:absolute;inset:0;transform:translate(4px,4px);background:var(--hx-seco);z-index:-2;filter:url(#hx-rough)}
+#tab-ficha .fx-vitais{box-shadow:inset 0 0 0 1px var(--hx-seco),inset 0 0 80px rgba(125,26,20,.25)}
+
+/* ── cabeçalho: nome pintado à esquerda, atributos à direita ── */
+#tab-ficha .fx-id{
+  display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"top attrs" "tags attrs";
+  column-gap:34px;padding:24px 28px 22px;border:0;
+  background:radial-gradient(ellipse 70% 120% at 0% 0%,rgba(217,130,58,.1),transparent 70%),linear-gradient(180deg,rgba(26,17,11,.92),rgba(18,11,7,.86));
+  box-shadow:inset 0 0 0 1px rgba(125,26,20,.4),inset 0 -3px 0 var(--hx-seco);
+}
+#tab-ficha .ficha-header-top{grid-area:top;margin:0 0 18px;align-items:flex-start}
+#tab-ficha .ficha-nome-label{color:var(--hx-poeira)}
+#tab-ficha .ficha-nome-input{
+  border-bottom:0 !important;padding:0 0 4px;letter-spacing:.03em;
+  font-size:clamp(2.7rem,6.6vw,5.6rem) !important;line-height:1;color:var(--hx-osso);
+  text-shadow:4px 4px 0 var(--hx-seco);filter:url(#hx-rough-fino);
+}
+#tab-ficha .ficha-tags-row{grid-area:tags;margin:0;align-self:end;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px 6px;border-top:0}
+#tab-ficha .ficha-tag{padding:6px 14px 8px;border-right:0;border-left:2px solid rgba(125,26,20,.55)}
+#tab-ficha .ficha-tag:first-child{padding-left:14px}
+/* classe = o chip "ativo": pincelada osso com tinta escura */
+#tab-ficha .ficha-tag:has(#f-classe){position:relative;isolation:isolate;border-left:0;padding-left:20px}
+#tab-ficha .ficha-tag:has(#f-classe)::before{content:'';position:absolute;inset:0;background:var(--hx-osso);z-index:-1;filter:url(#hx-rough)}
+#tab-ficha .ficha-tag:has(#f-classe)::after{content:'';position:absolute;inset:0;transform:translate(3px,3px);background:var(--hx-seco);z-index:-2;filter:url(#hx-rough)}
+#tab-ficha .ficha-tag:has(#f-classe) .ficha-tag-label{color:#5c1710 !important}
+#tab-ficha #f-classe{color:var(--hx-ink);border-bottom-color:rgba(27,17,11,.4);font-family:'IM Fell English SC',serif;font-size:1.1rem}
+
+/* ── atributos: rótulo + hexágono de dado, empilhados ── */
+#tab-ficha .fx-id>#fx-sec-attr{grid-area:attrs;align-self:center;background:none;box-shadow:none;min-width:290px}
+#tab-ficha .fx-id>#fx-sec-attr>.fx-card-head{order:2;padding:6px 0 0;justify-content:flex-end}
+#tab-ficha .fx-id>#fx-sec-attr>.fx-card-head h3,#tab-ficha .fx-id>#fx-sec-attr .fx-collapse{display:none}
+#tab-ficha .fx-id>#fx-sec-attr{display:flex;flex-direction:column}
+#tab-ficha .fx-id>#fx-sec-attr .fx-card-body{padding:0}
+#tab-ficha .attr-hex-wrap.fx-attrs{display:flex;flex-direction:column;gap:6px;align-items:stretch}
+#tab-ficha .fx-attr{flex-direction:row;justify-content:flex-end;align-items:center;gap:14px}
+#tab-ficha .fx-attr .attr-node-label{order:1;flex:1;text-align:right;font-family:'IM Fell English SC',serif;font-size:2.1rem;letter-spacing:.03em;color:var(--hx-osso);text-shadow:3px 3px 0 var(--hx-seco)}
+#tab-ficha .fx-attr .fx-hexbtn{order:2;width:66px;height:75px;background:var(--hx-osso)}
+#tab-ficha .fx-hexbtn::before{display:none}
+#tab-ficha .fx-hexbtn:hover{background:var(--hx-sol)}
+#tab-ficha .fx-hexbtn .attr-node-val{color:var(--hx-ink);font-size:1.9rem}
+#tab-ficha .fx-attr .attr-node-adj{order:3;flex-direction:column;gap:2px}
+#tab-ficha .fx-attr-dice{display:none}
+#tab-ficha .fx-id .hx-attr-hint{display:none}
+
+/* ── perícias: nome + hexágono do dado, sem caixas ── */
+#tab-ficha .pericia-row,#tab-ficha .pericia-row:has(.pericia-del){grid-template-columns:18px minmax(0,1fr) 40px 74px 44px;padding:5px 4px;border-bottom:1px dotted rgba(231,220,194,.14)}
+#tab-ficha .pericia-row:has(.pericia-del){grid-template-columns:18px minmax(0,1fr) 40px 74px 44px 18px}
+#tab-ficha .pericia-row[data-grau]{box-shadow:none;background:none}
+#tab-ficha .pericia-row:hover{background:rgba(231,220,194,.06)}
+#tab-ficha .pericia-col-treino{order:3}
+#tab-ficha .fx-formula{order:4;background:none;border:0;color:var(--white-dust);font-size:12px}
+#tab-ficha .pericia-col-outros{order:5}
+#tab-ficha .pericia-col-nome{font-family:'IM Fell English SC',serif;font-size:1.08rem;letter-spacing:.05em;color:var(--hx-osso)}
+#tab-ficha .pericia-row:not(.on) .pericia-col-nome{color:var(--white-ash)}
+#tab-ficha .fx-fav{opacity:.35;font-size:14px}
+#tab-ficha .pericia-row:hover .fx-fav,#tab-ficha .pericia-row.fav .fx-fav{opacity:1}
+#tab-ficha .pericia-treino-btn{width:38px;height:43px;font-size:15px;color:var(--hx-ink);background:var(--hx-osso)}
+#tab-ficha .pericia-treino-btn::before{display:none}
+/* dado = grau de treino: d4 vazado, d6 areia, d8 sangue, d10 sol */
+#tab-ficha .pericia-row[data-grau="0"] .pericia-treino-btn{background:rgba(231,220,194,.42);color:var(--hx-osso);box-shadow:none}
+#tab-ficha .pericia-row[data-grau="5"] .pericia-treino-btn{background:var(--hx-osso);color:var(--hx-ink)}
+#tab-ficha .pericia-row[data-grau="10"] .pericia-treino-btn{background:var(--hx-vivo);color:var(--hx-osso)}
+#tab-ficha .pericia-row[data-grau="15"] .pericia-treino-btn{background:var(--hx-sol);color:var(--hx-ink)}
+#tab-ficha .pericia-treino-btn:hover{background:var(--hx-poeira);color:var(--hx-ink)}
+#tab-ficha .fx-per-grupo-titulo{font-size:1.05rem;letter-spacing:.06em;border-bottom:1px dashed var(--fx-line)}
+
+/* ── habilidades: nome na pincelada, tipo à direita, texto aberto embaixo ── */
+#tab-ficha .list-item.fx-hab{padding:12px 0 14px;border-bottom:0}
+#tab-ficha .fx-hab-head{
+  position:relative;isolation:isolate;width:100%;max-width:560px;padding:6px 26px 6px 18px;
+  font-size:1.15rem;letter-spacing:.05em;color:var(--hx-ink);transform:rotate(-.4deg);
+}
+#tab-ficha .fx-hab-head:disabled{color:var(--hx-ink);opacity:1}
+#tab-ficha .fx-hab-head::before{content:'';position:absolute;inset:0;background:var(--hx-osso);z-index:-1;filter:url(#hx-rough)}
+#tab-ficha .fx-hab-head::after{content:'';position:absolute;inset:0;transform:translate(4px,4px);background:var(--hx-seco);z-index:-2;filter:url(#hx-rough)}
+#tab-ficha .fx-hab-head .badge{order:3;margin-left:auto;color:var(--hx-ink) !important;background:none !important;border:0 !important;font-size:11.5px;padding:0;opacity:.75}
+#tab-ficha .fx-hab-head .fx-hab-chev{order:4;margin-left:6px;color:var(--hx-ink)}
+#tab-ficha .fx-hab-desc{margin:12px 0 0 6px;max-width:600px;color:var(--hx-osso);opacity:.88;-webkit-line-clamp:3}
+
+/* ── barra de navegação ── */
+#tab-ficha .fx-bar{background:none;border:0;border-bottom:1px solid var(--fx-line);padding:6px 4px}
+
+/* ── responsivo e impressão ── */
+@media (max-width:900px){
+  #tab-ficha .fx-id{grid-template-columns:minmax(0,1fr);grid-template-areas:"top" "tags" "attrs";row-gap:16px}
+  #tab-ficha .fx-id>#fx-sec-attr{min-width:0}
+  #tab-ficha .fx-attr{justify-content:flex-start}
+  #tab-ficha .fx-attr .attr-node-label{text-align:left;font-size:1.7rem}
+}
+@media (max-width:720px){#tab-ficha .fx-per-lista{grid-template-columns:minmax(0,1fr)}}
+@media print{
+  #tab-ficha *::before,#tab-ficha *::after,#tab-ficha .ficha-nome-input{filter:none !important}
+}
+
+
+/* ── dado = forma: o polígono tem tantos lados quanto o dado tem faces ── */
+#tab-ficha [data-faces="4"]{clip-path:polygon(50.0% 1.0%,99.0% 50.0%,50.0% 99.0%,1.0% 50.0%)}
+#tab-ficha [data-faces="8"]{clip-path:polygon(68.8% 4.7%,95.3% 31.2%,95.3% 68.8%,68.8% 95.3%,31.2% 95.3%,4.7% 68.8%,4.7% 31.2%,31.2% 4.7%)}
+#tab-ficha [data-faces="10"]{clip-path:polygon(50.0% 1.0%,78.8% 10.4%,96.6% 34.9%,96.6% 65.1%,78.8% 89.6%,50.0% 99.0%,21.2% 89.6%,3.4% 65.1%,3.4% 34.9%,21.2% 10.4%)}
+#tab-ficha [data-faces="12"]{clip-path:polygon(62.7% 2.7%,84.6% 15.4%,97.3% 37.3%,97.3% 62.7%,84.6% 84.6%,62.7% 97.3%,37.3% 97.3%,15.4% 84.6%,2.7% 62.7%,2.7% 37.3%,15.4% 15.4%,37.3% 2.7%)}
+#tab-ficha .fx-hexbtn[data-faces]:not([data-faces="6"]){width:75px}
+#tab-ficha .pericia-treino-btn[data-faces]:not([data-faces="6"]){width:43px}
+
+/* ── folha: perícias à esquerda (2 colunas), habilidades à direita ── */
+.fx-folha{display:grid;grid-template-columns:minmax(0,1fr) minmax(310px,410px);gap:30px;align-items:start;margin:4px 0 20px}
+.fx-folha>.fx-card{margin:0;background:none;box-shadow:none}
+.fx-folha>.fx-card>.fx-card-head{padding-left:4px;padding-right:4px}
+.fx-folha .fx-card-body{padding-left:4px;padding-right:4px}
+.fx-folha #fx-sec-hab .fx-hab-head{max-width:none}
+.fx-folha #fx-sec-hab .fx-hab-desc{max-width:none;-webkit-line-clamp:6}
+@media (max-width:1050px){.fx-folha{grid-template-columns:minmax(0,1fr)}}
+
+
+/* ── pontos vitais v2: PV e PD lado a lado (Sanidade fundida no PD) ── */
+#tab-ficha .vital-box[data-k="san"],.fx-hud-v.san{display:none !important}
+#tab-ficha .stat-grid.fx-vitais-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+#tab-ficha .vital-box{padding:10px 16px 14px;border:0;background:linear-gradient(180deg,rgba(231,220,194,.05),transparent);box-shadow:inset 0 -3px 0 var(--hx-seco)}
+#tab-ficha .vital-box[data-k="esf"]{box-shadow:inset 0 -3px 0 #7a4a1a}
+#tab-ficha .vital-box:first-child{padding-left:16px}
+#tab-ficha .vital-box .stat-name{font-family:'IM Fell English SC',serif !important;font-size:1.25rem !important;letter-spacing:.05em !important;align-items:flex-start;min-height:0;margin-bottom:2px}
+#tab-ficha .snum{font-size:4.6rem !important}
+#tab-ficha .vital-bar-track{height:14px}
+@media (max-width:560px){#tab-ficha .stat-grid.fx-vitais-grid{grid-template-columns:minmax(0,1fr)}}

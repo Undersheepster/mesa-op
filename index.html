@@ -1,0 +1,1877 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>⛧ Ordem Paranormal — Mesa ⛧</title>
+<link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400;1,600&family=Philosopher:ital,wght@0,400;0,700;1,400;1,700&family=Special+Elite&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="hexatombe.css">
+<link rel="stylesheet" href="psique.css">
+<link rel="stylesheet" href="forja.css">
+<link rel="stylesheet" href="mestre.css">
+<link rel="stylesheet" href="transcendencia-forcada.css">
+<link rel="stylesheet" href="transcendencia.css">
+<link rel="stylesheet" href="ficha.css">
+<link rel="stylesheet" href="nivel.css">
+<link rel="stylesheet" href="ficha-hx.css">
+<link rel="stylesheet" href="ficha-poster.css">
+<link rel="stylesheet" href="login-hx.css">
+<link rel="stylesheet" href="inventario-poster.css">
+<link rel="stylesheet" href="abas-poster.css">
+<link rel="stylesheet" href="cursor-hx.css">
+<!-- Supabase JS SDK (Realtime + Storage) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+
+</head>
+<body>
+<!-- Filtros SVG de "papel rasgado" (hx-rough / hx-rough-fino). Ficam FORA de qualquer aba/tela: se ficarem dentro de um elemento display:none
+     (como #tab-ficha quando outra aba está aberta) vários navegadores ignoram o filtro e o bloco vermelho dos títulos aparece reto. -->
+      <svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+        <filter id="hx-rough" x="-6%" y="-40%" width="112%" height="180%"><feTurbulence type="fractalNoise" baseFrequency=".03 .55" numOctaves="3" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G"/></filter>
+        <filter id="hx-rough-fino" x="-2%" y="-10%" width="104%" height="120%"><feTurbulence type="fractalNoise" baseFrequency=".05 .7" numOctaves="2" seed="3" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="3" xChannelSelector="R" yChannelSelector="G"/></filter>
+      </defs></svg>
+<div class="top-seal"></div>
+
+<!-- SUPABASE SETUP SCREEN -->
+<div id="screen-firebase" class="screen" style="display:none;align-items:center;justify-content:center;flex-direction:column;padding:3rem 1rem;min-height:100vh">
+  <div style="width:100%;max-width:520px;background:rgba(19,16,12,0.97);border:1px solid rgba(216,160,80,0.5);padding:2.5rem;position:relative">
+    <div style="font-family:'IM Fell English SC',serif;font-size:1.2rem;color:#d8a050;text-align:center;margin-bottom:.4rem;letter-spacing:.08em">⛧ Configuração Supabase ⛧</div>
+    <div style="font-family:'IM Fell English',serif;font-style:italic;font-size:.82rem;color:var(--white-ash);text-align:center;margin-bottom:1.8rem">Para jogar online entre máquinas diferentes, você precisa de um projeto Supabase gratuito.</div>
+
+    <div style="background:rgba(216,160,80,0.08);border:1px solid rgba(216,160,80,0.25);padding:14px 16px;margin-bottom:1.4rem;font-size:12px;color:var(--white-ash);font-family:'Courier Prime',monospace;line-height:1.9">
+      <b style="color:#d8a050;font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:.1em">COMO CRIAR SEU PROJETO (grátis):</b><br>
+      1. Acesse <a href="https://supabase.com" target="_blank" style="color:#529bff">supabase.com</a> e crie uma conta<br>
+      2. Clique em <b>"New Project"</b> → dê um nome (ex: op-mesa)<br>
+      3. Vá em <b>SQL Editor</b> e execute:<br>
+      <code style="display:block;background:rgba(0,0,0,.3);padding:6px 8px;margin:4px 0;font-size:10px">CREATE TABLE mesa_state (path text PRIMARY KEY, data jsonb, updated_at timestamptz DEFAULT now());</code>
+      4. Em <b>Table Editor → mesa_state → Authentication</b>, desative o <b>RLS</b><br>
+      5. Vá em <b>Project Settings → API</b> e copie a <b>URL</b> e a <b>anon key</b>
+    </div>
+
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#d8a050;text-transform:uppercase;margin-bottom:.5rem;font-family:'Special Elite',sans-serif">URL do Projeto</label>
+      <input id="cfg-apiKey" type="text" placeholder="https://xxxx.supabase.co" style="width:100%;background:rgba(19,16,14,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:8px 12px;outline:none">
+    </div>
+    <div style="margin-bottom:1rem">
+      <label style="display:block;font-size:11px;letter-spacing:.12em;color:#d8a050;text-transform:uppercase;margin-bottom:.5rem;font-family:'Special Elite',sans-serif">Anon Key (public)</label>
+      <input id="cfg-dbUrl" type="text" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="width:100%;background:rgba(19,16,14,0.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:8px 12px;outline:none">
+    </div>
+    <!-- Campos ocultos para compatibilidade (não são usados pelo Supabase) -->
+    <input id="cfg-projectId" type="hidden">
+    <input id="cfg-appId" type="hidden">
+    <input id="cfg-senderId" type="hidden">
+    <div id="cfg-err" style="color:#ee2222;font-size:12px;font-family:'Courier Prime',monospace;min-height:16px;margin-bottom:.8rem;text-align:center"></div>
+    <button onclick="saveFirebaseConfig()" style="width:100%;padding:13px;background:transparent;border:1px solid #a46e00;color:#d8a050;font-family:'IM Fell English SC',serif;font-size:13px;letter-spacing:.15em;text-transform:uppercase;cursor:var(--cur-pointer,pointer);margin-bottom:.6rem;transition:all .2s" onmouseover="this.style.background='rgba(216,160,80,0.15)'" onmouseout="this.style.background='transparent'">⛧ Salvar e Conectar ⛧</button>
+    <button onclick="testFirebaseNow()" style="width:100%;padding:9px;background:transparent;border:1px solid rgba(82,155,255,0.5);color:#529bff;font-family:'Special Elite',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:var(--cur-pointer,pointer);margin-bottom:.6rem;transition:all .2s">◎ Testar Conexão Agora</button>
+    <div id="cfg-diag" style="display:none;background:rgba(17,17,17,0.8);border:1px solid rgba(82,155,255,0.3);padding:10px 14px;font-size:11px;font-family:'Courier Prime',monospace;color:#90c0f0;line-height:1.8;margin-bottom:.8rem;white-space:pre-wrap"></div>
+    <button onclick="skipFirebaseSetup()" style="width:100%;padding:9px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Special Elite',sans-serif;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:var(--cur-pointer,pointer);transition:all .2s" onmouseover="this.style.background='rgba(163,36,26,0.08)'" onmouseout="this.style.background='transparent'">Usar offline (apenas nesta máquina)</button>
+    <div style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--blood-deep);font-size:11px;color:var(--white-dust);text-align:center;font-family:'Courier Prime',monospace">
+      Já tem configuração salva? <a onclick="skipFirebaseSetup()" style="color:var(--crimson-mid);cursor:var(--cur-pointer,pointer)">Continuar sem alterar</a>
+    </div>
+  </div>
+</div>
+ 
+<!-- LOGIN SCREEN -->
+<div id="screen-login" class="screen active">
+<div class="lg-fx" aria-hidden="true"></div>
+<div class="hx-scene" aria-hidden="true">
+<svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMax slice" xmlns="http://www.w3.org/2000/svg">
+<defs>
+<radialGradient id="hxHalo" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="#c9301f" stop-opacity=".38"/><stop offset="1" stop-color="#c9301f" stop-opacity="0"/></radialGradient>
+<linearGradient id="hxSky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0d0806"/><stop offset=".62" stop-color="#2a140c"/><stop offset=".9" stop-color="#7a3a17"/><stop offset="1" stop-color="#d9823a"/></linearGradient>
+<filter id="hxRough" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency=".05" numOctaves="2" seed="7" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="5"/></filter>
+<radialGradient id="hxMoon" cx="38%" cy="34%" r="82%"><stop offset="0" stop-color="#e5512d"/><stop offset=".4" stop-color="#b02a19"/><stop offset=".8" stop-color="#6b150e"/><stop offset="1" stop-color="#2a0705"/></radialGradient>
+<radialGradient id="hxLimb" cx="40%" cy="36%" r="72%"><stop offset=".45" stop-color="#1a0402" stop-opacity="0"/><stop offset=".8" stop-color="#1a0402" stop-opacity=".55"/><stop offset="1" stop-color="#0d0201" stop-opacity=".95"/></radialGradient>
+<linearGradient id="hxRim" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ff9a6a" stop-opacity=".8"/><stop offset=".3" stop-color="#ff6a3a" stop-opacity=".18"/><stop offset=".6" stop-color="#ff7a4a" stop-opacity="0"/></linearGradient>
+<clipPath id="hxMoonClip"><circle cx="720" cy="330" r="124"/></clipPath>
+<filter id="hxSurface" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".02 .024" numOctaves="5" seed="14" result="n"/><feDiffuseLighting in="n" lighting-color="#ff7f5a" surfaceScale="12" diffuseConstant="1.1" result="lit"><feDistantLight azimuth="215" elevation="46"/></feDiffuseLighting><feComposite in="lit" in2="SourceGraphic" operator="in"/></filter>
+<filter id="hxFine" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".16" numOctaves="3" seed="3" result="n"/><feDiffuseLighting in="n" lighting-color="#fff" surfaceScale="2.2" diffuseConstant="1" result="lit"><feDistantLight azimuth="215" elevation="55"/></feDiffuseLighting><feComposite in="lit" in2="SourceGraphic" operator="in"/></filter>
+<filter id="hxSoft"><feGaussianBlur stdDeviation="5"/></filter>
+<filter id="hxSoft2"><feGaussianBlur stdDeviation="1.1"/></filter>
+<filter id="hxGlow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="3"/></filter>
+</defs>
+<rect width="1440" height="900" fill="url(#hxSky)"/>
+<g class="hx-moongroup"><circle cx="720" cy="330" r="330" fill="url(#hxHalo)"/>
+<circle cx="720" cy="330" r="128" fill="none" stroke="#ff5a2a" stroke-opacity=".32" stroke-width="6" filter="url(#hxGlow)"/>
+<circle cx="720" cy="330" r="124" fill="url(#hxMoon)"/>
+<g clip-path="url(#hxMoonClip)">
+<!-- relevo: textura iluminada -->
+<circle cx="720" cy="330" r="124" fill="#fff" filter="url(#hxSurface)" opacity=".5" style="mix-blend-mode:multiply"/>
+<circle cx="720" cy="330" r="124" fill="#fff" filter="url(#hxFine)" opacity=".16" style="mix-blend-mode:overlay"/>
+<!-- mares -->
+<g fill="#2a0804" filter="url(#hxSoft)" opacity=".7">
+<path d="M672 282 q22 -20 50 -10 q22 8 16 30 q-8 24 -34 22 q-26 -2 -32 -42z"/>
+<path d="M742 300 q24 -18 44 0 q16 18 -2 36 q-22 14 -40 -6 q-10 -14 -2 -30z"/>
+<path d="M690 346 q18 -8 30 6 q8 16 -10 24 q-22 4 -26 -14 q-2 -10 6 -16z"/>
+<path d="M760 252 q14 -8 26 2 q6 12 -8 18 q-14 2 -18 -8z"/>
+<path d="M648 330 q10 -10 22 -2 q4 12 -8 18 q-12 0 -14 -16z"/>
+</g>
+<!-- Tycho e raios -->
+<g stroke="#ffc4a6" stroke-opacity=".28" stroke-width="1.1" filter="url(#hxSoft2)">
+<path d="M700 404 L640 470 M700 404 L690 480 M700 404 L760 470 M700 404 L610 420 M700 404 L790 420 M700 404 L720 250 M700 404 L630 300 M700 404 L800 330"/>
+</g>
+<!-- crateras -->
+<g>
+<g transform="translate(700 404)"><circle r="9" fill="#2a0905" opacity=".75"/><circle r="9" fill="none" stroke="#ffc0a0" stroke-opacity=".7" stroke-width="1.6" stroke-dasharray="14 40" transform="rotate(30)"/></g>
+<g transform="translate(762 372)"><circle r="12" fill="#2a0905" opacity=".55"/><circle r="12" fill="none" stroke="#ffb090" stroke-opacity=".5" stroke-width="1.4" stroke-dasharray="20 60" transform="rotate(25)"/></g>
+<g transform="translate(668 292)"><circle r="8" fill="#2a0905" opacity=".5"/><circle r="8" fill="none" stroke="#ffb090" stroke-opacity=".45" stroke-width="1.2" stroke-dasharray="12 40" transform="rotate(30)"/></g>
+<g transform="translate(776 304)"><circle r="6" fill="#2a0905" opacity=".5"/></g>
+<g transform="translate(728 270)"><circle r="7" fill="#2a0905" opacity=".45"/></g>
+<g transform="translate(652 366)"><circle r="5" fill="#2a0905" opacity=".5"/></g>
+<g transform="translate(742 420)"><circle r="6" fill="#2a0905" opacity=".45"/></g>
+</g>
+<!-- escurecimento da borda e terminador -->
+<circle cx="720" cy="330" r="124" fill="url(#hxLimb)"/>
+<circle cx="760" cy="372" r="112" fill="#0d0201" opacity=".0"/>
+</g>
+<circle cx="720" cy="330" r="123" fill="none" stroke="url(#hxRim)" stroke-width="2.2"/>
+</g>
+<path d="M0 760 Q220 700 420 748 T820 735 T1180 752 T1440 722 V900 H0Z" fill="#2b150b"/>
+<path d="M0 800 Q260 752 520 796 T980 786 T1440 770 V900 H0Z" fill="#1d0f08"/>
+<path d="M0 850 Q300 820 640 846 T1440 832 V900 H0Z" fill="#120a06"/>
+</svg></div>
+<div class="hx-hero"><h1 data-text="Ordo Realitas">Ordo Realitas</h1><p>A realidade tem costuras. Quem puxa o fio paga com o que tem.</p></div>
+<div class="lg-embers" id="lg-embers" aria-hidden="true"></div>
+<div class="lg-hud" aria-hidden="true"><span class="lg-hud-l"><span id="lg-log">&gt; identifique-se, agente.</span><i class="lg-caret"></i></span><span class="lg-hud-mid">Terminal 07 · Sinal do Véu <i class="lg-bars"><b></b><b></b><b></b><b></b></i></span><span id="lg-clock">--:--:--</span></div>
+<div class="login-box" id="login-box-el">
+    <div class="lg-stamp" aria-hidden="true">Confidencial</div>
+    <svg class="lg-seal" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="1.2" stroke-dasharray="3 5"/><circle cx="50" cy="50" r="36" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M50 18 L61 78 L22 40 H78 L39 78Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><circle cx="50" cy="50" r="5" fill="currentColor"/></svg>
+    <div class="lg-file"><span id="lg-form-name">Formulário OR-13</span><span>Nº <b id="lg-num">0000</b></span></div>
+    <div class="lg-id">
+      <div class="lg-photo" id="lg-photo" aria-hidden="true"><svg viewBox="0 0 60 76"><circle cx="30" cy="25" r="12" fill="currentColor"/><path d="M5 76C5 56 16 46 30 46s25 10 25 30Z" fill="currentColor"/></svg><i class="lg-scan"></i><em>?</em></div>
+      <div class="lg-idtxt"><div class="login-title" id="lg-title">Registro de agente</div><div class="login-sub" id="lg-sub">Acesso restrito à Ordem</div></div>
+    </div>
+    <div class="lg-meta"><div><small>Agente</small><b id="lg-who">não identificado</b></div><div><small>NEX</small><b>— %</b></div><div><small>Véu</small><b class="lg-sig">instável</b></div></div>
+    <div id="login-form">
+      <div class="form-field"><label>Codinome do agente</label><input type="text" id="li-user" placeholder="seu codinome" autocomplete="username"></div>
+      <div class="form-field"><label>Senha</label><input type="password" id="li-pass" placeholder="••••••••" autocomplete="current-password"><button type="button" class="lg-eye" data-for="li-pass" aria-label="Mostrar senha">ver</button></div>
+      <button class="btn-ritual" onclick="doLogin()"><span>Entrar na Mesa</span></button>
+      <div class="login-err" id="li-err"></div>
+      <div class="login-toggle">Primeira vez? <a onclick="showRegister()">Cadastrar agente</a></div>
+      <div class="lg-tourwrap">
+        <a class="lg-tour" onclick="reverTourAgatha()">rever tour da Agatha</a>
+      </div>
+      <div class="lg-mestre" id="login-mestre-block">
+        <div class="lg-or"><span>acesso de mestre</span></div>
+        <button class="btn-ritual lg-btn-mestre" onclick="openMestreModal()">Entrar como Mestre</button>
+      </div>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-field"><label>Codinome do agente</label><input type="text" id="rg-user" placeholder="escolha um codinome" autocomplete="username"></div>
+      <div class="form-field"><label>Senha</label><input type="password" id="rg-pass" placeholder="mínimo 4 caracteres" autocomplete="new-password"><button type="button" class="lg-eye" data-for="rg-pass" aria-label="Mostrar senha">ver</button></div>
+      <div class="form-field"><label>Confirmar senha</label><input type="password" id="rg-pass2" placeholder="repita a senha" autocomplete="new-password"></div>
+      <button class="btn-ritual" onclick="doRegister()"><span>Registrar agente</span></button>
+      <div class="login-err" id="rg-err"></div>
+      <div class="login-toggle">Já tem conta? <a onclick="showLogin()">Entrar</a></div>
+    </div>
+    <div class="lg-foot"><div class="lg-bar" aria-hidden="true"></div><p>⚠ Acesso monitorado pela Ordo Realitas. Tentativas falhas são registradas. O que você vê aqui nunca existiu.</p></div>
+  </div>
+</div>
+<!-- MAIN APP -->
+<div id="screen-app" class="screen">
+  <div class="topbar">
+    <div class="topbar-logo">⛧ OP<span>Mesa de Operações</span></div>
+    <div class="tab-nav" id="tab-nav">
+      <div class="hx-nav-group">Meu agente</div>
+      <button class="tab-btn active" onclick="showTab('ficha',this)">Ficha</button>
+      <button class="tab-btn" onclick="showTab('inventario',this)">Inventário</button>
+      <button class="tab-btn" onclick="showTab('poderes',this);setTimeout(renderPoderesTab,80)"><svg class="tab-ico" viewBox="0 0 16 16"><path d="M9 1L3.5 9h3.2L6 15l6.5-8.5H9.3z" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linejoin="round"/></svg> Poderes</button>
+      <button class="tab-btn" onclick="showTab('rituais',this)">Rituais</button>
+      <button class="tab-btn" onclick="showTab('transcendencia',this);setTimeout(renderTranscendenciaPanel,80)">Transcendência</button>
+      <button class="tab-btn" onclick="showTab('trilhas',this)">Trilhas</button>
+      <div class="hx-nav-group">Na cena</div>
+      <button class="tab-btn" onclick="showTab('dados',this)">Dados</button>
+      <button class="tab-btn" onclick="showTab('danos',this);renderDanosTab()"><svg class="tab-ico" viewBox="0 0 16 16"><path d="M2 2l5 5M14 2L9 7M2 14l5-5M14 14L9 9" stroke="currentColor" stroke-width="1.4" fill="none" stroke-linecap="round"/><circle cx="8" cy="8" r="1.3" fill="currentColor"/></svg> Danos</button>
+      <button class="tab-btn" onclick="showTab('missao',this)">Missão</button>
+      <button class="tab-btn" onclick="showTab('multi',this)" id="tab-multi-btn"><svg class="tab-ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="1.4" fill="currentColor"/><path d="M8 8L8 1.5M8 8l5.5-3.2M8 8l0 6.5M8 8l-5.5 3.2M8 8l5.5 3.2M8 8l-5.5-3.2" stroke="currentColor" stroke-width=".9" opacity=".7"/></svg> Mesa Online</button>
+      <button class="tab-btn" onclick="showTab('psique',this)" id="tab-psique-btn"><svg class="tab-ico" viewBox="0 0 16 16"><path d="M8 2c-3 0-4.5 2-4.5 4.2 0 1.6.9 2.6 1.4 3.4.4.6.6 1 .6 1.9h5c0-.9.2-1.3.6-1.9.5-.8 1.4-1.8 1.4-3.4C12.5 4 11 2 8 2z" stroke="currentColor" stroke-width="1.1" fill="none"/><path d="M6.3 11.5h3.4M6.7 13h2.6" stroke="currentColor" stroke-width="1"/><path d="M8 4.3v3.4M6.3 6.3h3.4" stroke="currentColor" stroke-width=".8" opacity=".6"/></svg> Psiquê</button>
+      <div class="hx-nav-group">Compêndio</div>
+      <button class="tab-btn" onclick="showTab('itens',this)">Itens</button>
+      <button class="tab-btn" onclick="showTab('elementos',this)"><svg class="tab-ico" viewBox="0 0 16 16"><path d="M6.5 1.5h3M7 1.5v4.2L4 10.8a2.3 2.3 0 002 3.4h4a2.3 2.3 0 002-3.4L9 5.7V1.5" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/><path d="M5.3 10h5.4" stroke="currentColor" stroke-width="1" opacity=".6"/></svg> Elementos</button>
+      <button class="tab-btn" onclick="showTab('criaturas',this)"><svg class="tab-ico" viewBox="0 0 16 16"><path d="M8 1.5c-3 0-5 2.1-5 5 0 2 1 3.3 1 4.5v1.5h1.6v-1.8h1v1.8h2.8v-1.8h1v1.8H12v-1.5c0-1.2 1-2.5 1-4.5 0-2.9-2-5-5-5z" stroke="currentColor" stroke-width="1.1" fill="none" stroke-linejoin="round"/><circle cx="6" cy="7" r=".9" fill="currentColor"/><circle cx="10" cy="7" r=".9" fill="currentColor"/></svg> Criaturas</button>
+      <button class="tab-btn" onclick="showTab('agentes',this);renderAgentesTab()"><svg class="tab-ico" viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="4" stroke="currentColor" stroke-width="1.4" fill="none"/><path d="M9.5 9.5L14 14" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg> Agentes</button>
+      <div class="hx-nav-group hx-nav-mestre">Mestre</div>
+      <button class="tab-btn mestre-only" id="tab-status-btn" onclick="showTab('status',this);renderStatusMestrePanel()" style="display:none">☠ Status</button>
+      <button class="tab-btn mestre-only" id="tab-mestre-btn" onclick="showTab('mestre',this)" style="display:none">⛧ Mestre</button>
+    </div>
+    <div class="topbar-user hx-foot">
+      <span id="fb-status" title="Status Supabase" style="display:none">● ONLINE</span>
+      <div class="hx-foot-id">
+        <div class="hx-foot-avatar" id="topbar-avatar" aria-hidden="true">?</div>
+        <div class="hx-foot-who">
+          <span id="topbar-username"></span>
+          <span id="topbar-role"></span>
+        </div>
+      </div>
+      <!-- Nível/XP do agente — visível em todas as abas (nivel.js › pintar) -->
+      <div class="nv-side" id="nv-side" hidden>
+        <button type="button" id="nv-card-side" class="nv-card" onclick="nvAbrir()" aria-haspopup="dialog" title="Ver progressão">
+          <span class="nv-num"><small>Nv</small><b id="nv-side-num">1</b></span>
+          <span class="nv-meta"><span id="nv-side-xp">0 / 100 XP</span><span class="nv-bar"><i id="nv-side-fill"></i></span></span>
+        </button>
+        <button type="button" class="nv-plus" onclick="nvAbrir(true)" aria-label="Adicionar XP ou níveis" title="Adicionar XP ou níveis">+</button>
+      </div>
+      <!-- Indicador de online clicável para todos -->
+      <div id="online-indicator" class="hx-foot-online" title="Ver quem está online" onclick="toggleOnlinePopup()" style="display:none">
+        <span class="presence-dot"></span><span class="hx-foot-online-txt"><span id="online-count">0</span> online</span><span class="hx-foot-online-arrow">›</span>
+      </div>
+      <div class="hx-foot-audio" title="Volume da ambientação">
+        <button id="mute-all-btn" onclick="toggleMuteAll()" title="Mutar/desmutar todos os sons" aria-label="Mutar sons">🔊</button>
+        <input type="range" id="ambience-vol" min="0" max="100" value="55"
+          title="Ambientação sonora"
+          oninput="if(window.setAmbienceVolume)setAmbienceVolume(this.value/100*0.12); if(typeof _psiqueApplyVolume==='function')_psiqueApplyVolume()">
+      </div>
+      <div class="hx-foot-links">
+        <button class="hx-foot-link" onclick="reverTourAgatha()" title="Rever o tour guiado">Tour</button>
+        <button class="hx-foot-link" onclick="iniciarTourSamuel()" title="Tour do sistema (regras) com o Samuel">Sistema</button>
+        <button class="hx-foot-link" onclick="iniciarTutorialRolagem()" title="Aula: como rolar Físico, Emoção e Mente">Rolagem</button>
+        <button class="hx-foot-link" onclick="openFirebaseSettings()" title="Configurar Supabase">Supabase</button>
+      </div>
+      <button class="hx-foot-exit" onclick="doLogout()">Sair da mesa</button>
+    </div>
+    <!-- Popup de quem está online (visível para todos) -->
+    <div id="online-popup" style="display:none;position:fixed;top:52px;right:16px;z-index:300;background:rgba(20,17,13,0.97);border:1px solid rgba(216,160,80,0.4);padding:12px 16px;min-width:200px;max-width:280px;box-shadow:0 4px 30px rgba(0,0,0,0.7)">
+      <div style="font-family:'IM Fell English SC',serif;font-size:10px;letter-spacing:.18em;color:#d8a050;text-transform:uppercase;margin-bottom:10px;padding-bottom:7px;border-bottom:1px solid rgba(216,160,80,0.25)">⛧ Presença em Tempo Real</div>
+      <div id="online-popup-list" style="display:flex;flex-direction:column;gap:6px"></div>
+    </div>
+  </div>
+  <div class="app-body">
+ 
+    <!-- FICHA (v4) -->
+    <div id="tab-ficha" class="tab-content active">
+
+      <!-- HUD fixo: aparece sozinho quando os Pontos Vitais saem da tela -->
+      <div class="fx-hud-wrap" aria-live="off">
+        <div class="fx-hud" id="fx-hud">
+          <button class="fx-hud-nome" id="fx-hud-nome" onclick="fxIr('fx-top')" title="Voltar ao topo da ficha">Agente</button>
+      <div class="fx-hud-v pv">
+        <span class="fx-hud-lbl">PV</span>
+        <button class="sadj" data-fx-adj="pv" data-d="-1" aria-label="Diminuir PV">−</button>
+        <b id="hud-pv">0</b><i>/<span id="hud-pvmax">0</span></i>
+        <button class="sadj" data-fx-adj="pv" data-d="1" aria-label="Aumentar PV">+</button>
+        <div class="fx-hud-bar"><div class="vital-bar-fill pv" id="hud-bar-pv"></div></div>
+      </div>
+      <div class="fx-hud-v san">
+        <span class="fx-hud-lbl">PD</span>
+        <button class="sadj" data-fx-adj="san" data-d="-1" aria-label="Diminuir PD">−</button>
+        <b id="hud-san">0</b><i>/<span id="hud-sanmax">0</span></i>
+        <button class="sadj" data-fx-adj="san" data-d="1" aria-label="Aumentar PD">+</button>
+        <div class="fx-hud-bar"><div class="vital-bar-fill san" id="hud-bar-san"></div></div>
+      </div>
+      <div class="fx-hud-v esf">
+        <span class="fx-hud-lbl">PD</span>
+        <button class="sadj" data-fx-adj="esf" data-d="-1" aria-label="Diminuir PD">−</button>
+        <b id="hud-esf">0</b><i>/<span id="hud-esfmax">0</span></i>
+        <button class="sadj" data-fx-adj="esf" data-d="1" aria-label="Aumentar PD">+</button>
+        <div class="fx-hud-bar"><div class="vital-bar-fill esf" id="hud-bar-esf"></div></div>
+      </div>
+          <span class="fx-hud-def" title="Defesa">DEF <b id="hud-def">10</b></span>
+          <span class="fx-hud-conds" id="hud-conds"></span>
+          <button class="fx-btn-sm fx-hud-undo" onclick="fxDesfazerVitais()" title="Desfazer a última mudança de PV/PD (Ctrl+Z)">↶</button>
+          <div class="fx-dice-mod fx-dice-hud" title="Degraus de dado nos próximos testes">
+            <button onclick="fxDadosExtra(-1)" aria-label="Menos um dado">−</button><b class="fx-dice-val">±0</b><button onclick="fxDadosExtra(1)" aria-label="Mais um dado">+</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- IDENTIDADE -->
+      <header class="ficha-header fx-id" id="fx-top">
+        <div class="ficha-header-top">
+          <div class="ficha-nome-wrap">
+            <label class="ficha-nome-label" for="f-nome">Nome / Codinome</label>
+            <input id="f-nome" class="ficha-nome-input" placeholder="Como o Outro Lado vai te chamar?" oninput="autoSave();fxSyncIdent()" autocomplete="off">
+          </div>
+          <div class="fx-menu-wrap">
+            <button class="fx-btn" id="fx-menu-btn" onclick="fxToggleMenu(event)" aria-haspopup="true" aria-expanded="false">Ficha ▾</button>
+            <div class="fx-menu" id="fx-menu" hidden>
+              <button onclick="fxCopiarResumo()">⧉ Copiar resumo</button>
+              <button onclick="fxExportar()">⭳ Exportar ficha (.json)</button>
+              <button onclick="fxImportar()">⭱ Importar ficha (.json)</button>
+              <button onclick="fxImprimir()">⎙ Imprimir</button>
+              <button onclick="fxExpandirTudo()">▾ Expandir todos os blocos</button>
+              <hr>
+              <button class="danger btn-descartar-ficha" onclick="descartarFicha()">✕ Descartar ficha…</button>
+            </div>
+          </div>
+        </div>
+        <div class="ficha-tags-row">
+          <div class="ficha-tag grow">
+            <label class="ficha-tag-label" for="f-classe">Classe</label>
+            <select id="f-classe" onchange="autoSave();renderClasseDesc();fxSyncTrilhas(true);fxSyncIdent()"><option>Combatente</option><option>Especialista</option><option>Ocultista</option></select>
+          </div>
+          <div class="ficha-tag">
+            <label class="ficha-tag-label" for="nv-card">Nível</label>
+            <div class="nv-row">
+              <button type="button" id="nv-card" class="nv-card" onclick="nvAbrir()" aria-haspopup="dialog" title="Ver progressão">
+                <span class="nv-num"><small>Nv</small><b id="fx-nivel">1</b></span>
+                <span class="nv-meta"><span id="nv-xp-txt">0 / 100 XP</span><span class="nv-bar"><i id="nv-bar-fill"></i></span></span>
+              </button>
+              <button type="button" class="nv-plus" onclick="nvAbrir(true)" aria-label="Adicionar XP ou níveis" title="Adicionar XP ou níveis">+</button>
+            </div>
+            <input id="f-nex" type="hidden" value="5">
+          </div>
+          <div class="ficha-tag">
+            <label class="ficha-tag-label" for="f-desl">Desl.</label>
+            <div class="ficha-nex-badge">
+              <input id="f-desl" type="number" min="0" value="9" oninput="autoSave();fxSyncIdent()">
+              <span>m</span>
+              <small class="fx-quad" id="fx-quad" title="Quadrados de 1,5 m">≈ 6 □</small>
+            </div>
+          </div>
+          <div class="ficha-tag grow">
+            <label class="ficha-tag-label" for="f-origem">Origem</label>
+            <select id="f-origem" onchange="autoSave();renderOrigemDesc();fxSyncIdent()" aria-label="Origem">
+              <option value="">— Selecione —</option>
+              <option>Acadêmico</option>
+              <option>Agente de Saúde</option>
+              <option>Amnésico</option>
+              <option>Artista</option>
+              <option>Atleta</option>
+              <option>Chef</option>
+              <option>Criminoso</option>
+              <option>Cultista Arrependido</option>
+              <option>Desgarrado</option>
+              <option>Engenheiro</option>
+              <option>Executivo</option>
+              <option>Investigador</option>
+              <option>Lutador</option>
+              <option>Magnata</option>
+              <option>Mercenário</option>
+              <option>Militar</option>
+              <option>Operário</option>
+              <option>Policial</option>
+              <option>Religioso</option>
+              <option>Servidor Público</option>
+              <option>Teórico da Conspiração</option>
+              <option>TI</option>
+              <option>Trabalhador Rural</option>
+              <option>Trambiqueiro</option>
+              <option>Universitário</option>
+              <option>Vítima</option>
+              <option>Adestrador</option>
+              <option>Aeronauta</option>
+              <option>Ajudante</option>
+              <option>Animador</option>
+              <option>Aposentado</option>
+              <option>Apostador</option>
+              <option>Arqueólogo</option>
+              <option>Arquiteto</option>
+              <option>Arquivista</option>
+              <option>Astrônomo</option>
+              <option>Atendente</option>
+              <option>Ativista</option>
+              <option>Auxiliar De Limpeza</option>
+              <option>Açougueiro</option>
+              <option>Barbeiro</option>
+              <option>Barista</option>
+              <option>Bombeiro</option>
+              <option>Caça Problemas</option>
+              <option>Circense</option>
+              <option>Coach</option>
+              <option>Colecionador</option>
+              <option>Comerciante</option>
+              <option>Controlador De Pragas</option>
+              <option>Costureiro</option>
+              <option>Coveiro</option>
+              <option>Cria Da Ordem</option>
+              <option>Crítico</option>
+              <option>Cuidador</option>
+              <option>Dançarino</option>
+              <option>Delinquente</option>
+              <option>Desafiador</option>
+              <option>Designer De Produtos</option>
+              <option>Deslocado No Tempo</option>
+              <option>Diarista</option>
+              <option>Enigmático</option>
+              <option>Entregador</option>
+              <option>Espadachim</option>
+              <option>Espiritualizado</option>
+              <option>Espião</option>
+              <option>Famoso Da Internet</option>
+              <option>Fanático</option>
+              <option>Ferreiro</option>
+              <option>Festeiro</option>
+              <option>Filósofo</option>
+              <option>Fisioterapeuta</option>
+              <option>Forasteiro</option>
+              <option>Físico Nuclear</option>
+              <option>Gerente</option>
+              <option>Guerrilheiro</option>
+              <option>Guia Turístico</option>
+              <option>Historiador</option>
+              <option>Hoteleiro</option>
+              <option>Humorista</option>
+              <option>Ilusionista</option>
+              <option>Ilustrador</option>
+              <option>Incitador Do Paranormal</option>
+              <option>Juiz</option>
+              <option>Linguista</option>
+              <option>Marido Troféu</option>
+              <option>Mascote</option>
+              <option>Mecânico</option>
+              <option>Meretriz</option>
+              <option>Miliciano</option>
+              <option>Modelo</option>
+              <option>Muquirana</option>
+              <option>Musicista</option>
+              <option>Novas Origens Origem</option>
+              <option>Nutricionista</option>
+              <option>Olheiro</option>
+              <option>Origem</option>
+              <option>Pacifista</option>
+              <option>Padeiro</option>
+              <option>Pai/Mãe Solo</option>
+              <option>Pescador</option>
+              <option>Pesquisador Paranormal</option>
+              <option>Político</option>
+              <option>Porteiro</option>
+              <option>Powerlifter</option>
+              <option>Praieiro</option>
+              <option>Prodígio</option>
+              <option>Profissional De R.H.</option>
+              <option>Profissional Incomum</option>
+              <option>Publicitário</option>
+              <option>Químico</option>
+              <option>Radialista</option>
+              <option>Reabilitado</option>
+              <option>Rejeitado</option>
+              <option>Revisor</option>
+              <option>Roteirista</option>
+              <option>Selvagem</option>
+              <option>Singularidade</option>
+              <option>Sobrevivente Oprimido</option>
+              <option>Sub Empregado</option>
+              <option>Tatuador</option>
+              <option>Tripulante</option>
+              <option>Vigia</option>
+            </select>
+          </div>
+          <div class="ficha-tag grow">
+            <label class="ficha-tag-label" for="f-trilha">Trilha Paranormal</label>
+            <select id="f-trilha" onchange="autoSave();renderTrilhaInfo();fxSyncIdent()" aria-label="Trilha paranormal">
+              <option value="">— Selecione —</option>
+              <optgroup label="⚔ Combatente">
+                <option>Aniquilador</option>
+                <option>Comandante de Campo</option>
+                <option>Guerreiro</option>
+                <option>Operações Especiais</option>
+                <option>Tropa de Choque</option>
+              </optgroup>
+              <optgroup label="◎ Especialista">
+                <option>Atirador de Elite</option>
+                <option>Infiltrador</option>
+                <option>Médico de Campo</option>
+                <option>Negociador</option>
+                <option>Técnico</option>
+              </optgroup>
+              <optgroup label="❖ Ocultista">
+                <option>Conduíte</option>
+                <option>Flagelador</option>
+                <option>Graduado</option>
+                <option>Intuitivo</option>
+                <option>Lâmina Paranormal</option>
+              </optgroup>
+            </select>
+          </div>
+        </div>
+        <input type="file" id="fx-import-file" accept=".json,application/json" hidden>
+          <section class="fx-card" id="fx-sec-attr" data-hx="attr">
+            <header class="fx-card-head">
+              <h3>Atributos</h3>
+              <div class="fx-head-actions">
+                <button class="fx-btn-sm" onclick="iniciarTutorialRolagem()" title="Aula rápida: como funciona a rolagem de dados">? Como rolar</button>
+                <button class="fx-btn-sm" onclick="zerarAtributos()" title="Zera os 3 atributos (dá pra desfazer)">Zerar</button>
+              </div>
+              <button class="fx-collapse" aria-label="Recolher bloco" title="Recolher/expandir"></button>
+            </header>
+            <div class="fx-card-body">
+              <div id="attr-list"></div>
+              <div class="hx-attr-hint fx-hint">Clique no hexágono para rolar. O dado do atributo (d4 a d12) soma com o dado da perícia; DT padrão 7.</div>
+            </div>
+          </section>
+      </header>
+
+      <!-- NAVEGAÇÃO RÁPIDA + DADOS EXTRAS -->
+      <div class="fx-bar">
+        <nav class="fx-nav" id="fx-nav" aria-label="Seções da ficha">
+          <button data-sec="fx-sec-vitais" onclick="fxIr('fx-sec-vitais')">Vitais</button>
+          <button data-sec="fx-sec-ataques" onclick="fxIr('fx-sec-ataques')">Ataques</button>
+          <button data-sec="fx-sec-attr" onclick="fxIr('fx-sec-attr')">Atributos</button>
+          <button data-sec="fx-sec-pericias" onclick="fxIr('fx-sec-pericias')">Perícias</button>
+          <button data-sec="fx-sec-hab" onclick="fxIr('fx-sec-hab')">Habilidades</button>
+          <button data-sec="fx-sec-dossie" onclick="fxIr('fx-sec-dossie')">Dossiê</button>
+        </nav>
+        <div class="fx-dice-mod" id="fx-dice-mod" title="Degraus de dado: sobem ou descem o dado do atributo nas próximas rolagens (d4 → d6 → d8 → d10 → d12)">
+          <span>Degrau do dado</span>
+          <button onclick="fxDadosExtra(-1)" aria-label="Menos um dado">−</button>
+          <b class="fx-dice-val">±0</b>
+          <button onclick="fxDadosExtra(1)" aria-label="Mais um dado">+</button>
+          <button class="fx-dice-reset" onclick="fxDadosExtra(0,true)" title="Zerar degraus" aria-label="Zerar degraus">↺</button>
+        </div>
+      </div>
+
+      <div class="fx-folha">
+      <!-- PERÍCIAS -->
+      <section class="fx-card fx-wide" id="fx-sec-pericias" data-hx="pericias">
+        <header class="fx-card-head">
+          <h3>Perícias</h3>
+          <span class="fx-count" id="per-resumo"></span>
+          <div class="fx-head-actions"><button class="fx-btn-sm" id="per-limpar" onclick="limparFiltrosPericias()" hidden>Limpar filtros</button></div>
+          <button class="fx-collapse" aria-label="Recolher bloco" title="Recolher/expandir"></button>
+        </header>
+        <div class="fx-card-body">
+          <div class="fx-per-tools">
+            <div class="hx-per-filtro fx-search">
+              <input type="search" id="per-filtro-q" placeholder="Buscar perícia…  ( / )" aria-label="Buscar perícia" oninput="setFiltroPericias(this.value)" autocomplete="off">
+            </div>
+            <div class="fx-seg" id="per-attr-chips" role="group" aria-label="Filtrar por atributo">
+              <button data-attr="" class="on">Todos</button><button data-attr="FIS">Físico</button><button data-attr="EMO">Emoção</button><button data-attr="MEN">Mente</button>
+            </div>
+            <label class="fx-check"><input type="checkbox" id="per-filtro-trein" onchange="setFiltroPericias(undefined,this.checked)"> Treinadas</label>
+            <label class="fx-check"><input type="checkbox" id="per-filtro-fav" onchange="setFiltroPericias(undefined,undefined,this.checked)"> ★ Favoritas</label>
+            <div class="fx-seg" id="per-modo" role="group" aria-label="Ordenar perícias">
+              <button data-modo="az">A–Z</button><button data-modo="attr">Por atributo</button><button data-modo="treino">Por treino</button>
+            </div>
+          </div>
+          <div id="pericias-wrap" class="fx-per-wrap"></div>
+          <p class="fx-hint">Clique no nome ou na fórmula para rolar. O hexágono avança o treino (Destreinado d4 → Treinado d6 → Veterano d8 → Expert d10); botão direito volta um grau. ☆ fixa a perícia no topo.</p>
+          <div class="add-row fx-add fx-add-per">
+            <input id="per-inp-nome" placeholder="Nova perícia (ex: Culinária)…" aria-label="Nome da nova perícia" onkeydown="if(event.key==='Enter')addPericia()">
+            <select id="per-inp-attr" aria-label="Atributo da nova perícia">
+              <option value="FIS">Físico</option><option value="EMO">Emoção</option><option value="MEN">Mente</option>
+            </select>
+            <button class="btn-add" onclick="addPericia()">+ Adicionar</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- HABILIDADES -->
+      <section class="fx-card fx-wide" id="fx-sec-hab" data-hx="hab">
+        <header class="fx-card-head">
+          <h3>Habilidades &amp; Poderes Paranormais</h3>
+          <span class="fx-count" id="hab-resumo"></span>
+          <button class="fx-collapse" aria-label="Recolher bloco" title="Recolher/expandir"></button>
+        </header>
+        <div class="fx-card-body">
+          <div class="fx-per-tools" id="hab-tools">
+            <div class="hx-per-filtro fx-search"><input type="search" id="hab-filtro-q" placeholder="Buscar habilidade…" aria-label="Buscar habilidade" oninput="setFiltroHabs(this.value)" autocomplete="off"></div>
+            <div class="fx-seg" id="hab-tipo-chips" role="group" aria-label="Filtrar por tipo">
+              <button data-t="" class="on">Todas</button><button data-t="h">Habilidades</button><button data-t="p">Paranormais</button><button data-t="r">Rituais</button>
+            </div>
+          </div>
+          <div id="hab-list"></div>
+          <div class="add-row fx-add fx-add-hab" id="hab-form">
+            <input id="hab-inp" placeholder="Nome da habilidade ou poder…" aria-label="Nome" onkeydown="if(event.key==='Enter')addHab()">
+            <select id="hab-tipo" aria-label="Tipo"><option value="h">Habilidade</option><option value="p">Paranormal</option><option value="r">Ritual</option></select>
+            <textarea id="hab-desc" rows="2" placeholder="Descrição (opcional) — o que faz, custo, alcance…" aria-label="Descrição"></textarea>
+            <button class="btn-add" id="hab-btn" onclick="addHab()">+ Adicionar</button>
+            <button class="btn-add fx-cancel" id="hab-cancel" onclick="fxCancelarEdicaoHab()" hidden>Cancelar</button>
+          </div>
+        </div>
+      </section>
+      </div><!-- /fx-folha -->
+
+      <div class="fx-grid">
+        <!-- COLUNA PRINCIPAL -->
+        <div class="fx-main">
+
+          <section class="fx-card fx-vitais" id="fx-sec-vitais" data-hx="vitais">
+            <header class="fx-card-head">
+              <h3>Pontos Vitais</h3>
+              <span id="calc-badge" class="fx-calc" style="display:none"></span>
+              <div class="fx-head-actions">
+                <button class="fx-btn-sm" id="fx-undo" onclick="fxDesfazerVitais()" title="Desfazer a última mudança de PV/PD (Ctrl+Z)" disabled>↶ Desfazer</button>
+                <button class="fx-btn-sm" onclick="restaurarVitais()" title="Restaura PV e PD ao máximo (Shift+clique nos botões ± altera de 5 em 5)">Restaurar tudo</button>
+                <button class="fx-btn-sm" id="btn-manual-stats" onclick="toggleManualStats()" title="Alternar entre cálculo automático e manual dos máximos">AUTO</button>
+              </div>
+            </header>
+            <div class="fx-card-body">
+            <div id="existido-slot"></div>
+            <div class="stat-grid fx-vitais-grid">
+              <div class="stat-box vital-box" data-k="pv">
+                <div class="stat-name"><span>Pontos de Vida</span><span class="fx-estado" id="est-pv"></span></div>
+                <div class="stat-ctrl">
+                  <button class="sadj" data-fx-adj="pv" data-d="-1" aria-label="Diminuir PV" title="Segure para repetir · Shift = 5">−</button>
+                  <span class="snum pv" id="s-pv" tabindex="0" role="button" title="Clique para digitar um valor (aceita +3 ou −3)" onclick="fxEditarVital('pv')" onkeydown="if(event.key==='Enter'){fxEditarVital('pv')}">0</span>
+                  <button class="sadj" data-fx-adj="pv" data-d="1" aria-label="Aumentar PV" title="Segure para repetir · Shift = 5">+</button>
+                </div>
+                <div class="smax">/ <span id="s-pvmax">0</span>
+                  <span class="smax-adj" title="Ajustar o máximo (só faz sentido no modo MANUAL)"><button class="sadj" onclick="adjMax('pv',-1)" aria-label="Diminuir máximo de PV">−</button><button class="sadj" onclick="adjMax('pv',1)" aria-label="Aumentar máximo de PV">+</button></span>
+                  <button class="fx-fill" onclick="fxEncher('pv')" title="Encher PV até o máximo" aria-label="Encher PV">⤒ cheio</button>
+                </div>
+                <div class="vital-bar-track"><div class="vital-bar-fill pv" id="bar-pv"></div></div>
+              </div>
+              <div class="stat-box vital-box" data-k="san">
+                <div class="stat-name"><span>Sanidade</span><span class="fx-estado" id="est-san"></span></div>
+                <div class="stat-ctrl">
+                  <button class="sadj" data-fx-adj="san" data-d="-1" aria-label="Diminuir PD" title="Segure para repetir · Shift = 5">−</button>
+                  <span class="snum san" id="s-san" tabindex="0" role="button" title="Clique para digitar um valor (aceita +3 ou −3)" onclick="fxEditarVital('san')" onkeydown="if(event.key==='Enter'){fxEditarVital('san')}">0</span>
+                  <button class="sadj" data-fx-adj="san" data-d="1" aria-label="Aumentar PD" title="Segure para repetir · Shift = 5">+</button>
+                </div>
+                <div class="smax">/ <span id="s-sanmax">0</span>
+                  <span class="smax-adj" title="Ajustar o máximo (só faz sentido no modo MANUAL)"><button class="sadj" onclick="adjMax('san',-1)" aria-label="Diminuir máximo de PD">−</button><button class="sadj" onclick="adjMax('san',1)" aria-label="Aumentar máximo de PD">+</button></span>
+                  <button class="fx-fill" onclick="fxEncher('san')" title="Encher PD até o máximo" aria-label="Encher PD">⤒ cheio</button>
+                </div>
+                <div class="vital-bar-track"><div class="vital-bar-fill san" id="bar-san"></div></div>
+              </div>
+              <div class="stat-box vital-box" data-k="esf">
+                <div class="stat-name"><span>Pontos de Determinação</span><span class="fx-estado" id="est-esf"></span></div>
+                <div class="stat-ctrl">
+                  <button class="sadj" data-fx-adj="esf" data-d="-1" aria-label="Diminuir PD" title="Segure para repetir · Shift = 5">−</button>
+                  <span class="snum esf" id="s-esf" tabindex="0" role="button" title="Clique para digitar um valor (aceita +3 ou −3)" onclick="fxEditarVital('esf')" onkeydown="if(event.key==='Enter'){fxEditarVital('esf')}">0</span>
+                  <button class="sadj" data-fx-adj="esf" data-d="1" aria-label="Aumentar PD" title="Segure para repetir · Shift = 5">+</button>
+                </div>
+                <div class="smax">/ <span id="s-esfmax">0</span>
+                  <span class="smax-adj" title="Ajustar o máximo (só faz sentido no modo MANUAL)"><button class="sadj" onclick="adjMax('esf',-1)" aria-label="Diminuir máximo de PD">−</button><button class="sadj" onclick="adjMax('esf',1)" aria-label="Aumentar máximo de PD">+</button></span>
+                  <button class="fx-fill" onclick="fxEncher('esf')" title="Encher PD até o máximo" aria-label="Encher PD">⤒ cheio</button>
+                </div>
+                <div class="vital-bar-track"><div class="vital-bar-fill esf" id="bar-esf"></div></div>
+              </div>
+            </div>
+
+            <!-- RECEBER DANO -->
+            <div class="dmg-divider">Receber Dano<button class="dmg-toggle-btn" id="btn-dmg-toggle" onclick="toggleDmgCalc()" title="Recolher/expandir" aria-label="Recolher ou expandir">▾</button></div>
+            <div id="dmg-calc-body">
+              <div class="fx-dmg-tipos" id="dmg-tipo-btns">
+                <button class="dmg-tipo-btn dmg-chip" data-tipo="B" onclick="selecionarTipoDano(this)" style="color:#f8aa20">◈ Balístico</button>
+                <button class="dmg-tipo-btn dmg-chip" data-tipo="F" onclick="selecionarTipoDano(this)" style="color:#ee5522">† Físico</button>
+                <button class="dmg-tipo-btn dmg-chip" data-tipo="E" onclick="selecionarTipoDano(this)" style="color:#66aaff"><span class="sym-el sym-energia" style="width:1.6em;height:1.6em;vertical-align:-6px"></span> Energia</button>
+                <button class="dmg-tipo-btn dmg-chip" data-tipo="M" onclick="selecionarTipoDano(this)" style="color:#b737ea"><span class="sym-el sym-morte" style="width:1.6em;height:1.6em;vertical-align:-6px"></span> Morte</button>
+                <button class="dmg-tipo-btn dmg-chip" data-tipo="S" onclick="selecionarTipoDano(this)" style="color:#ee0030"><span class="sym-el sym-sangue" style="width:1.6em;height:1.6em;vertical-align:-6px"></span> Sangue</button>
+                <button class="dmg-tipo-btn dmg-chip" data-tipo="K" onclick="selecionarTipoDano(this)" style="color:#22eebb"><span class="sym-el sym-conhecimento" style="width:1.6em;height:1.6em;vertical-align:-6px"></span> Conhecimento</button>
+                <button class="dmg-tipo-btn dmg-chip" data-tipo="Me" onclick="selecionarTipoDano(this)" style="color:#eea700"><span class="sym-el sym-medo" style="width:1.6em;height:1.6em;vertical-align:-6px"></span> Medo</button>
+              </div>
+              <div class="fx-dmg-row">
+                <input id="dmg-valor" class="dmg-input" type="text" inputmode="numeric" autocomplete="off" placeholder="Valor ou 2d6+3" aria-label="Valor do dano ou cura" onkeydown="fxDmgKey(event)">
+                <label class="fx-rd-extra" title="RD adicional só para este golpe (além da armadura)">RD extra <input id="dmg-rd-extra" type="number" min="0" value="0" aria-label="RD extra"></label>
+                <button onclick="aplicarDano()" class="dmg-mini-btn dmg-mini-danger" title="Enter">⚔ Aplicar</button>
+                <button onclick="aplicarCura()" class="dmg-mini-btn dmg-mini-heal" title="Shift+Enter">✚ Curar</button>
+              </div>
+              <div class="fx-dmg-quick" aria-label="Valores rápidos">
+                <span>Somar:</span>
+                <button onclick="fxDmgAdd(1)">+1</button><button onclick="fxDmgAdd(2)">+2</button><button onclick="fxDmgAdd(5)">+5</button><button onclick="fxDmgAdd(10)">+10</button>
+                <button class="fx-dmg-clear" onclick="fxDmgAdd(0,true)">limpar</button>
+                <em>Enter aplica · Shift+Enter cura · aceita dados (2d6+3)</em>
+              </div>
+              <div id="dmg-resultado" class="dmg-readout" style="display:none"></div>
+            </div><!-- /dmg-calc-body -->
+            </div>
+          </section>
+
+          <section class="fx-card" id="fx-sec-ataques" data-hx="ataques">
+            <header class="fx-card-head">
+              <h3>Ataques</h3>
+              <span class="fx-count" id="atq-resumo"></span>
+              <button class="fx-collapse" aria-label="Recolher bloco" title="Recolher/expandir"></button>
+            </header>
+            <div class="fx-card-body">
+              <div id="ataques-wrap"></div>
+              <p class="fx-hint">Armas carregadas na aba Inventário aparecem aqui sozinhas. <b>Teste</b> rola o ataque (um 20 natural ou a margem de ameaça da arma marca crítico); <b>Dano</b> rola o dano; <b>Crít.</b> rola o dano já multiplicado.</p>
+              <div class="add-row fx-add" id="atq-form">
+                <input id="atq-arma" placeholder="Arma ou golpe…" aria-label="Arma">
+                <input id="atq-teste" placeholder="Teste (ex: Luta +2)" aria-label="Teste">
+                <input id="atq-dano" placeholder="Dano (ex: 2d10+3)" aria-label="Dano">
+                <input id="atq-especial" placeholder="Crít. 19/x3 · Alcance…" aria-label="Crítico, alcance e especial">
+                <button class="btn-add" id="atq-btn" onclick="addAtaqueCustom()">+ Adicionar</button>
+                <button class="btn-add fx-cancel" id="atq-cancel" onclick="fxCancelarEdicaoAtq()" hidden>Cancelar</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="fx-card" id="fx-sec-cond" data-hx="cond">
+            <header class="fx-card-head">
+              <h3>Condições Ativas</h3>
+              <span class="fx-count" id="cond-resumo"></span>
+              <div class="fx-head-actions">
+                <button class="fx-btn-sm" id="cond-rodada" onclick="fxProximaRodada()" title="Passa uma rodada: reduz em 1 a duração das condições que têm contador" hidden>⏱ Próxima rodada</button>
+                <button class="fx-btn-sm" id="cond-limpar" onclick="fxLimparConds()" hidden>Limpar</button>
+              </div>
+              <button class="fx-collapse" aria-label="Recolher bloco" title="Recolher/expandir"></button>
+            </header>
+            <div class="fx-card-body">
+              <div class="cond-wrap" id="cond-grid"></div>
+              <p class="fx-hint">Clique para ativar. Em uma condição ativa, use <b>+/−</b> para marcar quantas rodadas faltam (0 = sem contagem).</p>
+            </div>
+          </section>
+        </div>
+
+        <!-- COLUNA LATERAL -->
+        <aside class="fx-side">
+
+          <section class="fx-card" id="fx-sec-defesa" data-hx="defesa">
+            <header class="fx-card-head"><h3>Defesa &amp; Proteção</h3><button class="fx-collapse" aria-label="Recolher bloco" title="Recolher/expandir"></button></header>
+            <div class="fx-card-body">
+              <div class="defesa-grid">
+                <div class="stat-box defesa-box">
+                  <div class="stat-name">Defesa</div>
+                  <div class="defesa-val" id="s-defesa">10</div>
+                  <div class="defesa-sub">10 + Físico + Equip.</div>
+                </div>
+                <div class="stat-box defesa-box">
+                  <div class="stat-name">Proteção</div>
+                  <div class="defesa-val defesa-val-sm" id="s-protecao">Nenhuma</div>
+                  <div class="defesa-sub" id="s-protecao-rd">armadura equipada</div>
+                </div>
+                <div class="stat-box defesa-box">
+                  <label class="stat-name" for="f-resist">Resistências</label>
+                  <input id="f-resist" class="defesa-resist-inp" placeholder="ex: RD 2 Fogo" oninput="autoSave()" autocomplete="off">
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <section class="fx-card" id="fx-sec-rolagens" data-hx="rolagens">
+            <header class="fx-card-head">
+              <h3>Últimas Rolagens</h3>
+              <div class="fx-head-actions"><button class="fx-btn-sm" onclick="fxIrDados()" title="Abrir a aba Dados">Ver todas</button></div>
+              <button class="fx-collapse" aria-label="Recolher bloco" title="Recolher/expandir"></button>
+            </header>
+            <div class="fx-card-body"><div id="fx-rolagens" class="fx-rolagens"></div></div>
+          </section>
+        </aside>
+      </div><!-- /fx-grid -->
+
+      <!-- DOSSIÊ -->
+      <details class="fx-card fx-wide hx-dossie" id="fx-sec-dossie" data-hx="dossie" open>
+        <summary class="fx-card-head"><h3>Dossiê do agente</h3><span class="hx-sumhint">descrições, motivação e como os máximos são calculados</span></summary>
+        <div class="fx-card-body fx-dossie-body">
+          <div id="classe-desc" class="ficha-desc-box classe-box" style="display:none"></div>
+          <div id="origem-desc" class="ficha-desc-box origem-box" style="display:none"></div>
+          <div id="trilha-info" class="ficha-desc-box" style="border-left:2px solid var(--blood-deep);display:none"></div>
+          <div class="fx-dossie-cols">
+            <div class="hx-motiv">
+              <div class="hx-sublabel">Motivação / História</div>
+              <div class="field" style="margin-bottom:0"><textarea id="f-historia" oninput="autoSave()" placeholder="O que te trouxe para dentro da Ordem?"></textarea></div>
+            </div>
+            <div class="fx-calc-box">
+              <div class="hx-sublabel">De onde vêm os máximos</div>
+              <div id="fx-breakdown" class="fx-breakdown"></div>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <div class="save-ok" id="save-ficha"></div>
+    </div>
+
+    <!-- DADOS -->
+    <div id="tab-dados" class="tab-content aba-hx">
+      <div class="two-col">
+        <div>
+          <div class="panel">
+            <div class="panel-title">Rolar Dado</div>
+            <div class="dice-grid">
+              <button class="die-btn" onclick="rollDie(4)"><span style="font-size:18px">⬧</span>D4</button>
+              <button class="die-btn" onclick="rollDie(6)"><span style="font-size:18px">⬡</span>D6</button>
+              <button class="die-btn" onclick="rollDie(8)"><span style="font-size:18px">⬟</span>D8</button>
+              <button class="die-btn" onclick="rollDie(10)"><span style="font-size:18px">◈</span>D10</button>
+              <button class="die-btn" onclick="rollDie(12)"><span style="font-size:18px">⬠</span>D12</button>
+              <button class="die-btn" onclick="rollDie(20)"><span style="font-size:18px">⛧</span>D20</button>
+              <button class="die-btn" onclick="rollDie(100)"><span style="font-size:18px">%</span>D%</button>
+            </div>
+            <div class="ornament"><div class="ornament-line"></div><span class="ornament-sym">⛧</span><div class="ornament-line"></div></div>
+            <div class="panel-title">Rolagem Customizada</div>
+            <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+              <input id="r-qtd" type="number" min="1" max="20" value="1" style="width:55px;background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none;font-family:'Courier Prime',monospace">
+              <span style="color:var(--crimson);font-size:14px">d</span>
+              <select id="r-faces" style="background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none"><option>4</option><option>6</option><option>8</option><option>10</option><option>12</option><option selected>20</option><option>100</option></select>
+              <span style="color:var(--white-dust)">+</span>
+              <input id="r-mod" type="number" value="0" style="width:60px;background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none;font-family:'Courier Prime',monospace">
+              <input id="r-label" placeholder="Contexto (ex: Físico)" style="flex:1;min-width:100px;background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 10px;font-size:13px;outline:none;font-family:'Courier Prime',monospace">
+              <button class="btn-add" onclick="rollCustom()">Rolar</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-title">Resultado</div>
+            <div class="roll-result" id="roll-res">—</div>
+            <div class="roll-detail" id="roll-detail"></div>
+          </div>
+        </div>
+        <div class="panel" style="height:fit-content">
+          <div class="panel-title">Histórico de Rolagens</div>
+          <div class="roll-log-wrap" id="roll-log"></div>
+        </div>
+      </div>
+    </div>
+ 
+    <!-- DANOS (rolagem consolidada de tudo que causa dano) -->
+    <div id="tab-danos" class="tab-content aba-hx">
+      <div class="panel">
+        <div class="panel-title">⚔ Rolar Dano</div>
+        <div style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;margin-bottom:14px;line-height:1.6">
+          Rola automaticamente o dano de armas, explosivos e rituais que você possui. A RD da armadura equipada (aba Inventário) é aplicada na hora.
+        </div>
+        <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap">
+          <button class="btn-add" onclick="renderDanosTab()">↻ Atualizar Lista</button>
+        </div>
+        <div id="danos-lista"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Resultado</div>
+        <div id="danos-resultado" style="display:none;background:rgba(20,17,13,0.95);border:1px solid var(--blood-deep);padding:12px 16px;font-family:'Courier Prime',monospace;font-size:12px;line-height:1.8"></div>
+        <div id="danos-resultado-vazio" style="color:var(--white-dust);font-size:12px;font-family:'Courier Prime',monospace;font-style:italic">Nenhuma rolagem ainda nesta aba.</div>
+      </div>
+    </div>
+
+    <!-- INVENTÁRIO -->
+    <div id="tab-inventario" class="tab-content">
+
+      <!-- ARMADURA EQUIPADA — status + desequipar rápido.
+           Para EQUIPAR, selecione uma armadura na lista abaixo e use o
+           botão "🛡 Equipar" no painel de ação do item. -->
+      <div class="armor-status-card" id="panel-armadura-equipada">
+        <div>
+          <div class="armor-status-label">Armadura equipada</div>
+          <div id="armadura-equipada-display">
+            <div class="armor-status-empty">Nenhuma armadura equipada. Escolha uma na mochila para equipar.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- INVENTÁRIO UNIFICADO -->
+      <div class="panel inv-panel">
+        <div class="inv-head">
+          <div class="inv-brush">Mochila do Agente</div>
+          <span class="inv-resumo" id="inv-resumo"></span>
+        </div>
+        <!-- Filtro rápido por tipo -->
+        <div class="inv-filtros" id="inv-tipo-filtros">
+          <button class="inv-fil-btn on" onclick="setInvFiltro('tudo')" id="invf-tudo">Tudo</button>
+          <button class="inv-fil-btn" onclick="setInvFiltro('arma')" id="invf-arma">Armas</button>
+          <button class="inv-fil-btn" onclick="setInvFiltro('armadura')" id="invf-armadura">Armaduras</button>
+          <button class="inv-fil-btn" onclick="setInvFiltro('explosivo')" id="invf-explosivo">Explosivos</button>
+          <button class="inv-fil-btn" onclick="setInvFiltro('municao')" id="invf-municao">Munição</button>
+          <button class="inv-fil-btn" onclick="setInvFiltro('ritual')" id="invf-ritual">Rituais</button>
+          <button class="inv-fil-btn" onclick="setInvFiltro('item-comum')" id="invf-item-comum">Itens</button>
+          <button class="inv-fil-btn" onclick="setInvFiltro('equipamento')" id="invf-equipamento">Equip.</button>
+          <button class="inv-fil-btn" onclick="setInvFiltro('paranormal')" id="invf-paranormal">Paranormal</button>
+        </div>
+
+        <!-- Busca + Adicionar do Arsenal -->
+        <div style="position:relative;margin-bottom:10px">
+          <div class="fj-toolbar">
+            <input id="inv-busca-db" placeholder="◎  Buscar no Arsenal para adicionar..." oninput="renderInvBuscaDB()">
+            <button class="fj-tb-btn forja" onclick="abrirForja()" title="Criar arma, armadura, explosivo ou item"><i data-fji="forja"></i>Forjar item</button>
+            <button class="fj-tb-btn ritual" onclick="abrirForjaRitual()" title="Escrever um ritual autoral"><i data-fji="sigilo"></i>Novo ritual</button>
+            <button class="fj-tb-btn sumon" onclick="abrirForjaSumonavel()" title="Criar um sumonável para usar nos seus rituais"><i data-fji="cranio"></i>Novo sumonável</button>
+            <button class="fj-tb-btn" onclick="abrirForjaBiblioteca('item')" title="Suas criações: editar, duplicar, exportar"><i data-fji="livro"></i>Criações</button>
+            <button class="fj-tb-btn" onclick="abrirAddRitualModal()" title="Adicionar um ritual aprendido ao inventário">+ Ritual aprendido</button>
+            <button class="fj-tb-btn ghost" onclick="toggleAddManual()">+ Manual</button>
+          </div>
+          <div id="inv-busca-resultados" style="display:none;position:absolute;left:0;right:0;background:rgba(18,16,17,0.99);border:1px solid var(--blood-deep);border-top:none;max-height:240px;overflow-y:auto;z-index:100"></div>
+        </div>
+
+        <!-- Add manual (hidden by default) -->
+        <div id="inv-add-manual" style="display:none;background:rgba(20,17,13,0.9);border:1px solid rgba(106,10,10,0.4);padding:10px;margin-bottom:10px">
+          <div style="font-size:10px;color:var(--white-dust);font-family:'Special Elite',sans-serif;letter-spacing:.1em;margin-bottom:8px">ITEM MANUAL</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <input id="inv-nome" placeholder="Nome" style="flex:2;min-width:100px;background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:6px 8px;font-size:11px;outline:none">
+            <input id="inv-desc" placeholder="Descrição" style="flex:3;min-width:100px;background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:6px 8px;font-size:11px;outline:none">
+            <input id="inv-qtd" type="number" value="1" min="1" style="width:48px;background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:6px;font-size:11px;outline:none;text-align:center">
+            <button onclick="addInv()" style="padding:6px 12px;background:rgba(163,36,26,0.2);border:1px solid var(--crimson);color:var(--crimson-mid);font-family:'Special Elite',sans-serif;font-size:10px;letter-spacing:.08em;cursor:var(--cur-pointer,pointer)">ADD</button>
+          </div>
+        </div>
+
+        <!-- Lista unificada -->
+        <div id="inv-unificado"></div>
+      </div>
+
+      <!-- PAINEL DE AÇÃO — aparece ao selecionar um item -->
+      <div id="inv-action-panel" style="display:none">
+        <div class="panel inv-act">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div id="inv-action-nome" style="font-family:'IM Fell English SC',serif;font-size:15px;color:var(--white-dim)"></div>
+            <button onclick="fecharActionPanel()" style="background:transparent;border:none;color:var(--white-dust);font-size:18px;cursor:var(--cur-pointer,pointer);line-height:1">×</button>
+          </div>
+          <div id="inv-action-stats" style="margin-bottom:12px"></div>
+          <div id="inv-action-desc" style="font-size:12px;color:var(--white-dust);font-family:'Courier Prime',monospace;line-height:1.6;margin-bottom:12px"></div>
+          <div id="inv-action-habs" style="margin-bottom:12px"></div>
+          <div id="inv-action-btns" style="display:flex;gap:8px;flex-wrap:wrap"></div>
+          <!-- Resultado de ações -->
+          <div id="inv-action-resultado" style="display:none;margin-top:10px;background:rgba(20,17,13,0.95);border:1px solid rgba(129,15,15,0.5);padding:12px;font-family:'Courier Prime',monospace;font-size:12px;animation:fadeInDmg .2s ease"></div>
+        </div>
+      </div>
+
+      <!-- MODAL ADICIONAR RITUAL -->
+      <div id="modal-add-ritual" style="display:none;position:fixed;inset:0;z-index:9100;background:rgba(0,0,0,0.88);align-items:center;justify-content:center;padding:16px">
+        <div style="width:100%;max-width:420px;background:rgba(20,17,13,0.99);border:1px solid rgba(216,160,80,0.4);padding:20px">
+          <div style="font-family:'IM Fell English SC',serif;font-size:13px;color:var(--gold-light);margin-bottom:14px">⛧ Adicionar Ritual ao Inventário</div>
+          <input id="modal-rit-busca" placeholder="Buscar ritual..." oninput="renderModalRitBusca()"
+            style="width:100%;background:rgba(19,16,14,.8);border:1px solid rgba(216,160,80,0.3);color:var(--white-bone);padding:7px 10px;font-size:12px;outline:none;margin-bottom:8px">
+          <div id="modal-rit-resultados" style="max-height:280px;overflow-y:auto;margin-bottom:12px"></div>
+          <div style="display:flex;gap:6px;margin-bottom:10px">
+            <input id="modal-rit-nome" placeholder="Ou digitar nome livre..." style="flex:1;background:rgba(19,16,14,.8);border:1px solid rgba(216,160,80,0.3);color:var(--white-bone);padding:6px 8px;font-size:11px;outline:none">
+            <button onclick="addRitManual()" style="padding:6px 12px;background:rgba(216,160,80,0.15);border:1px solid rgba(216,160,80,0.5);color:var(--gold-light);font-family:'Special Elite',sans-serif;font-size:10px;cursor:var(--cur-pointer,pointer)">+ Add</button>
+          </div>
+          <button onclick="fecharAddRitualModal()" style="width:100%;padding:8px;background:transparent;border:1px solid rgba(129,15,15,0.5);color:var(--white-dust);font-family:'Special Elite',sans-serif;font-size:11px;cursor:var(--cur-pointer,pointer)">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- A Forja (criar item / ritual) é montada por forja.js -->
+
+      <div class="save-ok" id="save-inv"></div>
+    </div>
+ 
+    <!-- MISSÃO -->
+    <div id="tab-missao" class="tab-content aba-hx">
+      <div class="two-col">
+        <div class="panel">
+          <div class="panel-title">Operação Atual</div>
+          <div class="two-col">
+            <div class="field"><label>Nome da operação</label><input id="m-nome" placeholder="Ex: Operação Vazio" oninput="autoSave()"></div>
+            <div class="field"><label>Localização</label><input id="m-local" placeholder="Ex: São Paulo, Subsolo" oninput="autoSave()"></div>
+          </div>
+          <div class="two-col">
+            <div class="field"><label>Nível de ameaça</label><select id="m-ameaca" onchange="autoSave()"><option>Baixo</option><option>Médio</option><option>Alto</option><option>Extremo</option><option>Cataclísmico</option></select></div>
+            <div class="field"><label>Entidade / Fenômeno</label><input id="m-ent" placeholder="Ex: Demiurge, Morte" oninput="autoSave()"></div>
+          </div>
+          <div class="field"><label>Resumo & Objetivos</label><textarea id="m-resumo" oninput="autoSave()"></textarea></div>
+        </div>
+        <div class="panel">
+          <div class="panel-title">Pistas Encontradas</div>
+          <div id="pista-list"></div>
+          <div class="add-row">
+            <input id="pista-inp" placeholder="Descreva a pista...">
+            <select id="pista-tipo"></select>
+            <button class="btn-add" onclick="addPista()">+ Add</button>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">Anotações da Sessão</div>
+        <div id="nota-list"></div>
+        <div class="add-row">
+          <input id="nota-inp" placeholder="Anotação rápida..." onkeydown="if(event.key==='Enter')addNota()">
+          <button class="btn-add" onclick="addNota()">+ Add</button>
+        </div>
+      </div>
+      <div class="save-ok" id="save-missao"></div>
+    </div>
+ 
+    <!-- TRILHAS -->
+    <div id="tab-trilhas" class="tab-content aba-hx">
+      <div class="panel">
+        <div class="panel-title">Trilha Ativa</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
+          <select id="trilha-classe-sel" onchange="renderTrilhasOpts()" style="background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 12px;font-size:13px;outline:none">
+            <option value="">— Selecione a Classe —</option>
+            <option value="Combatente">Combatente</option>
+            <option value="Especialista">Especialista</option>
+            <option value="Ocultista">Ocultista</option>
+          </select>
+          <select id="trilha-nome-sel" style="background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:8px 12px;font-size:13px;outline:none;flex:1;min-width:160px">
+            <option value="">— Selecione a Trilha —</option>
+          </select>
+          <button class="btn-add" onclick="confirmarTrilha()">Confirmar</button>
+        </div>
+        <div id="trilha-ativa-display"></div>
+      </div>
+      <div id="trilha-habs-panel" class="panel" style="display:none">
+        <div class="panel-title" id="trilha-habs-title">Habilidades da Trilha</div>
+        <div id="trilha-habs-list"></div>
+      </div>
+    </div>
+ 
+    <!-- PODERES PARANORMAIS -->
+    <div id="tab-poderes" class="tab-content aba-hx">
+      <div class="panel">
+        <div class="panel-title">⚛ Poderes Paranormais — Arsenal dos Agentes</div>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px" id="poderes-filtro-elem"></div>
+        <div id="poderes-lista"></div>
+      </div>
+    </div>
+
+    <!-- TRANSCENDÊNCIA -->
+    <div id="tab-transcendencia" class="tab-content aba-hx">
+
+      <!-- PAINEL DE TRANSCENDÊNCIA -->
+      <div class="panel" id="transcendencia-panel-wrap" style="margin-bottom:12px;border-color:rgba(216,160,80,0.35);background:rgba(20,17,14,0.97);position:relative;overflow:hidden">
+        <div style="position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,rgba(255,196,39,0.5),transparent)"></div>
+        <div class="panel-title">⛧ Transcendência</div>
+        <div id="transcendencia-panel" style="padding:2px 0">
+          <div style="color:var(--white-dust);font-size:12px;font-family:'Courier Prime',monospace">Carregando...</div>
+        </div>
+        <div id="transcendencia-afinidade-btn" style="display:none;margin-top:10px;padding-top:10px;border-top:1px solid rgba(106,10,10,0.4)">
+          <button onclick="usarRitualDeAfinidade()" style="padding:7px 18px;background:rgba(163,36,26,0.12);border:1px solid var(--gold);color:var(--gold-light);font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:.12em;cursor:var(--cur-pointer,pointer);text-transform:uppercase;transition:all .2s" onmouseover="this.style.background='rgba(216,160,80,0.2)'" onmouseout="this.style.background='rgba(163,36,26,0.12)'">✦ Usar Ritual de Afinidade (1× Sessão — Sem PD)</button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RITUAIS -->
+    <div id="tab-rituais" class="tab-content aba-hx">
+
+      <!-- SUMONADOS ATIVOS (forja-sumonavel.js preenche) -->
+      <div id="sumonados-wrap" style="margin-bottom:12px;width:100%;min-width:0"></div>
+
+      <div class="panel" style="margin-bottom:12px">
+        <div class="panel-title">Grimório de Rituais</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <input id="ritual-busca" placeholder="Buscar ritual..." oninput="renderRituaisTab()" style="flex:1;min-width:140px;background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:13px;padding:7px 10px;outline:none">
+          <select id="ritual-elem-fil" onchange="renderRituaisTab()" style="background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none">
+            <option value="">Todos os elementos</option>
+            <option value="Sangue"><span class="sym-el sym-sangue" title="Sangue"></span> Sangue</option>
+            <option value="Morte"><span class="sym-el sym-morte" title="Morte"></span> Morte</option>
+            <option value="Energia"><span class="sym-el sym-energia" title="Energia"></span> Energia</option>
+            <option value="Conhecimento"><span class="sym-el sym-conhecimento" title="Conhecimento"></span> Conhecimento</option>
+            <option value="Medo"><span class="sym-el sym-medo" title="Medo"></span> Medo</option>
+            <option value="Fé"><span style="color:#fbae48">✝</span> Fé</option>
+          </select>
+          <select id="ritual-circ-fil" onchange="renderRituaisTab()" style="background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none">
+            <option value="">Todos os círculos</option>
+            <option value="1">1º Círculo</option>
+            <option value="2">2º Círculo</option>
+            <option value="3">3º Círculo</option>
+            <option value="4">4º Círculo</option>
+          </select>
+          <select id="ritual-apr-fil" onchange="renderRituaisTab()" style="background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);padding:7px 10px;font-size:13px;outline:none">
+            <option value="">Todos</option>
+            <option value="1">Apenas desbloqueados</option>
+            <option value="0">Apenas bloqueados</option>
+          </select>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px;flex-wrap:wrap;gap:6px">
+          <div style="font-size:10px;color:var(--white-dust);font-family:'Courier Prime',monospace">■ Todos os rituais começam bloqueados. Desbloqueie-os através da Transcendência ou peça ao Mestre.</div>
+          <div id="ritual-count" style="font-size:10px;color:var(--crimson);font-family:'IM Fell English SC',serif;letter-spacing:.1em"></div>
+          <button class="fj-tb-btn ritual" onclick="abrirForjaRitual()"><i data-fji="sigilo"></i>Criar ritual</button>
+          <button class="fj-tb-btn" onclick="abrirForjaBiblioteca('ritual')"><i data-fji="livro"></i>Meus rituais</button>
+          <button class="fj-tb-btn sumon" onclick="abrirForjaSumonavel()" title="Criar um sumonável (criatura/servo que os rituais podem invocar)"><i data-fji="cranio"></i>Criar sumonável</button>
+        </div>
+      </div>
+      <div id="rituais-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:10px"></div>
+    </div>
+ 
+    <!-- ITENS -->
+    <div id="tab-itens" class="tab-content aba-hx">
+      <div class="panel">
+        <div class="panel-title">▦ Arsenal Completo</div>
+
+        <!-- FILTROS PRINCIPAIS (chips horizontais) -->
+        <div style="display:flex;gap:5px;margin-bottom:8px;flex-wrap:wrap" id="itens-filtros-principais">
+          <button class="fit-chip active" onclick="setFiltroMain('todas')" id="fit-todas">Todos</button>
+          <button class="fit-chip" onclick="setFiltroMain('arma')" id="fit-arma">⚔ Armas</button>
+          <button class="fit-chip" onclick="setFiltroMain('armadura')" id="fit-armadura">🛡 Armaduras</button>
+          <button class="fit-chip" onclick="setFiltroMain('explosivo')" id="fit-explosivo">⊗ Explosivos</button>
+<button class="fit-chip" onclick="setFiltroMain('municao')" id="fit-municao">● Munições</button>
+          <button class="fit-chip" onclick="setFiltroMain('item-comum')" id="fit-item-comum">▥ Itens</button>
+          <button class="fit-chip" onclick="setFiltroMain('equipamento')" id="fit-equipamento">⚒ Equipamentos</button>
+          <button class="fit-chip" onclick="setFiltroMain('paranormal')" id="fit-paranormal">❖ Paranormais</button>
+          <button class="fit-chip" onclick="setFiltroMain('veiculo')" id="fit-veiculo">Veículos</button>
+          <button class="fit-chip" onclick="setFiltroMain('modificacao')" id="fit-modificacao">⚙ Mods</button>
+        </div>
+
+        <!-- SUBFILTROS DE ARMA -->
+        <div id="itens-subfiltros-arma" style="display:none;background:rgba(20,17,13,0.7);border:1px solid rgba(106,10,10,0.3);padding:8px 10px;margin-bottom:8px">
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+            <span style="font-size:9px;color:var(--white-dust);font-family:'Special Elite',sans-serif;letter-spacing:.1em;align-self:center;text-transform:uppercase;min-width:32px">Tipo</span>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-tipo','todas')" id="fsub-arma-todas" style="background:rgba(163,36,26,0.2)">Todas</button>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-tipo','fogo')" id="fsub-arma-fogo">◈ Fogo</button>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-tipo','branca')" id="fsub-arma-branca">† Branca</button>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+            <span style="font-size:9px;color:var(--white-dust);font-family:'Special Elite',sans-serif;letter-spacing:.1em;align-self:center;text-transform:uppercase;min-width:32px">Peso</span>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-peso','todas')" id="fsub-peso-todas" style="background:rgba(129,15,15,0.2)">Todos</button>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-peso','leve')" id="fsub-peso-leve">Leve</button>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-peso','media')" id="fsub-peso-media">Média</button>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-peso','pesada')" id="fsub-peso-pesada">Pesada</button>
+          </div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">
+            <span style="font-size:9px;color:var(--white-dust);font-family:'Special Elite',sans-serif;letter-spacing:.1em;align-self:center;text-transform:uppercase;min-width:32px">Alc.</span>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-alcance','todas')" id="fsub-alc-todas" style="background:rgba(129,15,15,0.2)">Todos</button>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-alcance','curto')" id="fsub-alc-curto">Curto</button>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-alcance','medio')" id="fsub-alc-medio">Médio</button>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-alcance','longo')" id="fsub-alc-longo">Longo</button>
+            <button class="fit-chip2" onclick="setFiltroSub('arma-alcance','corpo')" id="fsub-alc-corpo">C/C</button>
+          </div>
+        </div>
+
+        <!-- BUSCA + CATEGORIA -->
+        <div style="display:flex;gap:6px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+          <input id="itens-busca" placeholder="Buscar item..." oninput="renderItens()"
+            style="flex:1 1 120px;min-width:0;background:rgba(19,16,12,.9);border:1px solid rgba(106,10,10,0.5);color:var(--white-bone);padding:7px 12px;font-size:12px;outline:none">
+          <select id="itens-categoria-fil" onchange="renderItens()"
+            style="flex:0 0 auto;min-width:0;background:rgba(19,16,12,.9);border:1px solid rgba(106,10,10,0.5);color:var(--white-bone);padding:6px 8px;font-size:11px;outline:none">
+            <option value="">Cat. ▾</option>
+            <option value="0">Cat 0</option>
+            <option value="I">Cat I</option>
+            <option value="II">Cat II</option>
+            <option value="III">Cat III</option>
+            <option value="IV">Cat IV</option>
+            <option value="V">Cat V</option>
+            <option value="VI">Cat VI</option>
+          </select>
+          <button onclick="addSelecionadoAoInv()" id="btn-add-to-inv" style="display:none;padding:6px 12px;background:rgba(7,167,77,0.2);border:1px solid rgba(0,214,97,0.5);color:#9fc26b;font-family:'Special Elite',sans-serif;font-size:10px;letter-spacing:.08em;cursor:var(--cur-pointer,pointer);white-space:nowrap">+ Mochila</button>
+        </div>
+
+        <!-- GRID DE ITENS -->
+        <div id="itens-grid"></div>
+
+        <!-- DETALHE DO ITEM (inline, dentro do mesmo painel) -->
+        <div id="item-detail-panel" style="display:none;margin-top:16px;border-top:1px solid rgba(106,10,10,0.4);padding-top:16px">
+          <div id="item-detail-body"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STATUS DOS AGENTES (Mestre) — vivo / morrendo / morto -->
+    <div id="tab-status" class="tab-content aba-hx">
+      <div class="panel" style="border-color:rgba(200,0,0,0.4)">
+        <div class="panel-title" style="color:#cc2244">☠ Status dos Agentes</div>
+        <div style="font-size:12px;color:var(--white-dust);font-family:'Courier Prime',monospace;margin-bottom:12px;line-height:1.6">
+          Visão geral de quem está de pé, quem está morrendo (PV zerado, aguardando decisão) e quem já morreu de fato. Só o Mestre vê essa aba.
+        </div>
+      </div>
+      <div id="status-mestre-panel"></div>
+    </div>
+
+    <!-- ═══════ MESTRE — painel do Narrador ═══════
+         Montado por mestre.js (núcleo), mestre-trans.js e mestre-npc.js.
+         Aqui ficam só o cabeçalho fixo, a navegação e o contêiner. -->
+    <div id="tab-mestre" class="tab-content aba-hx">
+      <div class="mx" id="mx-root">
+        <section class="mx-deck" aria-label="Resumo da mesa">
+          <div class="mx-stats" id="mx-stats" role="status"></div>
+          <form class="mx-cast" onsubmit="fbSendBroadcast();return false">
+            <label for="broadcast-input">Transmissão para todos os agentes</label>
+            <input id="broadcast-input" autocomplete="off" placeholder="Mensagem para a mesa…">
+            <button type="submit" class="mx-btn is-primary">▶ Transmitir</button>
+            <div id="mx-presets" class="mx-presets" aria-label="Transmissões prontas"></div>
+            <div id="mx-cast-last"></div>
+          </form>
+        </section>
+        <nav class="mx-nav" id="mx-nav" aria-label="Navegação do Mestre"></nav>
+        <div id="mx-body" class="mx-body" role="tabpanel"></div>
+      </div>
+    </div><!-- /tab-mestre -->
+
+    <!-- ══════════════════════════ ABA MESA ONLINE ══════════════════════════ -->
+    <div id="tab-multi" class="tab-content aba-hx">
+
+      <!-- STATUS BAR -->
+      <div id="mo-statusbar" style="display:flex;align-items:center;gap:12px;padding:6px 16px;background:rgba(20,18,14,0.98);border-bottom:1px solid rgba(106,10,10,.6);flex-shrink:0;font-family:'Special Elite',sans-serif;font-size:10px;letter-spacing:.1em">
+        <span id="mo-fb-dot" style="width:7px;height:7px;border-radius:50%;background:#444;flex-shrink:0"></span>
+        <span id="mo-fb-label" style="color:var(--white-dust);text-transform:uppercase">Verificando Supabase...</span>
+        <span style="color:rgba(94,87,67,.15)">|</span>
+        <span id="mo-user-label" style="color:var(--gold-light)"></span>
+        <span style="margin-left:auto;display:flex;gap:8px">
+          <button id="mo-diag-btn" onclick="runMoDiagnostico()" style="display:none;padding:3px 10px;background:transparent;border:1px solid rgba(235,25,25,0.5);color:#e64d4d;font-family:'Special Elite',sans-serif;font-size:9px;letter-spacing:.1em;cursor:var(--cur-pointer,pointer);text-transform:uppercase">◎ Diagnosticar</button>
+          <button onclick="openFirebaseSettings()" style="padding:3px 10px;background:transparent;border:1px solid rgba(216,160,80,0.4);color:var(--gold-light);font-family:'Special Elite',sans-serif;font-size:9px;letter-spacing:.1em;cursor:var(--cur-pointer,pointer);text-transform:uppercase">⚙ Supabase</button>
+        </span>
+      </div>
+      <div id="mo-diag-box"></div>
+
+      <!-- SUB-NAVEGAÇÃO -->
+      <div class="mo-subnav">
+        <button class="mo-subtab-btn" id="mosub-btn-painel" onclick="showMoTab('painel')">● Painel</button>
+        <button class="mo-subtab-btn" id="mosub-btn-chat" onclick="showMoTab('chat')">Chat &amp; Dados</button>
+        <button class="mo-subtab-btn" id="mosub-btn-combate" onclick="showMoTab('combate')">⚔ Combate</button>
+        <button class="mo-subtab-btn" id="mosub-btn-atmosfera" onclick="showMoTab('atmosfera')">Atmosfera</button>
+        <button class="mo-subtab-btn" id="mosub-btn-comunicacao" onclick="showMoTab('comunicacao')">Comunicação</button>
+      </div>
+
+      <!-- ═══════════════ PAINEL ═══════════════ -->
+      <div id="mosub-painel" class="mo-subtab-panel">
+        <div class="mo-cards-grid">
+
+          <!-- STATUS DA PARTY -->
+          <div class="mo-card mo-h-md">
+            <div class="mo-card-hd"><span>Status da Party</span></div>
+            <div id="party-status-list" class="mo-scroll" style="padding:8px 12px">
+              <div style="color:var(--white-dust);font-size:12px">Nenhum agente online.</div>
+            </div>
+          </div>
+
+          <!-- AMEAÇA -->
+          <div class="mo-card mo-h-sm">
+            <div class="mo-card-hd">
+              <span>⛧ Ameaça</span>
+              <span id="ameaca-valor" style="font-family:'IM Fell English SC',serif;font-size:16px;color:#ee0000">0</span>
+            </div>
+            <div class="mo-card-body" style="flex:none">
+              <div style="height:6px;background:rgba(0,0,0,.06);border-radius:3px;overflow:hidden;margin-bottom:5px">
+                <div id="ameaca-bar" style="height:100%;width:0%;background:#9fc26b;transition:all .5s;border-radius:3px"></div>
+              </div>
+              <div id="ameaca-label" style="font-size:10px;letter-spacing:.1em;font-family:'Special Elite',sans-serif;color:#9fc26b;text-transform:uppercase;margin-bottom:8px">Calma Aparente</div>
+              <div id="ameaca-controles" style="display:none;gap:5px;flex-wrap:wrap">
+                <button onclick="ajustarAmeaca(-10)" class="mo-btn-green" style="flex:1">−10</button>
+                <button onclick="ajustarAmeaca(-5)" class="mo-btn-green" style="flex:1">−5</button>
+                <button onclick="ajustarAmeaca(5)" class="mo-btn-red" style="flex:1">+5</button>
+                <button onclick="ajustarAmeaca(10)" class="mo-btn-red" style="flex:1">+10</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- NOTAS DO MESTRE -->
+          <div class="mo-card mo-h-md mo-span2">
+            <div class="mo-card-hd"><span>✎ Notas do Mestre</span></div>
+            <div class="mo-card-body">
+              <div id="notas-mestre-inp-row" style="display:none">
+                <textarea id="notas-mestre-inp" oninput="onNotasMestreInput()" placeholder="Anotações visíveis a todos..." rows="3"
+                  style="width:100%;background:rgba(19,16,14,.8);border:1px solid rgba(216,160,80,0.4);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:7px 9px;outline:none;resize:vertical;box-sizing:border-box;line-height:1.5"></textarea>
+                <div style="font-size:10px;color:var(--white-dust);margin-top:3px">Salvo automaticamente</div>
+              </div>
+              <div id="notas-mestre-display-row">
+                <div id="notas-mestre-display" style="font-family:'IM Fell English',serif;font-style:italic;font-size:12px;color:var(--white-ash);line-height:1.6;min-height:36px;padding:4px 0">
+                  <div style="color:var(--white-dust);font-style:italic">Sem notas do Mestre.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══════════════ CHAT & DADOS ═══════════════ -->
+      <div id="mosub-chat" class="mo-subtab-panel">
+        <div class="mo-cards-grid">
+
+          <!-- CHAT -->
+          <div class="mo-card mo-h-lg">
+            <div class="mo-card-hd">
+              <span>Chat da Mesa</span>
+              <button onclick="clearChat()" id="chat-clear-btn" class="mo-btn-sm" style="display:none">✕ Limpar</button>
+            </div>
+            <div id="chat-messages" class="mo-scroll" style="padding:10px 12px;display:flex;flex-direction:column;gap:5px"></div>
+            <div style="padding:8px 10px;border-top:1px solid rgba(106,10,10,.4);display:flex;gap:6px;flex-shrink:0;background:rgba(20,18,14,.95)">
+              <textarea id="chat-inp" class="chat-inp" placeholder="Mensagem... (Enter para enviar)" onkeydown="chatEnter(event)" rows="1" style="flex:1"></textarea>
+              <button onclick="sendChat()" class="chat-send">Enviar</button>
+            </div>
+          </div>
+
+          <!-- ROLAGENS PÚBLICAS -->
+          <div class="mo-card mo-h-lg">
+            <div class="mo-card-hd">
+              <span>⚄ Rolagens ao Vivo</span>
+              <button onclick="clearPublicRolls()" id="rolls-clear-btn" class="mo-btn-sm" style="display:none">✕</button>
+            </div>
+            <div id="public-rolls-list" class="mo-scroll" style="padding:8px 12px;display:flex;flex-direction:column;gap:4px"></div>
+          </div>
+
+          <!-- ROLAGENS SECRETAS (só Mestre) -->
+          <div id="secret-rolls-panel" class="mo-card mo-h-md" style="display:none">
+            <div class="mo-card-hd">
+              <span style="color:#bb88ff">⚄ Rolagens Secretas</span>
+              <span id="secret-roll-badge" style="display:none;background:#bb88ff;color:#000;border-radius:50%;padding:0 5px;font-size:10px;margin-left:6px"></span>
+            </div>
+            <div class="mo-card-body">
+              <div style="display:flex;gap:6px;margin-bottom:8px;flex-wrap:wrap">
+                <input id="secret-roll-expr" class="mo-input" placeholder="Ex: 1d20+5" value="1d20" style="flex:1;min-width:80px"/>
+                <input id="secret-roll-desc" class="mo-input" placeholder="Desc. (opcional)" style="flex:1;min-width:80px"/>
+                <button onclick="rollSecret()" class="mo-btn-purple">Rolar</button>
+              </div>
+              <div id="secret-rolls-list" style="max-height:160px;overflow-y:auto">
+                <div style="color:var(--white-dust);font-size:12px">Nenhuma rolagem secreta.</div>
+              </div>
+              <button onclick="if(window.fbClearSecretRolls)window.fbClearSecretRolls()" class="mo-btn-sm" style="margin-top:6px;width:100%">Limpar Rolagens Secretas</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══════════════ COMBATE ═══════════════ -->
+      <div id="mosub-combate" class="mo-subtab-panel">
+        <div class="mo-cards-grid">
+
+          <!-- INICIATIVA -->
+          <div class="mo-card mo-h-lg mo-span2">
+            <div class="mo-card-hd">
+              <div>
+                <div>⚔ Iniciativa</div>
+                <div id="init-current-turn" style="font-size:10px;color:var(--gold-light);font-family:'IM Fell English SC',serif;margin-top:2px;min-height:12px"></div>
+              </div>
+              <span id="init-round" style="font-size:11px;color:var(--white-dust);font-family:'Courier Prime',monospace;flex-shrink:0"></span>
+            </div>
+            <div id="init-add-row" class="init-add-row">
+              <input id="init-nome" placeholder="Nome" style="flex:2;min-width:70px;background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:5px 8px;outline:none">
+              <input id="init-roll" type="number" placeholder="Init" style="width:52px;background:rgba(19,16,14,.8);border:1px solid var(--blood-deep);color:var(--white-bone);font-family:'Courier Prime',monospace;font-size:12px;padding:5px 7px;outline:none">
+              <button onclick="initAddCombatant()" class="init-btn">+ Add</button>
+              <button onclick="initAddAllPlayers()" class="init-btn" title="Adicionar todos">+ Todos</button>
+            </div>
+            <div id="initiative-tracker" class="mo-scroll"></div>
+            <div id="init-controls" class="init-controls">
+              <button onclick="initStart()" class="init-btn green">▶ Iniciar</button>
+              <button onclick="initPrev()" class="init-btn">◀</button>
+              <button onclick="initNext()" class="init-btn gold">Próximo ▶</button>
+              <button onclick="initStop()" class="init-btn">⏸</button>
+              <button onclick="initClear()" class="init-btn red">✕</button>
+            </div>
+          </div>
+
+          <!-- PEDIDO DE ROLAGEM -->
+          <div id="req-roll-panel" class="mo-card mo-h-sm">
+            <div class="mo-card-hd"><span>» Pedir Rolagem</span></div>
+            <div class="mo-card-body" style="flex:none;display:flex;flex-direction:column;gap:7px">
+              <select id="req-roll-target" class="mo-input" style="width:100%">
+                <option value="">— Selecionar jogador —</option>
+              </select>
+              <div style="display:flex;gap:7px">
+                <select id="req-roll-dado" class="mo-input" style="flex:1">
+                  <option>1d4</option><option>1d6</option><option>1d8</option>
+                  <option selected>1d20</option><option>2d6</option><option>2d20</option><option>1d100</option>
+                </select>
+                <input id="req-roll-motivo" class="mo-input" placeholder="Motivo (ex: Percepção)" style="flex:2">
+              </div>
+              <button onclick="mestreRequestRoll()" class="mo-btn-gold" style="width:100%">⛧ Pedir Rolagem</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══════════════ ATMOSFERA ═══════════════ -->
+      <div id="mosub-atmosfera" class="mo-subtab-panel">
+        <div class="mo-cards-grid">
+
+          <!-- CENA + CLIMA + TRILHA -->
+          <div class="mo-card mo-h-md">
+            <div class="mo-card-hd"><span style="color:#529bff">Cena / Clima</span></div>
+            <div class="mo-card-body" style="display:flex;flex-direction:column;gap:8px">
+              <div>
+                <div style="font-size:9px;color:#529bff;letter-spacing:.1em;font-family:'Special Elite',sans-serif;text-transform:uppercase;margin-bottom:4px">Cena Ativa</div>
+                <div id="cena-ativa-display" style="font-family:'IM Fell English SC',serif;font-size:12px;color:#529bff;padding:5px 8px;border:1px solid rgba(82,155,255,0.25);text-align:center;letter-spacing:.08em;margin-bottom:5px">—</div>
+                <div id="cena-controles" style="display:none;flex-wrap:wrap;gap:4px"></div>
+              </div>
+              <div>
+                <div style="font-size:9px;color:#529bff;letter-spacing:.1em;font-family:'Special Elite',sans-serif;text-transform:uppercase;margin-bottom:4px">Clima / Ambiente <span id="clima-player" style="display:none"></span></div>
+                <div id="clima-display" style="font-family:'Special Elite',sans-serif;font-size:12px;letter-spacing:.08em;color:#888;margin-bottom:5px">—</div>
+                <div id="clima-controles" style="display:none;flex-wrap:wrap;gap:4px"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TRILHA SONORA — Player completo com import -->
+          <div class="mo-card mo-h-lg">
+            <div class="mo-card-hd">
+              <span style="color:#00e7b0">♪ Trilha Sonora</span>
+              <div style="display:flex;gap:5px">
+                <button onclick="importarAudio('trilha')" class="mo-btn-sm" style="border-color:rgba(163,36,26,.5);color:var(--crimson-mid)" title="Importar arquivos de trilha">▣ Trilha</button>
+                <button onclick="importarAudio('ambientacao')" class="mo-btn-sm" style="border-color:rgba(0,231,176,.4);color:#00e7b0" title="Importar sons de ambientação">▣ Amb.</button>
+              </div>
+            </div>
+            <div class="mo-card-body" style="display:flex;flex-direction:column;gap:10px">
+
+              <!-- Player Trilha -->
+              <div style="background:rgba(20,18,14,.8);border:1px solid rgba(163,36,26,.25);padding:8px 10px">
+                <div style="font-size:9px;letter-spacing:.12em;color:var(--crimson-mid);font-family:'Special Elite',sans-serif;text-transform:uppercase;margin-bottom:6px">▶ Trilha Principal</div>
+                <div id="trilha-player-ui">
+                  <div style="color:var(--white-dust);font-size:12px;font-family:'Courier Prime',monospace;text-align:center;padding:6px 0">Nenhuma faixa tocando</div>
+                </div>
+              </div>
+
+              <!-- Player Ambientação -->
+              <div style="background:rgba(20,17,13,.8);border:1px solid rgba(0,231,176,.2);padding:8px 10px">
+                <div style="font-size:9px;letter-spacing:.12em;color:#00e7b0;font-family:'Special Elite',sans-serif;text-transform:uppercase;margin-bottom:6px">▶ Ambientação (Loop)</div>
+                <div id="amb-player-ui">
+                  <div style="color:var(--white-dust);font-size:12px;font-family:'Courier Prime',monospace;text-align:center;padding:4px 0">Sem ambientação ativa</div>
+                </div>
+              </div>
+
+              <!-- Controles do Mestre -->
+              <div id="musica-controles" style="display:flex;flex-wrap:wrap;gap:5px"></div>
+
+            </div>
+          </div>
+
+          <!-- BIBLIOTECA DE FAIXAS -->
+          <div class="mo-card mo-h-lg mo-span2">
+            <div class="mo-card-hd">
+              <span style="color:#d8a050">♪ Biblioteca de Faixas</span>
+              <span style="font-size:10px;color:var(--white-dust);font-family:'Courier Prime',monospace">Faixas salvas localmente neste dispositivo</span>
+            </div>
+            <div class="mo-card-body" style="display:flex;gap:12px;min-height:0">
+              <!-- Trilhas -->
+              <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+                <div style="font-size:9px;letter-spacing:.12em;color:var(--crimson-mid);font-family:'Special Elite',sans-serif;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid rgba(163,36,26,.3)">
+                  ♪ Trilha Sonora
+                  <button onclick="importarAudio('trilha')" style="float:right;background:transparent;border:none;color:var(--crimson-mid);font-size:11px;cursor:var(--cur-pointer,pointer);font-family:'Special Elite',sans-serif;letter-spacing:.06em">+ Importar</button>
+                </div>
+                <div id="trilha-lista" style="flex:1;overflow-y:auto">
+                  <div style="color:var(--white-dust);font-size:11px;font-family:'Courier Prime',monospace;text-align:center;padding:8px">Nenhuma faixa importada.</div>
+                </div>
+              </div>
+              <!-- Divisor -->
+              <div style="width:1px;background:rgba(106,10,10,.4);flex-shrink:0"></div>
+              <!-- Ambientações -->
+              <div style="flex:1;display:flex;flex-direction:column;min-width:0">
+                <div style="font-size:9px;letter-spacing:.12em;color:#00e7b0;font-family:'Special Elite',sans-serif;text-transform:uppercase;margin-bottom:8px;padding-bottom:4px;border-bottom:1px solid rgba(0,231,176,.2)">
+                  ▶ Ambientação
+                  <button onclick="importarAudio('ambientacao')" style="float:right;background:transparent;border:none;color:#00e7b0;font-size:11px;cursor:var(--cur-pointer,pointer);font-family:'Special Elite',sans-serif;letter-spacing:.06em">+ Importar</button>
+                </div>
+                <div id="amb-lista" style="flex:1;overflow-y:auto">
+                  <div style="color:var(--white-dust);font-size:11px;font-family:'Courier Prime',monospace;text-align:center;padding:8px">Nenhum som importado.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- FOCO / SPOTLIGHT + TIMER -->
+          <div class="mo-card mo-h-md">
+            <div class="mo-card-hd"><span style="color:#d8a050">⛧ Foco / Spotlight</span></div>
+            <div class="mo-card-body">
+              <div id="foco-display" style="font-family:'IM Fell English SC',serif;font-size:13px;color:#d8a050;padding:7px 0;margin-bottom:8px">—</div>
+              <div id="foco-controles" style="display:none;flex-wrap:wrap;gap:5px;margin-bottom:14px"></div>
+              <div style="border-top:1px solid rgba(106,10,10,.3);margin-top:6px;padding-top:10px">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                  <span style="color:#ee0000;font-size:11px;font-family:'Special Elite',sans-serif;letter-spacing:.08em;text-transform:uppercase">⏱ Timer de Pressão</span>
+                  <span id="timer-display" style="font-family:'IM Fell English SC',serif;font-size:16px;color:#e3d8c0">—</span>
+                </div>
+                <div style="height:5px;background:rgba(0,0,0,.06);border-radius:2px;overflow:hidden;margin-bottom:6px">
+                  <div id="timer-bar" style="height:100%;width:0%;background:#9fc26b;transition:width .4s"></div>
+                </div>
+                <div id="timer-label" style="font-size:10px;color:var(--white-dust);margin-bottom:6px"></div>
+                <div id="timer-controles" style="display:none">
+                  <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+                    <input id="timer-label-inp" class="mo-input" placeholder="Rótulo..." style="flex:1;min-width:80px"/>
+                    <input id="timer-sec" type="number" class="mo-input" placeholder="Seg" value="60" min="5" style="width:70px"/>
+                  </div>
+                  <div style="display:flex;gap:6px">
+                    <button onclick="iniciarTimer()" class="mo-btn-red" style="flex:1">▶ Iniciar</button>
+                    <button onclick="pararTimer()" class="mo-btn-sm">■ Parar</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- DIÁRIO -->
+          <div class="mo-card mo-h-lg mo-span2">
+            <div class="mo-card-hd">
+              <span>✎ Diário da Sessão</span>
+              <button id="diario-clear-btn" onclick="if(window.fbClearDiario&amp;&amp;confirm('Apagar todo o Diário?'))window.fbClearDiario()" class="mo-btn-sm" style="display:none">✕</button>
+            </div>
+            <div style="padding:8px 12px;border-bottom:1px solid rgba(106,10,10,.3);flex-shrink:0">
+              <div style="display:flex;gap:5px">
+                <select id="diario-tipo" class="mo-input" style="flex-shrink:0">
+                  <option value="fato">✎ Fato</option>
+                  <option value="npc">NPC</option>
+                  <option value="combate">⚔ Combate</option>
+                  <option value="descoberta">◎ Descoberta</option>
+                  <option value="humor">☠ Momento</option>
+                </select>
+                <input id="diario-inp" class="mo-input" placeholder="O que aconteceu..." style="flex:1" onkeydown="if(event.key==='Enter')addDiarioEntry()">
+                <button onclick="addDiarioEntry()" class="mo-btn-gold">+ Reg</button>
+              </div>
+            </div>
+            <div id="diario-list" class="mo-scroll" style="padding:8px 12px">
+              <div style="color:var(--white-dust);font-size:12px">Diário vazio.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ═══════════════ COMUNICAÇÃO ═══════════════ -->
+      <div id="mosub-comunicacao" class="mo-subtab-panel">
+        <div class="mo-cards-grid">
+
+          <!-- PINGS / WHISPERS -->
+          <div class="mo-card mo-h-md">
+            <div class="mo-card-hd"><span>Comunicação Privada</span></div>
+
+            <!-- VISÃO JOGADOR -->
+            <div id="player-comms" class="mo-card-body" style="flex:none">
+              <div style="display:flex;gap:6px;margin-bottom:7px">
+                <input id="whisper-inp" class="mo-input" placeholder="Mensagem privada para o Mestre..." style="flex:1" onkeydown="if(event.key==='Enter')sendWhisper()">
+                <button onclick="sendWhisper()" class="mo-btn-purple">Enviar</button>
+              </div>
+              <div style="display:flex;gap:6px">
+                <input id="ping-msg" class="mo-input" placeholder="Motivo do ping (opcional)" style="flex:1" onkeydown="if(event.key==='Enter')pingMestre()">
+                <button onclick="pingMestre()" class="mo-btn-gold" style="white-space:nowrap">Δ Chamar Mestre</button>
+              </div>
+            </div>
+
+            <!-- VISÃO MESTRE -->
+            <div id="mestre-comms" style="display:none;flex:1;overflow:hidden;flex-direction:column;min-height:0">
+              <div style="display:flex;border-bottom:1px solid rgba(106,10,10,.3);flex-shrink:0">
+                <button onclick="showCommsTab('pings')" id="comms-tab-pings" class="mo-comms-tab mo-comms-tab-active">Δ Pings<span id="ping-badge" style="background:#d8a050;color:#000;font-size:9px;font-family:monospace;border-radius:8px;padding:1px 5px;margin-left:4px"></span></button>
+                <button onclick="showCommsTab('whispers')" id="comms-tab-whispers" class="mo-comms-tab">Whispers</button>
+              </div>
+              <div id="comms-pings" class="mo-scroll" style="padding:8px 12px">
+                <div id="pings-list"><div style="color:var(--white-dust);font-size:12px">Nenhum ping.</div></div>
+              </div>
+              <div id="comms-whispers" style="display:none;flex:1;overflow-y:auto;padding:8px 12px">
+                <div id="whispers-list"><div style="color:var(--white-dust);font-size:12px">Nenhuma mensagem.</div></div>
+                <button onclick="if(window.fbClearWhispers)window.fbClearWhispers()" class="mo-btn-sm" style="margin-top:8px;width:100%">✕ Limpar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- PISTAS -->
+          <div class="mo-card mo-h-md">
+            <div class="mo-card-hd">
+              <div style="display:flex;align-items:center;gap:6px">
+                <span>◎ Pistas</span>
+                <span id="clue-badge" style="display:none;background:#d8a050;color:#000;font-size:9px;font-family:monospace;border-radius:8px;padding:1px 6px"></span>
+              </div>
+            </div>
+            <div id="clue-reveal-row" style="display:none;padding:8px 12px;border-bottom:1px solid rgba(106,10,10,.3);flex-shrink:0">
+              <div style="display:flex;gap:5px;margin-bottom:5px">
+                <select id="clue-reveal-tipo" class="mo-input" style="flex-shrink:0"></select>
+                <input id="clue-reveal-inp" class="mo-input" placeholder="Texto da pista..." style="flex:1">
+              </div>
+              <div style="display:flex;gap:5px">
+                <button onclick="revealClue()" class="mo-btn-gold" style="flex:1">⛧ Revelar para Todos</button>
+                <button onclick="if(window.fbClearClues)window.fbClearClues()" class="mo-btn-sm">✕</button>
+              </div>
+            </div>
+            <div id="revealed-clues-list" class="mo-scroll" style="padding:8px 12px">
+              <div style="color:var(--white-dust);font-size:12px">Nenhuma pista revelada.</div>
+            </div>
+          </div>
+
+          <!-- VOTAÇÃO -->
+          <div class="mo-card mo-h-sm">
+            <div class="mo-card-hd">
+              <span>▪ Votação</span>
+              <button id="start-vote-btn" onclick="startVote()" class="mo-btn-sm" style="display:none">+ Nova</button>
+            </div>
+            <div id="vote-panel" class="mo-card-body">
+              <div style="color:var(--white-dust);font-size:12px">Nenhuma votação ativa.</div>
+            </div>
+          </div>
+
+          <!-- BAÚ DO GRUPO -->
+          <div class="mo-card mo-h-md">
+            <div class="mo-card-hd">
+              <span>▦ Baú do Grupo</span>
+              <button id="bau-clear-btn" onclick="if(window.fbClearBau&amp;&amp;confirm('Esvaziar o Baú do Grupo?'))window.fbClearBau()" class="mo-btn-sm" style="display:none">✕</button>
+            </div>
+            <div style="padding:8px 12px;border-bottom:1px solid rgba(106,10,10,.3);flex-shrink:0">
+              <div style="display:flex;gap:5px;margin-bottom:5px">
+                <select id="bau-tipo" class="mo-input" style="flex-shrink:0">
+                  <option value="item">▦ Item</option>
+                  <option value="arma">⚔ Arma</option>
+                  <option value="reliquia">◇ Relíquia</option>
+                  <option value="consumivel">⚗ Consumível</option>
+                  <option value="documento">Documento</option>
+                </select>
+                <input id="bau-nome" class="mo-input" placeholder="Nome do item..." style="flex:1" onkeydown="if(event.key==='Enter')addBauItem()">
+              </div>
+              <div style="display:flex;gap:5px">
+                <input id="bau-desc" class="mo-input" placeholder="Descrição (opcional)" style="flex:1" onkeydown="if(event.key==='Enter')addBauItem()">
+                <button onclick="addBauItem()" class="mo-btn-gold">+ Add</button>
+              </div>
+            </div>
+            <div id="bau-list" class="mo-scroll" style="padding:8px 12px">
+              <div style="color:var(--white-dust);font-size:12px">Baú vazio.</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- OVERLAY FOCO -->
+      <div id="foco-overlay" style="display:none;position:fixed;bottom:80px;left:50%;transform:translateX(-50%);z-index:9000;background:rgba(20,17,13,.92);border:1px solid rgba(255,196,39,0.4);padding:8px 22px;font-family:'IM Fell English SC',serif;font-size:13px;color:#d8a050;letter-spacing:.1em;pointer-events:none;box-shadow:0 0 20px rgba(255,196,39,0.2)"></div>
+
+      <!-- CENA NA TOPBAR -->
+      <div id="cena-ativa-player" style="display:none;position:fixed;top:42px;left:50%;transform:translateX(-50%);z-index:8000;background:rgba(20,17,13,.9);border:1px solid rgba(82,155,255,0.3);padding:4px 16px;font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:.12em;pointer-events:none"></div>
+
+    </div><!-- /tab-multi -->
+
+    <!-- ════════════════════════════════════════
+         PSIQUÊ — Mapa Mental de Relacionamentos
+    ════════════════════════════════════════ -->
+    <div id="tab-psique" class="tab-content aba-hx">
+      <div id="psique-root"></div>
+    </div>
+
+    <div id="tab-elementos" class="tab-content aba-hx">
+      <div class="panel">
+        <div class="panel-title">⚗ Elementos do Outro Lado</div>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;color:var(--white-ash);font-size:13px;margin-bottom:18px;line-height:1.7">"Os elementos não são magia — são a linguagem com que o Outro Lado fala ao mundo. Cada agente que sobrevive o suficiente começa a ouvi-los."</p>
+        <div class="four-col" id="elementos-grid" style="grid-template-columns:repeat(2,1fr);gap:14px"></div>
+      </div>
+      <div class="panel" id="el-detail-panel" style="display:none">
+        <div class="panel-title" id="el-detail-title"></div>
+        <div id="el-detail-body"></div>
+      </div>
+    </div>
+
+    <div id="tab-criaturas" class="tab-content aba-hx">
+      <!-- Sub-abas de Criaturas / Relíquias -->
+      <div style="display:flex;gap:0;margin-bottom:16px;border-bottom:1px solid var(--blood-deep)">
+        <button id="subtab-btn-criaturas" onclick="showSubTab('criaturas')" style="padding:9px 20px;background:rgba(163,36,26,0.15);border:none;border-bottom:2px solid var(--crimson);color:var(--crimson-mid);font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:var(--cur-pointer,pointer);transition:all .2s">☠ Bestiário</button>
+        <button id="subtab-btn-reliquias" onclick="showSubTab('reliquias')" style="padding:9px 20px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--white-dust);font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:var(--cur-pointer,pointer);transition:all .2s">◇ Relíquias</button>
+      </div>
+
+      <!-- SUB-ABA: Bestiário -->
+      <div id="subtab-criaturas">
+        <div class="panel cr-panel">
+          <div class="panel-title">☠ Bestiário — Ameaças Paranormais</div>
+          <div class="cr-toolbar">
+            <div class="cr-search">
+              <span class="cr-search-ico">⌕</span>
+              <input type="text" id="cr-search-inp" placeholder="Buscar criatura por nome…" oninput="filtrarCriaturas()">
+            </div>
+            <div class="cr-chips">
+              <button class="cr-chip" onclick="filtrarCriaturas('todas')" id="fil-todas" data-active="true">Todas</button>
+              <button class="cr-chip" onclick="filtrarCriaturas('basica')" id="fil-basica">Básicas</button>
+              <button class="cr-chip" onclick="filtrarCriaturas('outro-lado')" id="fil-outro-lado">Outro Lado</button>
+            </div>
+            <div class="cr-sort">
+              <button class="cr-order-btn" onclick="toggleOrdemCriaturas()" id="btn-ordem" title="Inverter ordem">↑ Ameaça</button>
+              <select id="sort-criaturas" onchange="ordenarCriaturas()">
+                <option value="ameaca">Ordenar: Ameaça</option>
+                <option value="nome">Ordenar: Nome</option>
+                <option value="pv">Ordenar: PV</option>
+                <option value="def">Ordenar: DEF</option>
+              </select>
+            </div>
+          </div>
+          <div id="criaturas-count" class="cr-count"></div>
+          <div id="criaturas-grid" class="cr-grid"></div>
+        </div>
+        <div class="panel cr-detail" id="cr-detail-panel" style="display:none">
+          <button class="cr-back" onclick="document.getElementById('cr-detail-panel').style.display='none'">← Voltar ao Bestiário</button>
+          <div id="cr-detail-body"></div>
+        </div>
+      </div>
+
+      <!-- SUB-ABA: Relíquias -->
+      <div id="subtab-reliquias" style="display:none">
+        <div class="panel cr-panel">
+          <div class="panel-title">◇ Relíquias da Calamidade — Portadores</div>
+          <p style="font-family:'IM Fell English',serif;font-style:italic;color:var(--white-ash);font-size:13px;margin-bottom:18px;line-height:1.7">"Os portadores não escolhem as Relíquias — as Relíquias os escolhem. E quando o fazem, a realidade nunca mais é a mesma."</p>
+          <div class="cr-toolbar">
+            <div class="cr-chips">
+              <button class="cr-chip" onclick="filtrarReliquias('todas')" id="rfil-todas" data-active="true">Todas</button>
+              <button class="cr-chip cr-chip-el" data-el="sangue" onclick="filtrarReliquias('sangue')" id="rfil-sangue"><span class="sym-el sym-sangue" title="Sangue"></span> Sangue</button>
+              <button class="cr-chip cr-chip-el" data-el="energia" onclick="filtrarReliquias('energia')" id="rfil-energia"><span class="sym-el sym-energia" title="Energia"></span> Energia</button>
+              <button class="cr-chip cr-chip-el" data-el="conhecimento" onclick="filtrarReliquias('conhecimento')" id="rfil-conhecimento"><span class="sym-el sym-conhecimento" title="Conhecimento"></span> Conhecimento</button>
+              <button class="cr-chip cr-chip-el" data-el="morte" onclick="filtrarReliquias('morte')" id="rfil-morte"><span class="sym-el sym-morte" title="Morte"></span> Morte</button>
+            </div>
+            <div style="margin-left:auto;font-size:10px;color:var(--white-dust);font-family:'Courier Prime',monospace;letter-spacing:.06em;align-self:center">⛧ Calamidade — Wiki Oficial</div>
+          </div>
+          <div id="reliquias-grid" class="cr-grid"></div>
+        </div>
+        <div class="panel cr-detail" id="rel-detail-panel" style="display:none">
+          <button class="cr-back" onclick="document.getElementById('rel-detail-panel').style.display='none'">← Voltar às Relíquias</button>
+          <div id="rel-detail-body"></div>
+        </div>
+      </div>
+    </div><!-- /tab-criaturas -->
+
+    <!-- AGENTES DA ORDEM -->
+    <div id="tab-agentes" class="tab-content aba-hx">
+      <div class="panel cr-panel">
+        <div class="panel-title">◍ Agentes da Ordo Realitas</div>
+        <p style="font-family:'IM Fell English',serif;font-style:italic;color:var(--white-ash);font-size:13px;margin-bottom:18px;line-height:1.7">Todos os agentes, veteranos e recrutas que já vestiram o símbolo da Ordem através das temporadas de Ordem Paranormal — protagonistas de Iniciação até Enigma do Medo.</p>
+        <div class="cr-toolbar">
+          <div class="cr-search">
+            <span class="cr-search-ico">⌕</span>
+            <input type="text" id="ag-search-inp" placeholder="Buscar agente por nome…" oninput="filtrarAgentes()">
+          </div>
+          <div class="cr-chips">
+            <button class="cr-chip" data-eq="todas" onclick="filtrarAgentes('todas')" data-active="true">Todos</button>
+            <button class="cr-chip" data-eq="Lideranca" onclick="filtrarAgentes('Lideranca')">Liderança</button>
+            <button class="cr-chip" data-eq="Equipe E" onclick="filtrarAgentes('Equipe E')">Equipe E</button>
+            <button class="cr-chip" data-eq="Força D" onclick="filtrarAgentes('Força D')">Força D</button>
+            <button class="cr-chip" data-eq="Equipe Abutres" onclick="filtrarAgentes('Equipe Abutres')">Abutres</button>
+            <button class="cr-chip" data-eq="Equipe Delta" onclick="filtrarAgentes('Equipe Delta')">Delta</button>
+            <button class="cr-chip" data-eq="Os Cinco" onclick="filtrarAgentes('Os Cinco')">Os Cinco</button>
+            <button class="cr-chip" data-eq="Enigma do Medo" onclick="filtrarAgentes('Enigma do Medo')">Enigma do Medo</button>
+          </div>
+        </div>
+        <div id="agentes-count" class="cr-count"></div>
+        <div id="agentes-grid" class="cr-grid"></div>
+      </div>
+      <div class="panel cr-detail" id="ag-detail-panel" style="display:none">
+        <button class="cr-back" onclick="document.getElementById('ag-detail-panel').style.display='none'">← Voltar aos Agentes</button>
+        <div id="ag-detail-body"></div>
+      </div>
+    </div><!-- /tab-agentes -->
+ 
+  </div><!-- /app-body -->
+</div><!-- /screen-app -->
+ 
+<div id="broadcast-incoming" class="broadcast-incoming">
+  <div style="font-size:10px;letter-spacing:.15em;color:var(--gold);text-transform:uppercase;margin-bottom:6px;font-family:'Special Elite',sans-serif">⛧ Mensagem do Mestre</div>
+  <div id="broadcast-text"></div>
+  <button onclick="document.getElementById('broadcast-incoming').classList.remove('show')" style="margin-top:10px;background:transparent;border:1px solid rgba(216,160,80,0.4);color:var(--gold-light);padding:4px 14px;font-family:'IM Fell English SC',serif;font-size:11px;cursor:var(--cur-pointer,pointer);letter-spacing:.1em">Dispensar</button>
+</div>
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+ 
+<!-- MODAL -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">×</button>
+    <div class="modal-title" id="modal-title"></div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+ 
+ 
+<!-- MODAL MESTRE LOGIN -->
+<div id="modal-mestre" class="mm" style="display:none" onclick="if(event.target===this)closeMestreModal()">
+  <div class="mm-card" role="dialog" aria-modal="true" aria-labelledby="mm-title">
+    <button class="mm-x" onclick="closeMestreModal()" aria-label="Fechar">×</button>
+    <svg class="mm-sigil" viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="46" stroke-dasharray="2 4"/><circle cx="50" cy="50" r="34"/><path d="M50 17 L60.5 76 L22 39 H78 L39.5 76 Z"/><circle cx="50" cy="50" r="3.4" class="f"/></svg>
+    <div class="mm-kick">Câmara do Mestre</div>
+    <h2 id="mm-title">Acesso restrito</h2>
+    <p class="mm-sub">Só quem conduz a mesa passa daqui.</p>
+    <div class="mm-field"><label for="m-user">Codinome</label>
+      <input id="m-user" type="text" placeholder="codinome do mestre" autocomplete="off" onkeydown="if(event.key==='Enter')document.getElementById('m-pass').focus()"></div>
+    <div class="mm-field"><label for="m-pass">Senha</label>
+      <input id="m-pass" type="password" placeholder="••••••••" autocomplete="off" onkeydown="if(event.key==='Enter')doMestreLogin()"></div>
+    <div id="m-err" class="mm-err"></div>
+    <button class="mm-go" onclick="doMestreLogin()">⛧ Abrir a câmara ⛧</button>
+  </div>
+</div>
+ 
+
+ 
+<!-- BANNER DE PEDIDO DE ROLAGEM (aparece para o jogador quando Mestre pede) -->
+<div id="roll-request-banner" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);z-index:500;background:rgba(20,17,13,.98);border:2px solid var(--gold);padding:16px 22px;min-width:320px;max-width:500px;align-items:center;gap:14px;box-shadow:0 0 30px rgba(216,160,80,.4);flex-wrap:wrap">
+  <div style="flex:1;min-width:160px">
+    <div style="font-family:'IM Fell English SC',serif;font-size:11px;color:var(--gold-light);letter-spacing:.08em;margin-bottom:4px">⛧ O MESTRE PEDE UMA ROLAGEM</div>
+    <div style="display:flex;align-items:baseline;gap:8px">
+      <span id="rrb-dado" style="font-family:'IM Fell English SC',serif;font-size:24px;color:var(--white-dim)">1d20</span>
+      <span id="rrb-motivo" style="font-size:12px;color:var(--white-dust);font-family:'Courier Prime',monospace"></span>
+    </div>
+  </div>
+  <div style="display:flex;gap:8px;flex-shrink:0">
+    <button onclick="rollRequestDice()" style="padding:9px 16px;background:rgba(216,160,80,.15);border:1px solid var(--gold);color:var(--gold-light);font-family:'IM Fell English SC',serif;font-size:11px;letter-spacing:.1em;cursor:var(--cur-pointer,pointer);text-transform:uppercase">⚄ Rolar Agora</button>
+    <button onclick="dismissRollRequest()" style="padding:9px 12px;background:transparent;border:1px solid var(--blood-deep);color:var(--white-dust);font-family:'Special Elite',sans-serif;font-size:10px;cursor:var(--cur-pointer,pointer)">Fechar</button>
+  </div>
+</div>
+
+<script src="criaturas.js"></script>
+<script src="ficha.js"></script>
+<script src="nivel.js"></script>
+<!-- ═══ MODAL UNIVERSAL DE DETALHES/FICHAS ═══
+     Usado por verItem, verElemento, verCriatura,
+     verReliquia e verAgente — toda "ficha" ou "detalhe" abre aqui
+     como um popup, em vez de um painel inline na própria aba. -->
+<div id="universal-modal-overlay" onclick="if(event.target===this) fecharModalDetalhe()">
+  <div id="universal-modal-content">
+    <button id="universal-modal-close" onclick="fecharModalDetalhe()" title="Fechar (Esc)">×</button>
+    <div id="universal-modal-body"></div>
+  </div>
+</div>
+
+<script src="modal.js"></script>
+<script src="app.js"></script>
+<script src="tutorial-agatha.js"></script>
+<script src="tutorial-samuel.js"></script>
+<script src="tutorial-rolagem.js"></script>
+<script src="poderes.js"></script>
+<script src="morte.js"></script>
+<script src="pacto.js"></script>
+<script src="transcendencia-forcada.js"></script>
+<script src="transcendencia-arvore.js"></script>
+<script src="transcendencia.js"></script>
+<!-- IMPORTANTE: este script DEVE vir depois do app.js, pois depende de
+     RITUAIS_DB já estar declarado. Não mover para antes. -->
+<script src="dano-rituais.js"></script>
+<!-- Aba consolidada de Danos: lê ITENS_DB/RITUAIS_DB e o inventário/rituais
+     do personagem para listar tudo que causa dano em um só lugar.
+     Também precisa vir depois do app.js e do dano-rituais.js. -->
+<script src="danos-tab.js"></script>
+<!-- Forja: criação de armas/itens/rituais (depois de app.js, dano-rituais.js e danos-tab.js) -->
+<script src="forja-icons.js"></script>
+<script src="forja-municao.js"></script>
+<script src="forja.js"></script>
+<script src="forja-ritual.js"></script>
+<script src="forja-uso.js"></script>
+<script src="forja-sumonavel.js"></script>
+<script src="agentes.js"></script>
+<!-- Aba do Mestre (reescrita): precisa vir depois de app.js, morte.js e pacto.js -->
+<script src="mestre.js"></script>
+<script src="mestre-trans.js"></script>
+<script src="mestre-nivel.js"></script>
+<script src="mestre-npc.js"></script>
+<script>
+// ══════════════════════════════════════════════════════════════
+// FIX MOBILE — trava de tela ao focar/desfocar campo de texto.
+//
+// Em celulares, focar num input pode fazer o navegador aplicar um
+// zoom automático (pra iOS) ou, em alguns Android/Chrome, deixar o
+// "viewport de layout" preso maior que a tela depois de um input
+// nativo (select, number spinner) ser medido internamente — dando
+// a sensação de tela travada, com margem sobrando e sem resposta
+// ao toque/scroll.
+//
+// 1) Mantém --vv-top/--vv-left/--vv-width/--vv-height atualizadas
+//    com a Visual Viewport API, pra overlays de tela cheia (modais,
+//    tutoriais) sempre cobrirem exatamente a área visível real,
+//    mesmo com zoom ativo — em vez de "flutuarem" fora do lugar.
+// 2) Uma rotina de "destrava": sempre que um campo perde o foco (ou
+//    a visual viewport muda de forma suspeita), força o navegador a
+//    recalcular o zoom voltando pra escala 1, reescrevendo a meta
+//    viewport por um instante — é um truque padrão pra "acordar" o
+//    Chrome/Safari mobile de um viewport preso.
+// ══════════════════════════════════════════════════════════════
+(function(){
+  const root = document.documentElement;
+
+  function updateVV(){
+    const vv = window.visualViewport;
+    if(!vv) return;
+    root.style.setProperty('--vv-top', vv.offsetTop + 'px');
+    root.style.setProperty('--vv-left', vv.offsetLeft + 'px');
+    root.style.setProperty('--vv-width', vv.width + 'px');
+    root.style.setProperty('--vv-height', vv.height + 'px');
+  }
+  updateVV();
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', updateVV);
+    window.visualViewport.addEventListener('scroll', updateVV);
+  }
+  window.addEventListener('orientationchange', ()=> setTimeout(updateVV, 300));
+
+  // ── Destrava automática do zoom ──
+  const _vpMeta = document.querySelector('meta[name="viewport"]');
+  let _unstickTimer = null;
+  function unstickZoom(){
+    if(!_vpMeta) return;
+    clearTimeout(_unstickTimer);
+    const original = 'width=device-width, initial-scale=1.0';
+    // Força maximum-scale=1 por um instante — obriga o navegador a
+    // recalcular e descartar qualquer zoom/viewport "preso" — depois
+    // devolve o viewport original pra não travar o zoom manual do usuário.
+    _vpMeta.setAttribute('content', original + ', maximum-scale=1');
+    _unstickTimer = setTimeout(()=>{
+      _vpMeta.setAttribute('content', original);
+      updateVV();
+    }, 60);
+  }
+
+  // Dispara ao sair de qualquer campo de texto/seleção (foco->desfoco
+  // é o momento em que o zoom automático do celular entra em ação).
+  document.addEventListener('focusout', e=>{
+    const tag = e.target.tagName;
+    if(tag==='INPUT' || tag==='TEXTAREA' || tag==='SELECT'){
+      unstickZoom();
+    }
+  }, true);
+
+  // Segurança extra: se a visual viewport encolher bruscamente sem
+  // que nenhum campo esteja focado (sinal de viewport preso em zoom
+  // residual), tenta destravar também.
+  let _lastVVWidth = window.visualViewport ? window.visualViewport.width : window.innerWidth;
+  function checkStuckZoom(){
+    const vv = window.visualViewport;
+    if(!vv) return;
+    const active = document.activeElement;
+    const isEditing = active && ['INPUT','TEXTAREA','SELECT'].includes(active.tagName);
+    if(!isEditing && vv.width < window.innerWidth * 0.97 && Math.abs(vv.width - _lastVVWidth) > 4){
+      unstickZoom();
+    }
+    _lastVVWidth = vv.width;
+  }
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', checkStuckZoom);
+  }
+})();
+</script>
+<script src="hexatombe.js"></script>
+<script src="ficha-poster.js"></script>
+<script src="ficha-defesa.js"></script>
+<script src="abas-poster.js"></script>
+<script src="login-hx.js"></script>
+<script src="cursor-hx.js"></script>
+</body>
+</html>
